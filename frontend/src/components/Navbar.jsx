@@ -1,55 +1,102 @@
-"use client"
-import { useState } from "react";
+'use client';
+import { SignOutButton } from "@clerk/nextjs";
+import { useState, useRef, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 
 const navLinks = [
-  { name: "Home", href: "/" },
-  { name: "Features", href: "/features" },
-  { name: "Pricing", href: "/pricing" },
+  { name: "About", href: "/about" },
+  { name: "Services", href: "/services" },
+  { name: "Cart", href: "/cart" },
   { name: "Contact", href: "/contact" },
 ];
 
-const Navbar = () => {
+export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
-    <nav className="bg-white shadow-md fixed top-0 w-full z-50">
-      <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-blue-600 cursor-pointer" href="/" >MyApp</h1>
+    <nav className="bg-white border-gray-200 dark:bg-gray-900 shadow-md">
+      <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+        <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
+          <img src="/logo.png" className="h-8" alt="Gathr Logo" />
+          <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Gathr</span>
+        </a>
 
-        <div className="hidden md:flex gap-8">
-          {navLinks.map((link) => (
+        {/* Desktop Navigation + Avatar */}
+        <div className="hidden md:flex items-center gap-6 relative" ref={menuRef}>
+          {navLinks.map((navLink) => (
             <a
-              key={link.name}
-              href={link.href}
-              className="text-gray-700 hover:text-blue-600 font-medium cursor-pointer"
+              key={navLink.href}
+              href={navLink.href}
+              className="text-gray-700 dark:text-white hover:scale-110 transition-transform"
             >
-              {link.name}
+              {navLink.name}
             </a>
           ))}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex text-sm bg-gray-800 rounded-full hover:ring-2 ring-white focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
+          >
+            <img className="w-8 h-8 rounded-full" src="/avatar.png" alt="user avatar" />
+          </button>
+
+          {isOpen && (
+            <div className="absolute right-0 top-12 w-48 bg-white rounded-md shadow-lg dark:bg-gray-800 z-50">
+              <div className="py-1">
+                <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Profile</a>
+                <a href="#" className="block px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Settings</a>
+                <SignOutButton>
+                  <button className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700">Sign out</button>
+                </SignOutButton>
+              </div>
+            </div>
+          )}
         </div>
 
-        <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        {/* Hamburger Button (Mobile Only) */}
+        <div className="md:hidden">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="text-gray-700 dark:text-white"
+          >
+            {menuOpen ? <X size={28} /> : <Menu size={28} />}
+          </button>
+        </div>
+
+        {/* Mobile Menu Dropdown */}
       </div>
-
-      {isOpen && (
-        <div className="md:hidden px-4 pb-4 flex flex-col gap-3 bg-white">
-          {navLinks.map((link) => (
-            <a
-              key={link.name}
-              href={link.href}
-              className="text-gray-700 hover:text-blue-600 font-medium"
-              onClick={() => setIsOpen(false)}
-            >
-              {link.name}
-            </a>
-          ))}
-        </div>
-      )}
+      <div>
+        {menuOpen && (
+          <div className="md:hidden px-4 pb-4 space-y-2 bg-white dark:bg-gray-900 shadow-md">
+            {navLinks.map((navLink) => (
+              <a
+                key={navLink.href}
+                href={navLink.href}
+                className="block text-gray-700 dark:text-white"
+                onClick={() => setMenuOpen(false)}
+              >
+                {navLink.name}
+              </a>
+            ))}
+            <a href="#" className="block text-gray-700 dark:text-white">Profile</a>
+            <a href="#" className="block text-gray-700 dark:text-white">Settings</a>
+            <SignOutButton>
+              <button className="block text-red-700 dark:text-red-700">Sign out</button>
+            </SignOutButton>
+          </div>
+        )}
+      </div>
     </nav>
   );
-};
-
-export default Navbar;
+}
