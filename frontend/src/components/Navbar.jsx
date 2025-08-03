@@ -2,6 +2,7 @@
 import { SignOutButton } from "@clerk/nextjs";
 import { useState, useRef, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 const navLinks = [
   { name: "About", href: "/about" },
@@ -14,7 +15,9 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
+  const pathname = usePathname();
 
+  const isHome = pathname === '/';
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -26,14 +29,17 @@ export default function Navbar() {
   }, []);
 
   return (
-    <nav className="bg-white border-gray-200 dark:bg-gray-900 shadow-md">
+    <nav className={`border-gray-200 shadow-md transition-all duration-300 ${isHome
+      ? 'bg-transparent absolute top-0 left-0 right-0 z-50'
+      : 'bg-white dark:bg-gray-900'
+      }`} style={{ fontFamily: "'Outfit', 'sans-serif'" }}>
       <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
         <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
           <img src="/logo.png" className="h-8" alt="Gathr Logo" />
           <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Gathr</span>
         </a>
 
-        {/* Desktop Navigation + Avatar */}
+        {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-6 relative" ref={menuRef}>
           {navLinks.map((navLink) => (
             <a
@@ -64,7 +70,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Hamburger Button (Mobile Only) */}
+        {/* Hamburger Button */}
         <div className="md:hidden">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -74,7 +80,7 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile Menu Dropdown */}
+        {/* Menu Dropdown for Mobile*/}
       </div>
       <div>
         {menuOpen && (
@@ -97,6 +103,6 @@ export default function Navbar() {
           </div>
         )}
       </div>
-    </nav>
+    </ nav>
   );
 }
