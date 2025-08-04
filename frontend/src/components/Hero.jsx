@@ -5,9 +5,6 @@ import { useTheme } from '@mui/material/styles';
 import { motion } from 'framer-motion';
 import TextType from './gsap/TextType';
 import RotatingText from './gsap/RotatingText';
-import Galaxy from './gsap/Galaxy';
-import LightRays from './gsap/LightRays';
-import Silk from './gsap/Silk';
 
 export default function Hero() {
     const theme = useTheme();
@@ -15,7 +12,7 @@ export default function Hero() {
     const [show, setShow] = useState(false);
 
     useEffect(() => {
-        const timeout = setTimeout(() => setShow(true), 2000); // 1s delay
+        const timeout = setTimeout(() => setShow(true), 2000);
         return () => clearTimeout(timeout);
     }, []);
     return (
@@ -26,9 +23,10 @@ export default function Hero() {
                 minHeight: '100vh',
                 overflow: 'hidden',
                 display: 'flex',
-                flexDirection: { xs: 'column', md: 'row' },
+                flexDirection: { xs: 'column-reverse', md: 'row' },
                 alignItems: 'center',
-                justifyContent: { xs: 'center', md: 'flex-between' },
+                justifyContent: 'space-between',
+                gap: { xs: 6, sm: 8, md: 10 },
                 px: { xs: 2, sm: 4, md: 12 },
                 py: { xs: 4, sm: 6, md: 8 },
                 color: 'white',
@@ -48,7 +46,6 @@ export default function Hero() {
             aria-label="E-commerce hero section">
             <Box
                 sx={{
-                    textAlign: { xs: 'center', md: 'left' },
                     zIndex: 1,
                     flex: 1,
                     maxWidth: { md: '50%' },
@@ -60,11 +57,11 @@ export default function Hero() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8 }}>
                     <Typography
-                        variant={isMobile ? 'h3' : 'h2'}
+                        variant="h2"
                         component="h1"
                         sx={{
-                            fontWeight: 600,
-                            fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' },
+                            fontWeight: 700,
+                            fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
                             lineHeight: 1.2,
                             fontFamily: "'Outfit', 'Inter', sans-serif"
                         }}>
@@ -93,7 +90,7 @@ export default function Hero() {
                             fontFamily: "'Outfit', 'Inter', sans-serif"
                         }}>
                         {show &&
-                            <div className="w-[200px] sm:w-[250px] md:w-[300px]">
+                            <div className="w-[200px] sm:w-[250px] md:w-[300px] mx-auto md:mx-0">
                                 <RotatingText
                                     texts={['Scroll', 'Select', 'Secure', 'Repeat']}
                                     mainClassName="px-2 sm:px-2 md:px-3 bg-white/10 backdrop-blur-md text-lime-400 overflow-hidden py-0.5 sm:py-1 md:py-2 justify-center rounded-lg"
@@ -111,17 +108,26 @@ export default function Hero() {
                     </Typography>
                 </motion.div>
             </Box>
-            <Box
-                sx={{
-                    textAlign: { xs: 'center', md: 'right' },
-                    zIndex: 1,
-                    flex: 1,
-                    maxWidth: { md: '50%' },
-                    textAlign: { xs: 'center', md: 'left' },
-
-                }}>
-                Hello
+            <Box sx={{
+                zIndex: 1,
+                flex: 1,
+                maxWidth: { md: '50%' },
+                display: 'flex',
+                justifyContent: 'center',
+            }}>
+                <img
+                    src="/HeroPic.jpeg"
+                    alt="Sample image"
+                    style={{
+                        width: '100%',
+                        maxWidth: '500px',
+                        height: 'auto',
+                        borderRadius: '16px',
+                        objectFit: 'cover',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                    }}
+                />
             </Box>
         </Box>
     );
-}
+}  
