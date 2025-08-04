@@ -18,6 +18,7 @@ export default function AuthCallbackPage() {
       if (isLoaded && user) {
         // Only update if role not set
         if (!user.publicMetadata?.role) {
+          console.log("Setting role for user", user.id, "to", role);
           const res = await axios.post("http://localhost:5000/set-role", {
             userId: user.id,
             role,
