@@ -1,6 +1,5 @@
 import Hero from "@/components/Hero";
 import Navbar from "@/components/Navbar";
-// import Silk from "@/components/gsap/Silk";
 import DarkVeil from "@/components/gsap/DarkVeil";
 import { Box } from "@mui/material";
 
@@ -16,15 +15,8 @@ export default function Home() {
           bottom: 0,
           zIndex: 0,
         }}>
-        {/* <Silk
-          speed={15}
-          scale={1}
-          color="#123456"
-          noiseIntensity={0.1}
-          rotation={0}
-          /> */}
         <DarkVeil
-          colorStops={["#C0C0C0", "#001F3F", "#CD7F32"]}
+          colorStops={["#C0C0C0", "#001F3F", "#00FFFF"]}
           blend={0.5}
           amplitude={1.0}
           speed={0.5} />
