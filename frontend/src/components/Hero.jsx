@@ -28,7 +28,7 @@ export default function Hero() {
                 display: 'flex',
                 flexDirection: { xs: 'column', md: 'row' },
                 alignItems: 'center',
-                justifyContent: { xs: 'center', md: 'flex-start' },
+                justifyContent: { xs: 'center', md: 'flex-between' },
                 px: { xs: 2, sm: 4, md: 12 },
                 py: { xs: 4, sm: 6, md: 8 },
                 color: 'white',
@@ -46,20 +46,6 @@ export default function Hero() {
             }}
             role="banner"
             aria-label="E-commerce hero section">
-            <Box
-                sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 0,
-                }}
-            >
-                {/* <LightRays/> */}
-                {/* <Galaxy /> */}
-                <Silk />
-            </Box>
             <Box
                 sx={{
                     textAlign: { xs: 'center', md: 'left' },
@@ -110,7 +96,7 @@ export default function Hero() {
                             <div className="w-[200px] sm:w-[250px] md:w-[300px]">
                                 <RotatingText
                                     texts={['Scroll', 'Select', 'Secure', 'Repeat']}
-                                    mainClassName="px-2 sm:px-2 md:px-3 bg-white/10 backdrop-blur-md text-white overflow-hidden py-0.5 sm:py-1 md:py-2 justify-center rounded-lg"
+                                    mainClassName="px-2 sm:px-2 md:px-3 bg-white/10 backdrop-blur-md text-lime-400 overflow-hidden py-0.5 sm:py-1 md:py-2 justify-center rounded-lg"
                                     staggerFrom="last"
                                     initial={{ y: "100%" }}
                                     animate={{ y: 0 }}
@@ -124,6 +110,17 @@ export default function Hero() {
                         }
                     </Typography>
                 </motion.div>
+            </Box>
+            <Box
+                sx={{
+                    textAlign: { xs: 'center', md: 'right' },
+                    zIndex: 1,
+                    flex: 1,
+                    maxWidth: { md: '50%' },
+                    textAlign: { xs: 'center', md: 'left' },
+
+                }}>
+                Hello
             </Box>
         </Box>
     );

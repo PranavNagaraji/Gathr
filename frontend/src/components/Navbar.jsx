@@ -29,14 +29,13 @@ export default function Navbar() {
   }, []);
 
   return (
-    <nav className={`border-gray-200 shadow-md transition-all duration-300 ${isHome
+    <nav className={`border-gray-200 shadow-md transition-all duration-300 sticky p-4 ${isHome
       ? 'bg-transparent absolute top-0 left-0 right-0 z-50'
       : 'bg-white dark:bg-gray-900'
       }`} style={{ fontFamily: "'Outfit', 'sans-serif'" }}>
-      <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+      <div className="max-w-screen flex flex-wrap items-center justify-between mx-auto">
         <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
-          <img src="/logo.png" className="h-8" alt="Gathr Logo" />
-          <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Gathr</span>
+          <span className="self-center text-5xl tracking-wide font-semibold whitespace-nowrap dark:text-white" style={{ fontFamily: "'Yesteryear', cursive", fontWeight: "400" }}>Gathr</span>
         </a>
 
         {/* Desktop Nav */}
@@ -45,7 +44,9 @@ export default function Navbar() {
             <a
               key={navLink.href}
               href={navLink.href}
-              className="text-gray-700 dark:text-white hover:scale-110 transition-transform"
+              className="text-gray-700 dark:text-white hover:scale-110 tracking-wider relative
+               after:content-[''] after:absolute after:left-0 after:h-0.5 after:bg-white after:rounded-lg after:w-full
+                after:top-full after:scale-0 hover:after:scale-100 after:transition-all after:duration-500 transition-transform"
             >
               {navLink.name}
             </a>
