@@ -10,8 +10,9 @@ export const add_shop = async (req, res) => {
   const { owner_id, Location, address, shop_name, contact, acconunt_no, mobile_no, upi_id } = req.body;
   
   try {
+    const user = await supabase.Users.getUser({clerk_id: owner_id});
     const { error } = await supabase.from("Shops").insert({
-      owner_id,
+      owner_id: user.id,
       Location,
       address,
       shop_name,
@@ -43,11 +44,13 @@ export const add_items = async (req, res) => {
       return res.status(403).json({ message: "User is not a merchant" });
     }
 
+
+    const id = await supabase.Users.getUser({ clerk_id: user_id }); 
     // 2️⃣ Get shop ID
     const { data: shop, error: shopError } = await supabase
       .from("Shops")
       .select("id")
-      .eq("owner_id", user_id)
+      .eq("owner_id", id)
       .single();
 
     if (shopError || !shop) {
@@ -87,3 +90,25 @@ export const add_items = async (req, res) => {
     res.status(500).json({ message: "Error adding items", error });
   }
 };
+
+export const checkShopExists = async (req,res) =>{
+  try {
+    const { userId } = req.query;
+    const user = await supabase.Users.getUser({ clerk_id: userId });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const { data: shop, error } = await supabase
+      .from("Shops")
+      .select("id")
+      .eq("owner_id", user.id)
+      .single();
+    if(!shop || error) {
+      return res.status(404).json({ message: "Shop not found for this user" });
+    }
+    res.status(200).json({ message: "Shop found", shop });
+  } catch (error) {
+    console.error("Error checking shop existence:", error);
+    res.status(500).json({ message: "Error checking shop existence", error });
+  }
+}
