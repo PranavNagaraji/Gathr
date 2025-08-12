@@ -1,9 +1,10 @@
 'use client';
 import { SignOutButton, useUser } from "@clerk/nextjs";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@mui/material";
+import { motion, AnimatePresence } from "framer-motion";
 
 const navLinks = [
   { name: "About", href: "/about" },
@@ -40,7 +41,7 @@ export default function Navbar() {
         }`}
       style={{ fontFamily: "'Outfit', 'sans-serif'" }}
     >
-      <div className="max-w-screen-xl mx-auto flex items-center justify-between flex-wrap">
+      <div className="w-full mx-auto flex items-center justify-between flex-wrap">
         {/* Logo */}
         <a href="/" className="flex items-center space-x-3">
           <span

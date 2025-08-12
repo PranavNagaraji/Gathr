@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import supabase from "./db.js";
+import merchantRoutes from "./routes/merchant.js";
 
 dotenv.config();
 
@@ -13,13 +14,18 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-// Note: clerkMiddleware should generally come after express.json()
-app.use(clerkMiddleware()); // No need to pass clerk object here in newer versions
+app.use(express.urlencoded({ extended: true , limit: '50mb'}));
+
+app.use(clerkMiddleware());
+
+//routes
+app.use("/api/merchant", merchantRoutes);
+
 
 app.get("/", (req, res) => res.send("Hello from backend!"));
 
+
 app.post("/set-role", async (req, res) => {
-  // 1. Validate input first
   const { userId, role } = req.body;
   if (!userId || !role) {
     return res.status(400).json({ message: "Missing userId or role" });
