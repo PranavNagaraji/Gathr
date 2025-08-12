@@ -1,20 +1,17 @@
-import { useUser, useAuth} from "@clerk/nextjs";
+'use client'
+import { useUser, useAuth } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 
 export default function Dashboard() {
-  const { user } = useUser();
-  const {getToken}=useAuth();
-  const userId = user?.id || "";
-  let token;
-    useEffect(()=>{
-        const fun = async ()=>{
-            token=await getToken();
-        }
-        fun();
-    }, []);
+  const { user, isLoaded } = useUser(); // added isLoaded to ensure user is ready
+  const { getToken } = useAuth();
+
+  const [token, setToken] = useState("");
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
   const [formData, setFormData] = useState({
-    owner_id: userId,
-    location: "",
+    owner_id: "",
+    Location: "",
     address: "",
     shop_name: "",
     contact: "",
@@ -23,19 +20,56 @@ export default function Dashboard() {
     upi_id: "",
   });
 
+  // Get token
+  useEffect(() => {
+    const fetchToken = async () => {
+      const t = await getToken();
+      setToken(t || "");
+    };
+    fetchToken();
+  }, [getToken]);
+
+  // Set owner_id once user is loaded
+  useEffect(() => {
+    if (isLoaded && user) {
+      setFormData((prev) => ({ ...prev, owner_id: user.id }));
+    }
+  }, [isLoaded, user]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const parseLocationString = (str) => {
+    try {
+      const [lat, lng] = str.split(",").map((v) => parseFloat(v.trim()));
+      return { latitude: lat, longitude: lng };
+    } catch {
+      return { latitude: null, longitude: null };
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // send data to backend
-    const res = await fetch("/api/merchant/add_shop", {
+    if (!formData.owner_id) {
+      alert("User not loaded yet. Please wait.");
+      return;
+    }
+
+    const updatedData = {
+      ...formData,
+      location: parseLocationString(formData.Location),
+    };
+
+    const res = await fetch(`${API_URL}/api/merchant/add_shop`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-      body: JSON.stringify(formData),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(updatedData),
     });
 
     if (res.ok) {
@@ -55,11 +89,10 @@ export default function Dashboard() {
           Shop Registration
         </h2>
 
-        {/* Hidden owner_id field */}
         <input type="hidden" name="owner_id" value={formData.owner_id} />
 
         {[
-          { name: "location", label: "Location" },
+          { name: "Location", label: "Location (lat, lng)" },
           { name: "address", label: "Address" },
           { name: "shop_name", label: "Shop Name" },
           { name: "contact", label: "Contact" },
@@ -82,7 +115,8 @@ export default function Dashboard() {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition"
+          disabled={!isLoaded || !formData.owner_id}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition disabled:opacity-50"
         >
           Save Shop
         </button>

@@ -7,36 +7,46 @@ dotenv.config();
 const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 
 export const add_shop = async (req, res) => {
-  const { owner_id, Location, address, shop_name, contact, acconunt_no, mobile_no, upi_id } = req.body;
   
   try {
-    const user = await supabase.Users.getUser({clerk_id: owner_id});
+    const { owner_id, Location, address, shop_name, contact, account_no, mobile_no, upi_id } = req.body;
+    console.log(owner_id);
+    const { data: user, error: userError } = await supabase
+      .from('Users')
+      .select('*')
+      .eq('clerk_id', owner_id)
+      .single();
+    
+    console.log(user)
     const { error } = await supabase.from("Shops").insert({
       owner_id: user.id,
       Location,
       address,
       shop_name,
       contact,
-      acconunt_no,
+      account_no,
       mobile_no,
       upi_id
     });
 
     if (error) throw error;
 
-    res.status(200).json({ message: "Shop added successfully" });
+    return res.status(200).json({ message: "Shop added successfully" });
   } catch (error) {
     console.error("Error adding shop:", error);
-    res.status(500).json({ message: "Error adding shop", error });
+    return res.status(500).json({ message: "Error adding shop", error });
   }
 };
 
 export const add_items = async (req, res) => {
-  const { name, description, quantity, price, images, category, user_id } = req.body;
+  console.log("reached1");
+  const { name, description, quantity, price, images, category, owner_id } = req.body;
+  console.log("reached2");
 
   try {
     // 1️⃣ Check if user exists
     const user = await clerk.users.getUser(user_id);
+    console.log("reached3");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -45,7 +55,13 @@ export const add_items = async (req, res) => {
     }
 
 
-    const id = await supabase.Users.getUser({ clerk_id: user_id }); 
+    const { data: user_, error: userError } = await supabase
+      .from('Users')
+      .select('*')
+      .eq('clerk_id', owner_id)
+      .single();
+    const id = user_.id
+    console.log("reached4");
     // 2️⃣ Get shop ID
     const { data: shop, error: shopError } = await supabase
       .from("Shops")
@@ -93,8 +109,13 @@ export const add_items = async (req, res) => {
 
 export const checkShopExists = async (req,res) =>{
   try {
-    const { userId } = req.query;
-    const user = await supabase.Users.getUser({ clerk_id: userId });
+    const { owner_id } = req.query;
+    const { data: user, error: userError } = await supabase
+      .from('Users')
+      .select('*')
+      .eq('clerk_id', owner_id)
+      .single();
+    
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }

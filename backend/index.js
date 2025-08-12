@@ -85,4 +85,4 @@ app.post("/set-role", async (req, res) => {
   }
 });
 
-app.listen(5000, () => console.log("Backend listening on port 5000!"));
+app.listen(5000, () => console.log("Backend listening running on http://localhost:5000"));
