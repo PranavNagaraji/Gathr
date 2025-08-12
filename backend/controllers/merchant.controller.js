@@ -1,5 +1,5 @@
-import supabase from "../db";
-import cloudinary from "../cloudinary";
+import supabase from "../db.js";
+import cloudinary from "../cloudinary.js";
 import { Clerk } from "@clerk/clerk-sdk-node";
 import dotenv from "dotenv";
 
