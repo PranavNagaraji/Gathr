@@ -103,6 +103,7 @@ export const checkShopExists = async (req,res) =>{
       .select("id")
       .eq("owner_id", user.id)
       .single();
+      
     if(!shop || error) {
       return res.status(404).json({ message: "Shop not found for this user" });
     }
