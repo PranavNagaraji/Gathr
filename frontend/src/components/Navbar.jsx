@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@mui/material";
-import { motion, AnimatePresence } from "framer-motion";
 
 const navLinks = [
   { name: "Dashboard", href: "/merchant/dashboard" },

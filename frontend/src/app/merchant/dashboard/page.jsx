@@ -62,6 +62,7 @@ export default function Dashboard() {
       ...formData,
       location: parseLocationString(formData.Location),
     };
+    setToken(await getToken());
 
     const res = await fetch(`${API_URL}/api/merchant/add_shop`, {
       method: "POST",

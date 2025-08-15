@@ -1,3 +1,5 @@
+// routes for get and post requests related to merchant operations
+// add_shop, add_items, get_items, check_shop_exists, get_shop
 import supabase from "../db.js";
 import cloudinary from "../cloudinary.js";
 import { Clerk } from "@clerk/clerk-sdk-node";
@@ -6,19 +8,22 @@ import dotenv from "dotenv";
 dotenv.config();
 const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 
+// add_shop function to create a new shop
 export const add_shop = async (req, res) => {
-  
   try {
-    const { owner_id, Location, address, shop_name, contact, account_no, mobile_no, upi_id } = req.body;
-    console.log(owner_id);
+    const { owner_id, Location, address, shop_name, contact, account_no, mobile_no, upi_id, image,category } = req.body;
+    
     const { data: user, error: userError } = await supabase
       .from('Users')
-      .select('*')
+      .select('id')
       .eq('clerk_id', owner_id)
       .single();
     
-    console.log(user)
-    const { error } = await supabase.from("Shops").insert({
+    if (userError || !user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const { data: newShop, error } = await supabase.from("Shops").insert({
       owner_id: user.id,
       Location,
       address,
@@ -26,80 +31,94 @@ export const add_shop = async (req, res) => {
       contact,
       account_no,
       mobile_no,
-      upi_id
-    });
-
+      upi_id,
+      image: null,
+      category
+    }).select().single();
     if (error) throw error;
 
-    return res.status(200).json({ message: "Shop added successfully" });
+    res.status(200).json({ message: "Shop creation initiated successfully", shop: newShop });
+
+    //Handle slow image upload in the background (fire-and-forget)
+    if (image) {
+      uploadShopImageAndUpdate(image, newShop.id);
+    }
+
   } catch (error) {
     console.error("Error adding shop:", error);
     return res.status(500).json({ message: "Error adding shop", error });
   }
 };
 
-export const add_items = async (req, res) => {
-  console.log("reached1");
-  const { name, description, quantity, price, images, category, owner_id } = req.body;
-  console.log("reached2");
-
+// Helper function for add_shop to run in the background
+const uploadShopImageAndUpdate = async (image, shopId) => {
   try {
-    // 1️⃣ Check if user exists
-    const user = await clerk.users.getUser(user_id);
-    console.log("reached3");
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    if (user.publicMetadata.role !== "merchant") {
-      return res.status(403).json({ message: "User is not a merchant" });
-    }
+    console.log(`Starting background image upload for shop: ${shopId}`);
+    const result = await cloudinary.uploader.upload(image, {
+      folder: `shops/${shopId}` // Use the new shop ID for the folder
+    });
+    
+    const imageData = { url: result.secure_url, public_id: result.public_id };
+
+    await supabase
+      .from("Shops")
+      .update({ image: imageData })
+      .eq('id', shopId);
+
+    console.log(`Successfully updated image for shop: ${shopId}`);
+  } catch (error) {
+    console.error(`Background image upload failed for shop ${shopId}:`, error);
+  }
+};
 
 
-    const { data: user_, error: userError } = await supabase
+// add_items function to create a new item
+export const add_items = async (req, res) => {
+  const { name, description, quantity, price, images, category, owner_id } = req.body;
+  try {
+    const { data: user, error: userError } = await supabase
       .from('Users')
-      .select('*')
+      .select('id, role')
       .eq('clerk_id', owner_id)
       .single();
-    const id = user_.id
-    console.log("reached4");
-    // 2️⃣ Get shop ID
+    
+    if (userError || !user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.role !== "merchant") {
+      return res.status(403).json({ message: "User is not a merchant" });
+    }
+    
     const { data: shop, error: shopError } = await supabase
       .from("Shops")
       .select("id")
-      .eq("owner_id", id)
+      .eq("owner_id", user.id)
       .single();
 
     if (shopError || !shop) {
       return res.status(404).json({ message: "Shop not found for this user" });
     }
 
-    // 3️⃣ Upload all images in parallel
-    const uploadedImages = await Promise.all(
-      images.map(async (img) => {
-        const result = await cloudinary.uploader.upload(img, {
-          folder: `shop_items/${shop.id}`
-        });
-        return { url: result.secure_url, public_id: result.public_id };
-      })
-    );
-
-    // 4️⃣ Insert item
-    const { data: item, error: itemError } = await supabase
+    const { data: newItem, error: itemError } = await supabase
       .from("Items")
       .insert({
         name,
         description,
         quantity,
         price,
-        images: uploadedImages,
+        images: [], 
         category,
         shop_id: shop.id
       })
-      .select();
+      .select()
+      .single();
 
     if (itemError) throw itemError;
 
-    res.status(200).json({ message: "Item added successfully", item });
+    res.status(200).json({ message: "Item added successfully, images are processing.", item: newItem });
+
+    // Handle slow image uploads in the background
+    uploadItemImagesAndUpdate(images, shop.id, newItem.id);
 
   } catch (error) {
     console.error("Error adding items:", error);
@@ -107,29 +126,134 @@ export const add_items = async (req, res) => {
   }
 };
 
-export const checkShopExists = async (req,res) =>{
+// Helper function for add_items to run in the background
+const uploadItemImagesAndUpdate = async (images, shopId, itemId) => {
+    try {
+        console.log(`Starting background image upload for item: ${itemId}`);
+        const uploadedImages = await Promise.all(
+            images.map(async (img) => {
+                const result = await cloudinary.uploader.upload(img, {
+                    folder: `shop_items/${shopId}`
+                });
+                return { url: result.secure_url, public_id: result.public_id };
+            })
+        );
+        
+        await supabase
+            .from("Items")
+            .update({ images: uploadedImages })
+            .eq("id", itemId);
+        
+        console.log(`Successfully updated images for item: ${itemId}`);
+    } catch (error) {
+        console.error(`Background image upload failed for item ${itemId}:`, error);
+    }
+};
+
+// checkShopExists function to verify if a shop exists for a given owner_id
+export const checkShopExists = async (req, res) => {
   try {
-    const { owner_id } = req.query;
+    const { owner_id } = req.body;
     const { data: user, error: userError } = await supabase
       .from('Users')
-      .select('*')
+      .select('id')
       .eq('clerk_id', owner_id)
       .single();
     
-    if (!user) {
+    if (userError || !user) {
       return res.status(404).json({ message: "User not found" });
     }
+
     const { data: shop, error } = await supabase
       .from("Shops")
       .select("id")
       .eq("owner_id", user.id)
       .single();
-    if(!shop || error) {
+
+    if (!shop || error) {
       return res.status(404).json({ message: "Shop not found for this user" });
     }
     res.status(200).json({ message: "Shop found", shop });
   } catch (error) {
     console.error("Error checking shop existence:", error);
     res.status(500).json({ message: "Error checking shop existence", error });
+  }
+}
+
+// getItems function to fetch items for a merchant
+export const getItems = async (req, res) => {
+  try {
+    const { owner_id } = req.body;
+    const { data: user, error: userError } = await supabase
+      .from('Users')
+      .select('id, role')
+      .eq('clerk_id', owner_id)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (user.role !== "merchant") {
+      return res.status(403).json({ message: "User is not a merchant." });
+    }
+
+    const { data: shop, error: shopError } = await supabase
+      .from("Shops")
+      .select("id")
+      .eq("owner_id", user.id)
+      .single();
+
+    if (shopError || !shop) {
+      return res.status(404).json({ message: "Shop not found for this user." });
+    }
+
+    const { data: items, error: itemsError } = await supabase
+      .from("Items")
+      .select("*")
+      .eq("shop_id", shop.id);
+
+    if (itemsError) {
+      throw itemsError;
+    }
+
+    res.status(200).json({ message: "Items fetched successfully", items });
+
+  } catch (error) {
+    console.error("Error fetching items:", error);
+    return res.status(500).json({ message: "Error fetching items", error });
+  }
+};
+
+// getShop function to fetch shop details for a merchant
+export const getShop = async (req, res) => {
+  const { owner_id } = req.body;
+  try {
+    const { data: user, error: userError } = await supabase
+      .from('Users')
+      .select('id, role')
+      .eq('clerk_id', owner_id)
+      .single();
+    
+    if (userError || !user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.role !== "merchant") {
+      return res.status(403).json({ message: "User is not a merchant" });
+    }
+    
+    const { data: shop, error: shopError } = await supabase
+      .from("Shops")
+      .select("*")
+      .eq("owner_id", user.id)
+      .single();
+      
+    if (shopError || !shop) {
+      return res.status(404).json({ message: "Shop not found for this user" });
+    }
+    res.status(200).json({ message: "Shop fetched successfully", shop });
+  } catch (error) {
+    console.error("Error fetching shop:", error);
+    return res.status(500).json({ message: "Error fetching shop", error });
   }
 }

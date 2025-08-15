@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "@clerk/nextjs";
 
+
 export default function AuthCallbackPage() {
   const { getToken } = useAuth();
   const { user, isLoaded } = useUser();
