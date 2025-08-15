@@ -1,4 +1,6 @@
 import { verifyToken } from "@clerk/backend";
+import dotenv from "dotenv";
+dotenv.config();
 const CLERK_SECRET_KEY= process.env.CLERK_SECRET_KEY;
 
 let requireAuth = async (req, res, next) =>{
@@ -8,7 +10,9 @@ let requireAuth = async (req, res, next) =>{
     }
     
     try {
-        const user = await verifyToken(token, CLERK_SECRET_KEY);
+        const user = await verifyToken(token,  {
+      secretKey: process.env.CLERK_SECRET_KEY,
+    });
         req.user = user;
         next();
     } catch (error) {

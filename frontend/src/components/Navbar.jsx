@@ -7,7 +7,7 @@ import { Button } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navLinks = [
-  { name: "About", href: "/about" },
+  { name: "Dashboard", href: "/merchant/dashboard" },
   { name: "Services", href: "/services" },
   { name: "Cart", href: "/cart" },
   { name: "Contact", href: "/contact" },

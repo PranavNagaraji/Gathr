@@ -1,13 +1,14 @@
+//This is an intermediate route used to set the roles after succesfull signup
 "use client";
-
-import { useUser, useAuth } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import axios from "axios";
+import { useAuth } from "@clerk/nextjs";
 
 export default function AuthCallbackPage() {
+  const { getToken } = useAuth();
   const { user, isLoaded } = useUser();
-  const { getToken } = useAuth(); // ✅ hook at top level
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -15,39 +16,28 @@ export default function AuthCallbackPage() {
     const role = searchParams.get("role") || "customer";
 
     const assignRoleIfMissing = async () => {
-      if (!isLoaded || !user) return;
-
       const token = await getToken();
-
-      if (!user.publicMetadata?.role) {
-        console.log("Setting role for user", user.id, "to", role);
-
-        try {
-          const res = await axios.post(
-            "http://localhost:5000/set-role",
-            {
-              userId: user.id,
-              role,
+      if (isLoaded && user) {
+        // Only update if role not set
+        if (!user.publicMetadata?.role) {
+          console.log("Setting role for user", user.id, "to", role);
+          const res = await axios.post("http://localhost:5000/set-role", {
+            userId: user.id,
+            role,
+          },{
+            headers: {
+              "Content-Type": "application/json",
+               "Authorization": `Bearer ${token}` 
             },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          console.log("Role updated:", res.data);
-        } catch (err) {
-          console.error("Error setting role:", err);
+          })
+          console.log(res);
         }
+        router.push("/");
       }
-
-      router.push("/");
     };
 
     assignRoleIfMissing();
-  }, [user, isLoaded, getToken, router, searchParams]);
+  }, [user, isLoaded]);
 
   return <div className="text-center mt-20">Finalizing login...</div>;
 }
