@@ -38,7 +38,8 @@ export default function Home() {
           zIndex: 0,
         }}>
         <DarkVeil
-          colorStops={["#C0C0C0", "#001F3F", "#00FFFF"]}
+          // colorStops={["#C0C0C0", "#001F3F", "#00FFFF"]}
+          colorStops={["#A1FFCE", "#FAFFD1", "#00C9FF"]}
           blend={0.5}
           amplitude={1.0}
           speed={0.5} />
