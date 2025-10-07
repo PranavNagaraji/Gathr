@@ -1,6 +1,6 @@
 import express from "express";
 import requireAuth from "../utils/check.js";
-import { add_items, add_shop, getItems,getItem, checkShopExists, getShop,showOrders,updateorderStatus } from "../controllers/merchant.controller.js";
+import { add_items, add_shop, getItems, checkShopExists, getShop,showOrders,updateorderStatus } from "../controllers/merchant.controller.js";
 import { updateItem, updateShop, deleteShop ,deleteitem } from "../controllers/merchantup.controller.js";
 
 

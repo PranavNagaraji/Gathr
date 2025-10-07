@@ -4,7 +4,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import supabase from "./db.js";
-import merchantRoutes from "./routes/merchant.js";
+import merchantRoutes from "./routes/merchantRoute.js";
+import customerRoutes from "./routes/customerRoute.js";
 
 dotenv.config();
 
@@ -20,7 +21,7 @@ app.use(clerkMiddleware());
 
 //routes
 app.use("/api/merchant", merchantRoutes);
-
+app.use("/api/customer", customerRoutes);
 //test route
 app.get("/", (req, res) => res.send("Hello from backend!"));
 
