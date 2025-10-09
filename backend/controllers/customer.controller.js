@@ -60,7 +60,7 @@ export const addComments=async (req, res)=>{
         {
         item_id: itemId,
         user_id: user.id,
-        parent_id: parentId || 0,
+        parent_id: parentId,
         comment: comment,
         }
     ])
