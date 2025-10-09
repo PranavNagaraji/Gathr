@@ -162,3 +162,108 @@ export const addRating = async (req, res) => {
     return res.status(500).json({ message: "Internal server error", error: err.message });
   }
 };
+
+const createCart=async (userId)=>{
+    const {data:cart, error:cartError}=await supabase.from("Cart").insert({user_id: userId, status: "active"}).select("*");
+    if(cartError) return { message: "Cart not found", error:cartError.message };
+    return cart;
+}
+
+export const getCurrentCart=async (req, res)=>{
+    const {clerkId}=req.body;
+    const { data: user, error: userError } = await supabase
+            .from('Users')
+            .select('id, role')
+            .eq('clerk_id', clerkId)
+            .single();
+    if (userError || !user) return res.status(404).json({ message: "User not found" });
+    if (user.role !== 'customer') return res.status(403).json({ message: "Unauthorized: Only logged in users can visit cart" });
+    const userId=user.id;
+    const {data:cart, error:cartError}=await supabase.from("Cart").select("*").eq("user_id", userId).eq("status", "active");
+    if(cart.length===0){
+        createCart(userId);
+    }
+    return res.status(200).json({cart});
+}
+
+export const addToCart=async (req, res)=>{
+    const {itemId, clerkId, quantity}=req.body;
+    const { data: user, error: userError } = await supabase
+            .from('Users')
+            .select('id, role')
+            .eq('clerk_id', clerkId)
+            .single();
+
+    if (userError || !user) return res.status(404).json({ message: "User not found" });
+    if (user.role !== 'customer') return res.status(403).json({ message: "Unauthorized: Only logged in users can add to cart" });
+    if(quantity<=0) return res.status(400).json({ message: "Quantity must be greater than 0" });
+    const {data:cart, error:cartError}=await supabase.from("Cart").select("*").eq("user_id", user.id).eq("status", "active").single();
+    if(cartError) return res.status(404).json({ message: "Cart not found", error:cartError.message });
+    const cartId=cart.id;
+    const { data: existingItem, error: existingError } = await supabase
+      .from("Cart_items")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("item_id", itemId)
+      .eq("cart_id", cartId)
+      .single();
+    if (existingItem) {
+      const {data:cartItem, error:cartItemError}=await supabase
+        .from("Cart_items")
+        .update({ quantity: existingItem.quantity + quantity })
+        .eq("id", existingItem.id)
+        .select("*");
+        return res.status(200).json({cartItem});
+    }
+    const {data:cartItem, error:cartItemError}=await supabase
+      .from("Cart_items")
+      .insert({
+        user_id: user.id,
+        item_id: itemId,
+        quantity: quantity,
+        cart_id: cartId,
+      })
+      .select("*");
+      return res.status(200).json({cartItem});
+}
+
+export const deleteFromCart=async(req, res)=>{
+  const {itemId, clerkId, quantity}=req.body;
+    const { data: user, error: userError } = await supabase
+            .from('Users')
+            .select('id, role')
+            .eq('clerk_id', clerkId)
+            .single();
+
+    if (userError || !user) return res.status(404).json({ message: "User not found" });
+    if (user.role !== 'customer') return res.status(403).json({ message: "Unauthorized: Only logged in users can add to cart" });
+    const {data:cart, error:cartError}=await supabase.from("Cart").select("*").eq("user_id", user.id).eq("status", "active").single();
+    if(cartError) return res.status(404).json({ message: "Cart not found", error:cartError.message });
+    const cartId=cart.id;
+    const { data: existingItem, error: existingError } = await supabase
+      .from("Cart_items")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("item_id", itemId)
+      .eq("cart_id", cartId)
+      .single();
+    // if an item exists, delete it or update the quantity
+    // else raise an error
+    if (existingItem) {
+      if(existingItem.quantity===quantity){
+        const {data:cartItem, error:cartItemError}=await supabase
+        .from("Cart_items")
+        .delete()
+        .eq("id", existingItem.id)
+        .select("*");
+        return res.status(200).json({cartItem});
+      }
+      const {data:cartItem, error:cartItemError}=await supabase
+        .from("Cart_items")
+        .update({ quantity: existingItem.quantity - quantity })
+        .eq("id", existingItem.id)
+        .select("*");
+      return res.status(200).json({cartItem});
+    } 
+    return res.status(404).json({message: "Item not found in cart not found"});
+}
