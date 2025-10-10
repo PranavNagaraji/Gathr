@@ -1,5 +1,5 @@
 import supabase from '../db.js';
-import {Clerk} from "@clerk/clerk-sdk-node";
+import { Clerk } from "@clerk/clerk-sdk-node";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -58,42 +58,126 @@ export const getComments = async (req, res) => {
 };
 
 
-export const deleteComment = async (req,res) =>{
-    const {commentId, clerkId, commentUser} = req.body;
+export const deleteComment = async (req, res) => {
+  const { commentId, clerkId, commentUser } = req.body;
 
-    const { data: user, error: userError } = await supabase
-            .from('Users')
-            .select('id, role')
-            .eq('clerk_id', clerkId)
-            .single();
+  const { data: user, error: userError } = await supabase
+    .from('Users')
+    .select('id, role')
+    .eq('clerk_id', clerkId)
+    .single();
 
-    if (userError || !user) {
-        return res.status(404).json({ message: "User not found" });
-    }
-    if (user.role !== 'customer') {
-        return res.status(403).json({ message: "Unauthorized: Only logged in users can post comments" });
-    }
- 
-    if(commentUser !== user.id){
-        return res.status(403).json({ message: "Unauthorized: Only the user who posted the comment can delete it" });
-    }
+  if (userError || !user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  if (user.role !== 'customer') {
+    return res.status(403).json({ message: "Unauthorized: Only logged in users can post comments" });
+  }
 
-    const {error} = await supabase.from("Comments").delete().eq("id", commentId);
-    if(error){
-        console.log("Error while deleting comment");
-        return res.status(500).json({message:"Failed to delete comment", error:error.message});
-    }else{
-        return res.status(200).json({message:"Comment deleted successfully"});
-    }    
+  if (commentUser !== user.id) {
+    return res.status(403).json({ message: "Unauthorized: Only the user who posted the comment can delete it" });
+  }
+
+  const { error } = await supabase.from("Comments").delete().eq("id", commentId);
+  if (error) {
+    console.log("Error while deleting comment");
+    return res.status(500).json({ message: "Failed to delete comment", error: error.message });
+  } else {
+    return res.status(200).json({ message: "Comment deleted successfully" });
+  }
 }
 
-export const getitem = async (req,res)=>{
-    const {itemId} = req.params;
-    const {data:item , error:itemError} = await supabase.from("Items").select("*").eq("id", itemId).single();
-    if(itemError){
-        console.log("Error while fetching item");
-        return res.status(500).json({message:"Failed to fetch item", error:itemError.message});
-    }else{
-        return res.status(200).json({item:item});
-    }
+export const getitem = async (req, res) => {
+  const { itemId } = req.params;
+  const { data: item, error: itemError } = await supabase.from("Items").select("*").eq("id", itemId).single();
+  if (itemError) {
+    console.log("Error while fetching item");
+    return res.status(500).json({ message: "Failed to fetch item", error: itemError.message });
+  } else {
+    return res.status(200).json({ item: item });
+  }
+}
+
+export const getAddressesByUser = async (req, res) => {
+  const { clerkId } = req.body;
+  const { data: user, error: userError } = await supabase
+    .from('Users')
+    .select('id, role')
+    .eq('clerk_id', clerkId)
+    .single();
+  if (userError || !user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  if (user.role !== 'customer') {
+    return res.status(403).json({ message: "Unauthorized: Only logged in users can get Addresses" });
+  }
+  const { data, error } = await supabase.from("Addresses").select("*").eq("user_id", user.id);
+  if (error) {
+    console.log("Error while fetching addresses");
+    return res.status(500).json({ message: "Failed to fetch addresses", error: error.message });
+  }
+  return res.status(200).json({ addresses: data });
+}
+
+export const addAddress = async (req, res) => {
+  const { clerkId, address, title, desc, mobile, location } = req.body;
+  const { data: user, error: userError } = await supabase
+    .from('Users')
+    .select('id, role')
+    .eq('clerk_id', clerkId)
+    .single();
+  if (userError || !user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  if (user.role !== 'customer') {
+    return res.status(403).json({ message: "Unauthorized: Only logged in users can get Addresses" });
+  }
+  const { data, error } = await supabase.from("Addresses").insert({ user_id: user.id, address: address, title: title, description:desc, mobile_no: mobile, location:location }).select("*");
+  if (error) {
+    console.log("Error while adding address");
+    return res.status(500).json({ message: "Failed to add address", error: error.message });
+  }
+  return res.status(200).json({ address: data });
+}
+
+export const deleteAddress=async (req, res)=>{
+  const {clerkId, addressId}=req.body;
+  const { data: user, error: userError } = await supabase
+    .from('Users')
+    .select('id, role')
+    .eq('clerk_id', clerkId)
+    .single();
+  if (userError || !user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  if (user.role !== 'customer') {
+    return res.status(403).json({ message: "Unauthorized: Only logged in users can get Addresses" });
+  }
+  const { error } = await supabase.from("Addresses").delete().eq("id", addressId);
+  if (error) {
+    console.log("Error while deleting address");
+    return res.status(500).json({ message: "Failed to delete address", error: error.message });
+  }
+  return res.status(200).json({ message: "Address deleted successfully" });
+}
+
+export const updateAddress=async (req, res)=>{
+  const {clerkId, addressId, address, title, desc, mobile, location}=req.body;
+  const { data: user, error: userError } = await supabase
+    .from('Users')
+    .select('id, role')
+    .eq('clerk_id', clerkId)
+    .single();
+  if (userError || !user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  if (user.role !== 'customer') {
+    return res.status(403).json({ message: "Unauthorized: Only logged in users can get Addresses" });
+  }
+  const { error } = await supabase.from("Addresses").update({ user_id: user.id, address: address, title: title, description:desc, mobile_no: mobile, location:location}).eq("id", addressId);
+  if (error) {
+    console.log("Error while updating address");
+    return res.status(500).json({ message: "Failed to update address", error: error.message });
+  }
+  return res.status(200).json({ message: "Address updated successfully" });
 }
