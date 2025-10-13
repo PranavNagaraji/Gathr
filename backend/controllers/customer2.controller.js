@@ -77,8 +77,6 @@ export const getComments = async (req, res) => {
   }
 };
 
-
-
 export const deleteComment = async (req, res) => {
   const { commentId, clerkId, commentUser } = req.body;
 
@@ -120,7 +118,7 @@ export const getitem = async (req, res) => {
 }
 
 export const getAddressesByUser = async (req, res) => {
-  const { clerkId } = req.body;
+  const { clerkId } = req.params;
   const { data: user, error: userError } = await supabase
     .from('Users')
     .select('id, role')

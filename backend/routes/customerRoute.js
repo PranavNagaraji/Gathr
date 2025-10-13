@@ -19,7 +19,7 @@ router.post("/getCart", requireAuth, getCurrentCart);
 router.post("/addToCart", requireAuth, addToCart);
 router.post("/deleteFromCart", requireAuth, deleteFromCart);
 
-router.get("/getAddressesByUser", requireAuth, getAddressesByUser);
+router.get("/getAddressesByUser/:clerkId", requireAuth, getAddressesByUser);
 router.post("/addAddress", requireAuth, addAddress);
 router.post("/deleteAddress", requireAuth, deleteAddress);
 router.post("/updateAddress", requireAuth, updateAddress);
