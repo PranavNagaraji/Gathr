@@ -5,6 +5,8 @@ import dotenv from "dotenv";
 dotenv.config();
 const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 
+import { clerkClient } from "@clerk/clerk-sdk-node"; // Make sure to install and import this properly
+
 export const getComments = async (req, res) => {
   const { itemId } = req.params;
 
@@ -29,10 +31,10 @@ export const getComments = async (req, res) => {
     // 2️⃣ Get unique user IDs from comments
     const userIds = [...new Set(comments.map((c) => c.user_id))];
 
-    // 3️⃣ Fetch user info
+    // 3️⃣ Fetch user info from your Users table
     const { data: users, error: userError } = await supabase
       .from("Users")
-      .select("id, first_name, last_name")
+      .select("id, first_name, last_name, clerk_id")
       .in("id", userIds);
 
     if (userError) {
@@ -42,20 +44,39 @@ export const getComments = async (req, res) => {
         .json({ message: "Failed to fetch users", error: userError.message });
     }
 
+    // 4️⃣ Fetch Clerk images for each user
+    // We'll map clerk_id → imageUrl via Clerk API
+    const clerkImages = {};
+    await Promise.all(
+      users.map(async (u) => {
+        try {
+          const clerkUser = await clerkClient.users.getUser(u.clerk_id);
+          clerkImages[u.clerk_id] = clerkUser.imageUrl;
+        } catch (err) {
+          console.log(`Failed to get image for ${u.clerk_id}:`, err.message);
+          clerkImages[u.clerk_id] = null; // fallback
+        }
+      })
+    );
+
+    // 5️⃣ Combine comments + user data + image
     const commentsWithUsers = comments.map((c) => {
       const user = users.find((u) => u.id === c.user_id);
       return {
         ...c,
         username: user ? `${user.first_name} ${user.last_name}` : "Anonymous",
+        imageUrl: user ? (clerkImages[user.clerk_id] || "https://via.placeholder.com/80") : "https://via.placeholder.com/80",
       };
     });
 
+    // 6️⃣ Send final response
     return res.status(200).json({ comments: commentsWithUsers });
   } catch (err) {
-    console.error("Unexpected error in getComments:", err);
-    return res.status(500).json({ message: "Server error", error: err.message });
+    console.error("Error in getComments:", err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 
 export const deleteComment = async (req, res) => {

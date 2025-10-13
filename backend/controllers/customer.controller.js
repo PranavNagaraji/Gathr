@@ -164,106 +164,252 @@ export const addRating = async (req, res) => {
 };
 
 const createCart=async (userId)=>{
-    const {data:cart, error:cartError}=await supabase.from("Cart").insert({user_id: userId, status: "active"}).select("*");
+    const {data:cart, error:cartError}=await supabase.from("Cart").insert({user_id: userId, status: "active"}).select("*").single();
     if(cartError) return { message: "Cart not found", error:cartError.message };
     return cart;
 }
 
-export const getCurrentCart=async (req, res)=>{
-    const {clerkId}=req.body;
+export const getCurrentCart = async (req, res) => {
+  try {
+    const { clerkId } = req.body;
+
     const { data: user, error: userError } = await supabase
-            .from('Users')
-            .select('id, role')
-            .eq('clerk_id', clerkId)
-            .single();
-    if (userError || !user) return res.status(404).json({ message: "User not found" });
-    if (user.role !== 'customer') return res.status(403).json({ message: "Unauthorized: Only logged in users can visit cart" });
-    const userId=user.id;
-    const {data:cart, error:cartError}=await supabase.from("Cart").select("*").eq("user_id", userId).eq("status", "active");
-    if(cart.length===0){
-        createCart(userId);
+      .from("Users")
+      .select("id, role")
+      .eq("clerk_id", clerkId)
+      .single();
+
+    if (userError || !user)
+      return res.status(404).json({ message: "User not found" });
+
+    if (user.role !== "customer")
+      return res
+        .status(403)
+        .json({ message: "Unauthorized: Only customers can visit cart" });
+
+    const userId = user.id;
+
+    const { data: cart, error: cartError } = await supabase
+      .from("Cart")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .single();
+
+    let currentCart = cart;
+
+    if (cartError || !cart) {
+      currentCart = await createCart(userId);
+      if (!currentCart)
+        return res.status(500).json({ message: "Failed to create cart" });
     }
-    return res.status(200).json({cart});
-}
 
-export const addToCart=async (req, res)=>{
-    const {itemId, clerkId, quantity}=req.body;
-    const { data: user, error: userError } = await supabase
-            .from('Users')
-            .select('id, role')
-            .eq('clerk_id', clerkId)
-            .single();
-
-    if (userError || !user) return res.status(404).json({ message: "User not found" });
-    if (user.role !== 'customer') return res.status(403).json({ message: "Unauthorized: Only logged in users can add to cart" });
-    if(quantity<=0) return res.status(400).json({ message: "Quantity must be greater than 0" });
-    const {data:cart, error:cartError}=await supabase.from("Cart").select("*").eq("user_id", user.id).eq("status", "active").single();
-    if(cartError) return res.status(404).json({ message: "Cart not found", error:cartError.message });
-    const cartId=cart.id;
-    const { data: existingItem, error: existingError } = await supabase
+    const { data: cartItems, error: cartItemsError } = await supabase
       .from("Cart_items")
+      .select("*, Items(*)")
+      .eq("cart_id", currentCart.id);
+
+    if (cartItemsError)
+      return res
+        .status(500)
+        .json({ message: "Failed to fetch cart items" });
+
+    return res.status(200).json({
+      cartId: currentCart.id,
+      cartItems: cartItems || [],
+    });
+  } catch (err) {
+    console.error("Error fetching cart:", err);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const addToCart = async (req, res) => {
+  let { itemId, clerkId, quantity } = req.body;
+  quantity = Number(quantity);
+
+  if (quantity <= 0)
+    return res.status(400).json({ message: "Quantity must be greater than 0" });
+
+  // 1️⃣ Get user
+  const { data: user, error: userError } = await supabase
+    .from("Users")
+    .select("id, role")
+    .eq("clerk_id", clerkId)
+    .single();
+
+  if (userError || !user)
+    return res.status(404).json({ message: "User not found" });
+
+  if (user.role !== "customer")
+    return res.status(403).json({ message: "Unauthorized: Only customers can add to cart" });
+
+  // 2️⃣ Get active cart
+    const { data: cartData, error: cartError } = await supabase
+      .from("Cart")
       .select("*")
       .eq("user_id", user.id)
-      .eq("item_id", itemId)
-      .eq("cart_id", cartId)
+      .eq("status", "active")
       .single();
-    if (existingItem) {
-      const {data:cartItem, error:cartItemError}=await supabase
-        .from("Cart_items")
-        .update({ quantity: existingItem.quantity + quantity })
-        .eq("id", existingItem.id)
-        .select("*");
-        return res.status(200).json({cartItem});
+
+    let cart = cartData;
+
+    if (cartError || !cartData) {
+      cart = await createCart(user.id);
+      if (!cart) {
+        console.error("Failed to create cart");
+        return res.status(500).json({ message: "Failed to create cart" });
+      }
     }
-    const {data:cartItem, error:cartItemError}=await supabase
+
+    const cartId = cart.id;
+
+
+  // 3️⃣ Get item and check stock
+  const { data: item, error: itemError } = await supabase
+    .from("Items")
+    .select("*")
+    .eq("id", itemId)
+    .single();
+
+  if (itemError || !item){
+    console.log("Error while fetching item");
+    return res.status(404).json({ message: "Item not found" });
+  }
+  if (item.quantity < quantity)
+    return res.status(400).json({ message: "Not enough stock available" }, { stock: item.quantity });
+
+  // 4️⃣ Check if item already exists in cart
+  const { data: existingItem } = await supabase
+    .from("Cart_items")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("item_id", itemId)
+    .eq("cart_id", cartId)
+    .single();
+
+  let cartItem;
+
+  if (existingItem) {
+    // Update quantity
+    const { data: updatedItem, error: updateError } = await supabase
+      .from("Cart_items")
+      .update({ quantity: existingItem.quantity + quantity })
+      .eq("id", existingItem.id)
+      .select("*");
+
+    if (updateError) {
+      console.error("Error updating cart item:", updateError);
+      return res.status(500).json({ message: "Failed to update cart item" });
+    }
+    cartItem = updatedItem[0];
+  } else {
+    // Insert new cart item
+    const { data: insertedItem, error: insertError } = await supabase
       .from("Cart_items")
       .insert({
         user_id: user.id,
         item_id: itemId,
-        quantity: quantity,
+        quantity,
         cart_id: cartId,
       })
       .select("*");
-      return res.status(200).json({cartItem});
-}
 
-export const deleteFromCart=async(req, res)=>{
-  const {itemId, clerkId, quantity}=req.body;
-    const { data: user, error: userError } = await supabase
-            .from('Users')
-            .select('id, role')
-            .eq('clerk_id', clerkId)
-            .single();
+    if (insertError) {
+      console.error("Error inserting cart item:", insertError);
+      return res.status(500).json({ message: "Failed to add to cart" });}
+    cartItem = insertedItem[0];
+  }
 
-    if (userError || !user) return res.status(404).json({ message: "User not found" });
-    if (user.role !== 'customer') return res.status(403).json({ message: "Unauthorized: Only logged in users can add to cart" });
-    const {data:cart, error:cartError}=await supabase.from("Cart").select("*").eq("user_id", user.id).eq("status", "active").single();
-    if(cartError) return res.status(404).json({ message: "Cart not found", error:cartError.message });
-    const cartId=cart.id;
-    const { data: existingItem, error: existingError } = await supabase
+  // 5️⃣ Reduce stock
+  const { error: stockError } = await supabase
+    .from("Items")
+    .update({ quantity: item.quantity - quantity })
+    .eq("id", itemId);
+
+  if (stockError) return res.status(500).json({ message: "Failed to update item stock" });
+
+  return res.status(200).json({ cartItem });
+};
+
+// deleteFromCart: remove items from cart and restore stock
+export const deleteFromCart = async (req, res) => {
+  const { itemId, clerkId, quantity } = req.body;
+
+  if (!clerkId || !itemId || !quantity || quantity <= 0) {
+    return res.status(400).json({ message: "Missing or invalid fields" });
+  }
+
+  // Get user
+  const { data: user, error: userError } = await supabase
+    .from("Users")
+    .select("id, role")
+    .eq("clerk_id", clerkId)
+    .single();
+
+  if (userError || !user) return res.status(404).json({ message: "User not found" });
+  if (user.role !== "customer")
+    return res.status(403).json({ message: "Unauthorized: Only customers can remove from cart" });
+
+  // Get active cart
+  const { data: cart, error: cartError } = await supabase
+    .from("Cart")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .single();
+
+  if (cartError || !cart) return res.status(404).json({ message: "Active cart not found" });
+
+  const cartId = cart.id;
+
+  // Get cart item
+  const { data: existingItem } = await supabase
+    .from("Cart_items")
+    .select("*")
+    .eq("cart_id", cartId)
+    .eq("item_id", itemId)
+    .single();
+
+  if (!existingItem) return res.status(404).json({ message: "Item not found in cart" });
+  if (quantity > existingItem.quantity)
+    return res.status(400).json({ message: "Cannot remove more than exists in cart" });
+
+  // Restore stock
+  const { data: item, error: itemError } = await supabase
+    .from("Items")
+    .select("quantity")
+    .eq("id", itemId)
+    .single();
+
+  if (!item || itemError) return res.status(404).json({ message: "Item not found" });
+
+  const { error: stockError } = await supabase
+    .from("Items")
+    .update({ quantity: item.quantity + quantity })
+    .eq("id", itemId);
+
+  if (stockError) return res.status(500).json({ message: "Failed to update stock" });
+
+  // Update or delete cart item
+  let cartItem;
+  if (existingItem.quantity === quantity) {
+    const { data: deletedItem, error: deleteError } = await supabase
       .from("Cart_items")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("item_id", itemId)
-      .eq("cart_id", cartId)
-      .single();
-    // if an item exists, delete it or update the quantity
-    // else raise an error
-    if (existingItem) {
-      if(existingItem.quantity===quantity){
-        const {data:cartItem, error:cartItemError}=await supabase
-        .from("Cart_items")
-        .delete()
-        .eq("id", existingItem.id)
-        .select("*");
-        return res.status(200).json({cartItem});
-      }
-      const {data:cartItem, error:cartItemError}=await supabase
-        .from("Cart_items")
-        .update({ quantity: existingItem.quantity - quantity })
-        .eq("id", existingItem.id)
-        .select("*");
-      return res.status(200).json({cartItem});
-    } 
-    return res.status(404).json({message: "Item not found in cart not found"});
-}
+      .delete()
+      .eq("id", existingItem.id)
+      .select("*");
+    if (deleteError) return res.status(500).json({ message: "Failed to delete cart item" });
+    cartItem = deletedItem[0];
+  } else {
+    const { data: updatedItem, error: updateError } = await supabase
+      .from("Cart_items")
+      .update({ quantity: existingItem.quantity - quantity })
+      .eq("id", existingItem.id)
+      .select("*");
+    if (updateError) return res.status(500).json({ message: "Failed to update cart item" });
+    cartItem = updatedItem[0];
+  }
+
+  return res.status(200).json({ message: "Item removed successfully", cartItem });
+};

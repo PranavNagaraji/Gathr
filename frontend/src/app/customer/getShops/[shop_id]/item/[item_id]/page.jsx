@@ -3,6 +3,7 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const ItemDetails = () => {
   const { user } = useUser();
@@ -14,6 +15,7 @@ const ItemDetails = () => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [newRating, setNewRating] = useState(0);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     const getItem = async () => {
@@ -65,10 +67,10 @@ const ItemDetails = () => {
       const token = await getToken();
       const res = await axios.post(
         `${API_URL}/api/customer/addRating`,
-        { item_id, rating: newRating },
+        { itemId:item_id, rating: newRating, clerkId: user.id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setItem((prev) => ({ ...prev, rating: res.data.rating }));
+      setItem((prev) => ({ ...prev, rating: res.data.average }));
       setNewRating(0);
     } catch (err) {
       console.error(err);
@@ -82,6 +84,29 @@ const ItemDetails = () => {
       <span style={{ color: "#D4AF37", fontSize: "1.2rem" }}>{filled}{empty}</span>
     );
   };
+
+  const handleAddToCart = async () =>{
+    try {
+      const token = await getToken();
+      const res = await axios.post(
+        `${API_URL}/api/customer/addToCart`,
+        { itemId:item_id, quantity: quantity, clerkId: user.id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (res.data.message === "Not enough stock available") {
+        alert("Not enough stock available");
+        setItem((prev) => ({ ...prev, quantity: res.data.stock }));
+      }
+      else{
+        alert("Item added to cart");
+        setItem((prev) => ({ ...prev, quantity: item.quantity - quantity }));
+      }
+      console.log(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-[#111827] p-6">
@@ -105,8 +130,8 @@ const ItemDetails = () => {
           <p className="text-xl font-semibold mb-2">
             Price: <span className="text-[#D4AF37]">${item.price}</span>
           </p>
-          <p className="mb-1">Available Quantity: {item.quantity}</p>
-          <p className="mb-1">Sold: {item.sold_qt}</p>
+          <input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value) }className="bg-white text-black p-2" />
+          <button className="bg-yellow-400 p-2 ml-2 rounded-md" onClick={handleAddToCart}>Add to Cart</button>
           <p className="mb-1">Category: {item.category?.join(", ")}</p>
           <p className="flex items-center gap-2">
             Rating: {item.rating ? renderStars(item.rating) : "Not rated yet"}
@@ -122,8 +147,14 @@ const ItemDetails = () => {
         ) : (
           comments.map((c, idx) => (
             <div key={idx} className="bg-[#111827] text-[#F9FAFB] p-4 rounded-lg mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <p className="font-semibold">
+              
+              <div className="flex  items-center mb-2">
+                <Avatar>
+                  <AvatarImage src={c.imageUrl} />
+                  <AvatarFallback>CN</AvatarFallback>
+                </Avatar>
+                <p className="font-semibold flex justify-center ml-2">
+                
                 {c.username ? `${c.username}` : "Anonymous"}
                 </p>
               </div>
@@ -168,6 +199,8 @@ const ItemDetails = () => {
           <button
             type="submit"
             className="bg-[#D4AF37] text-[#111827] px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition"
+            disabled={newRating < 0 || newRating > 5}
+            onClick={handleAddRating  }
           >
             Submit Rating
           </button>
