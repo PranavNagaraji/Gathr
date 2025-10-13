@@ -58,7 +58,7 @@ export const placeOrder=async (req, res)=>{
         amount_paid: amount,
         payment_status
     })
-    .select(); // optional, returns the inserted row
+    .select(); 
 
     if (orderError) {
         console.error("Insert failed:", orderError);
@@ -78,7 +78,7 @@ export const placeOrder=async (req, res)=>{
         cartItems.map(({ item_id, quantity }) =>
             supabase
                 .from("Items")
-                .update({ sold_qt: supabase.rpc("increment", { column: "sold_qt", by: quantity }) }) // if using RPC increment, else see note below
+                .update({ sold_qt: supabase.rpc("increment", { column: "sold_qt", by: quantity }) }) 
                 .eq("id", item_id)
         )
     );

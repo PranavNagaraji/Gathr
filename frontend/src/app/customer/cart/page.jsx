@@ -3,6 +3,7 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const Cart = () => {
   const { user } = useUser();
@@ -10,7 +11,7 @@ const Cart = () => {
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const [items, setItems] = useState([]);
   const [loadingItem, setLoadingItem] = useState(null);
-
+  const router = useRouter();
   // 🆕 Add this state
   const [isMixedShops, setIsMixedShops] = useState(false);
 
@@ -254,6 +255,8 @@ const Cart = () => {
             <p className="text-lg font-semibold">
               Total: ₹{totalPrice.toFixed(2)}
             </p>
+            <button className="p-2 bg-green-500 text-black rounded-lg m-2" 
+            onClick={() => router.push("/customer/checkout")}>Checkout</button>
           </div>
         </>
       )}
