@@ -16,7 +16,7 @@ const customerLinks = [
   { name: "Home", href: "/" },
   { name: "Shops", href: "/customer/getShops" },
   { name: "Cart", href: "/customer/cart" },
-  { name: "Orders", href: "/orders" },
+  { name: "Orders", href: "/customer/orders" },
 ];
 
 const carrierLinks = [

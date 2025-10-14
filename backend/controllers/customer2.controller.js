@@ -199,3 +199,55 @@ export const updateAddress=async (req, res)=>{
   }
   return res.status(200).json({ message: "Address updated successfully" });
 }
+
+export const getcarthistory = async (req,res) => {
+  const { clerkId } = req.params;
+
+  const {data: user, error: userError } = await supabase
+    .from('Users')
+    .select('id, role')
+    .eq('clerk_id', clerkId)
+    .single();
+
+  if (userError || !user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  if (user.role !== 'customer') {
+    return res.status(403).json({ message: "Unauthorized: Only logged in users can get cart history" });
+  }
+
+  const { data: carts , error: cartsError } = await supabase.from('Orders ').select('*, Shops(*)').eq('customer_id', user.id).order('created_at', { ascending: false });
+
+  if (cartsError || !carts) {
+    return res.status(404).json({ message: "Cart history not found" });
+  }
+
+  return res.status(200).json({ carts });
+}
+
+export const getcartitems = async (req,res) => {
+  const { clerkId, cartId } = req.body;
+
+  const {data: user, error: userError } = await supabase
+    .from('Users')
+    .select('id, role')
+    .eq('clerk_id', clerkId)
+    .single();
+
+  if (userError || !user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  if (user.role !== 'customer') {
+    return res.status(403).json({ message: "Unauthorized: Only logged in users can get cart history" });
+  }
+
+  const { data:items, error: itemsError } = await supabase.from('Cart_items').select('*, Items(*)').eq('cart_id', cartId);
+
+  if (itemsError || !items) {
+    return res.status(404).json({ message: "Cart history not found" });
+  }
+
+  return res.status(200).json({ items });
+}
