@@ -5,13 +5,12 @@ import dotenv from "dotenv";
 dotenv.config();
 const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 
-import { clerkClient } from "@clerk/clerk-sdk-node"; // Make sure to install and import this properly
-
+import { clerkClient } from "@clerk/clerk-sdk-node";
 export const getComments = async (req, res) => {
   const { itemId } = req.params;
 
   try {
-    // 1️⃣ Fetch all comments for the item
+    // 1Fetch all comments for the item
     const { data: comments, error: commentError } = await supabase
       .from("Comments")
       .select("*")
@@ -28,10 +27,10 @@ export const getComments = async (req, res) => {
       return res.status(200).json({ comments: [] });
     }
 
-    // 2️⃣ Get unique user IDs from comments
+    // Get unique user IDs from comments
     const userIds = [...new Set(comments.map((c) => c.user_id))];
 
-    // 3️⃣ Fetch user info from your Users table
+    // Fetch user info from your Users table
     const { data: users, error: userError } = await supabase
       .from("Users")
       .select("id, first_name, last_name, clerk_id")
@@ -44,7 +43,7 @@ export const getComments = async (req, res) => {
         .json({ message: "Failed to fetch users", error: userError.message });
     }
 
-    // 4️⃣ Fetch Clerk images for each user
+    // Fetch Clerk images for each user
     // We'll map clerk_id → imageUrl via Clerk API
     const clerkImages = {};
     await Promise.all(
@@ -59,7 +58,7 @@ export const getComments = async (req, res) => {
       })
     );
 
-    // 5️⃣ Combine comments + user data + image
+    // Combine comments + user data + image
     const commentsWithUsers = comments.map((c) => {
       const user = users.find((u) => u.id === c.user_id);
       return {
@@ -69,7 +68,7 @@ export const getComments = async (req, res) => {
       };
     });
 
-    // 6️⃣ Send final response
+    // Send final response
     return res.status(200).json({ comments: commentsWithUsers });
   } catch (err) {
     console.error("Error in getComments:", err);
