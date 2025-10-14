@@ -36,12 +36,12 @@ export default function Home() {
           bottom: 0,
           zIndex: 0,
         }}>
-        <DarkVeil
+        {/* <DarkVeil
           // colorStops={["#C0C0C0", "#001F3F", "#00FFFF"]}
           colorStops={["#A1FFCE", "#FAFFD1", "#00C9FF"]}
           blend={0.5}
           amplitude={1.0}
-          speed={0.5} />
+          speed={0.5} /> */}
       </Box>
       <Hero />
     </div>
