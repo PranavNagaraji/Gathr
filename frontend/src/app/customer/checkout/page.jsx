@@ -135,9 +135,9 @@ const Checkout = () => {
         <h2 className="text-xl font-semibold mb-4">Select a Shipping Address</h2>
 
         <div className="grid md:grid-cols-4 gap-4">
-          {addresses.map((address) => (
+          {addresses.map((address,idx) => (
             <label
-              key={address.id}
+              key={idx}
               className={`border rounded-2xl p-4 cursor-pointer transition-all ${
                 selectedAddressId === address.id
                   ? "text-black border-yellow-500 bg-yellow-50"
@@ -287,34 +287,41 @@ const Checkout = () => {
                 </StandaloneSearchBox>
 
                 {/* Google Map */}
-                <GoogleMap
-                mapContainerStyle={{ width: "100%", height: "250px" }}
-                center={
+               <GoogleMap
+                  mapContainerStyle={{ width: "100%", height: "250px" }}
+                  center={
                     addAddress.location?.latitude
-                    ? {
-                        lat: addAddress.location.latitude,
-                        lng: addAddress.location.longitude,
+                      ? {
+                          lat: addAddress.location.latitude,
+                          lng: addAddress.location.longitude,
                         }
-                    : { lat: 20, lng: 77 }
-                }
-                zoom={addAddress.location?.latitude ? 15 : 4}
-                onClick={(e) =>
+                      : { lat: 20, lng: 77 }
+                  }
+                  zoom={addAddress.location?.latitude ? 15 : 4}
+                  onClick={(e) =>
                     setAddAddress((prev) => ({
-                    ...prev,
-                    location: { latitude: e.latLng.lat(), longitude: e.latLng.lng() },
+                      ...prev,
+                      location: { latitude: e.latLng.lat(), longitude: e.latLng.lng() },
                     }))
-                }
-                onLoad={(map) => (mapRef.current = map)}
-                options={{ disableDefaultUI: true }}
+                  }
+                  onLoad={(map) => (mapRef.current = map)}
+                  options={{ disableDefaultUI: true }}
                 >
-                {addAddress.location?.latitude && addAddress.location?.longitude && (
+                  {addAddress.location?.latitude && addAddress.location?.longitude && (
                     <Marker
-                    position={{
+                      position={{
                         lat: addAddress.location.latitude,
                         lng: addAddress.location.longitude,
-                    }}
+                      }}
+                      draggable={true} // Make marker draggable
+                      onDragEnd={(e) =>
+                        setAddAddress((prev) => ({
+                          ...prev,
+                          location: { latitude: e.latLng.lat(), longitude: e.latLng.lng() },
+                        }))
+                      }
                     />
-                )}
+                  )}
                 </GoogleMap>
 
                 {/* Submit button */}
