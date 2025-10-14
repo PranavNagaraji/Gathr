@@ -7,6 +7,7 @@ import supabase from "./db.js";
 import merchantRoutes from "./routes/merchantRoute.js";
 import customerRoutes from "./routes/customerRoute.js";
 import orderRoutes from "./routes/orderRoute.js";
+import deliveryRoutes from "./routes/deliveryRoute.js";
 dotenv.config();
 
 const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
@@ -23,6 +24,7 @@ app.use(clerkMiddleware());
 app.use("/api/merchant", merchantRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/order", orderRoutes);
+app.use("/api/delivery", deliveryRoutes);
 //test route
 app.get("/", (req, res) => res.send("Hello from backend!"));
 

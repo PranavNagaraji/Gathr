@@ -10,7 +10,7 @@ export const getComments = async (req, res) => {
   const { itemId } = req.params;
 
   try {
-    // 1Fetch all comments for the item
+    // Fetch all comments for the item
     const { data: comments, error: commentError } = await supabase
       .from("Comments")
       .select("*")
