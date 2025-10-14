@@ -8,7 +8,7 @@ import { Button } from "@mui/material";
 const navLinks = [
   { name: "Dashboard", href: "/merchant/dashboard" },
   { name: "Services", href: "/services" },
-  { name: "Cart", href: "/cart" },
+  { name: "Cart", href: "/customer/cart" },
   { name: "Contact", href: "/contact" },
   { name: "updateShop", href: "/merchant/updateShop" },
 ];
@@ -36,8 +36,8 @@ export default function Navbar() {
   return (
     <nav
       className={`border-gray-200 shadow-md transition-all duration-300 sticky p-4 z-50 ${isHome
-          ? 'bg-transparent absolute top-0 left-0 right-0'
-          : 'bg-white dark:bg-gray-900'
+        ? 'bg-transparent absolute top-0 left-0 right-0'
+        : 'bg-white dark:bg-gray-900'
         }`}
       style={{ fontFamily: "'Outfit', 'sans-serif'" }}
     >
@@ -87,11 +87,11 @@ export default function Navbar() {
               onClick={() => setIsOpen(!isOpen)}
               className="flex text-sm bg-gray-800 rounded-full ring-1 hover:ring-2 ring-black focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
             >
-                <img
-                  className="w-8 h-8 rounded-full"
-                  src={profileImage}
-                  alt="user avatar"
-                />
+              <img
+                className="w-8 h-8 rounded-full"
+                src={profileImage}
+                alt="user avatar"
+              />
             </button>
           ) : (
             <Button
