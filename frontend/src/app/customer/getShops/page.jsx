@@ -19,10 +19,7 @@ export default function CustomerDashboard() {
 
     async function fetchLocation() {
       try {
-        if (!("geolocation" in navigator)) {
-          console.error("Geolocation not supported");
-          return;
-        }
+        if (!("geolocation" in navigator)) return;
 
         const position = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject);
@@ -45,27 +42,15 @@ export default function CustomerDashboard() {
         const token = await getToken();
         const result = await axios.post(
           `${API_URL}/api/customer/getShops`,
-          {
-            // Replace with dynamic coordinates if needed
-            lat: 15.750366871923427,
-            long: 78.03934675615315,
-          },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
+          { lat: 15.750366871923427, long: 78.03934675615315 },
+          { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
         );
 
         const shopList = result.data.shops || [];
         setShops(shopList);
 
-        // Extract unique categories for filter
         const allCategories = new Set();
-        shopList.forEach((shop) => {
-          shop.category?.forEach((cat) => allCategories.add(cat));
-        });
+        shopList.forEach((shop) => shop.category?.forEach((cat) => allCategories.add(cat)));
         setCategories(["All", ...Array.from(allCategories)]);
       } catch (err) {
         console.error("Error fetching shops:", err);
@@ -74,39 +59,32 @@ export default function CustomerDashboard() {
     get_shops();
   }, [isLoaded, isSignedIn, user]);
 
-  // Filter shops based on search + category
   const filteredShops = shops.filter((shop) => {
-    const matchesSearch = shop.shop_name
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "All" ||
-      shop.category?.includes(selectedCategory);
+    const matchesSearch = shop.shop_name.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = selectedCategory === "All" || shop.category?.includes(selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-[#111827] px-8 py-10">
-      <h1 className="text-3xl font-bold mb-8 text-center">
-        Shops in Your Locality
+    <div className="min-h-screen bg-[#F5F5F5] text-[#121212] px-6 sm:px-10 lg:px-16 py-12">
+      {/* Header */}
+      <h1 className="text-3xl sm:text-4xl font-semibold text-center mb-10 text-[#0B132B] tracking-tight">
+        Explore Shops Near You
       </h1>
 
       {/* Search + Category Filter */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-        {/* Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 max-w-4xl mx-auto">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search for a shop..."
-          className="w-full sm:w-1/2 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[#D4AF37] shadow-sm transition"
+          placeholder="Search shops..."
+          className="w-full sm:w-2/3 px-4 py-2 border border-[#0B132B]/30 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00ADB5] shadow-sm bg-white text-[#121212] placeholder-gray-500 font-medium transition"
         />
-
-        {/* Category Dropdown */}
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          className="w-full sm:w-1/4 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[#D4AF37] shadow-sm transition bg-white"
+          className="w-full sm:w-1/3 px-4 py-2 border border-[#0B132B]/30 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00ADB5] shadow-sm bg-white text-[#121212] font-medium transition"
         >
           {categories.map((cat, idx) => (
             <option key={idx} value={cat}>
@@ -116,34 +94,30 @@ export default function CustomerDashboard() {
         </select>
       </div>
 
-      {/* Shop Grid */}
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {/* Shops Grid */}
+      <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredShops.length > 0 ? (
           filteredShops.map((shop) => (
             <Link
               href={`/customer/getShops/${shop.id}`}
               key={shop.id}
-              className="bg-white border border-gray-200 rounded-2xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1"
+              className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition transform hover:-translate-y-1 duration-300 flex flex-col overflow-hidden"
             >
-              <div className="h-48 w-full overflow-hidden rounded-t-2xl">
+              <div className="h-52 w-full overflow-hidden rounded-t-2xl">
                 <img
                   src={shop.image?.url || "/placeholder.png"}
                   alt={shop.shop_name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                 />
               </div>
-
-              <div className="p-4">
-                <h2 className="text-lg font-semibold mb-1 text-[#111827]">
-                  {shop.shop_name}
-                </h2>
-                <p className="text-sm text-gray-600 mb-2">{shop.address}</p>
-
-                <div className="flex flex-wrap gap-2 mt-2">
+              <div className="p-5 flex flex-col flex-1">
+                <h2 className="text-lg sm:text-xl font-semibold mb-1">{shop.shop_name}</h2>
+                <p className="text-sm text-gray-600 mb-3">{shop.address}</p>
+                <div className="mt-auto flex flex-wrap gap-2">
                   {shop.category?.map((category, idx) => (
                     <span
                       key={idx}
-                      className="text-xs bg-[#D4AF37]/20 text-[#111827] px-2 py-1 rounded-full"
+                      className="text-xs font-medium bg-[#E8C547]/20 text-[#121212] px-3 py-1 rounded-full"
                     >
                       {category}
                     </span>
@@ -153,7 +127,7 @@ export default function CustomerDashboard() {
             </Link>
           ))
         ) : (
-          <p className="text-center text-gray-500 col-span-full">
+          <p className="text-center text-gray-500 col-span-full text-lg">
             No shops found.
           </p>
         )}

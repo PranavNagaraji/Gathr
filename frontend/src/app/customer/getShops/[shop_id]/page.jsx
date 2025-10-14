@@ -34,10 +34,7 @@ export default function GetItems() {
         const fetchedItems = result.data.items || [];
         setItems(fetchedItems);
 
-        // Extract unique categories
-        const allCategories = new Set(
-          fetchedItems.flatMap((item) => item.category || [])
-        );
+        const allCategories = new Set(fetchedItems.flatMap((item) => item.category || []));
         setCategories(["All", ...Array.from(allCategories)]);
       } catch (err) {
         console.error("Error fetching items:", err);
@@ -47,39 +44,32 @@ export default function GetItems() {
     getItems();
   }, [user, isLoaded, isSignedIn, getToken, shop_id, API_URL]);
 
-  // Filter items based on search + category
   const filteredItems = items.filter((item) => {
-    const matchesSearch = item.name
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "All" ||
-      item.category?.includes(selectedCategory);
+    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = selectedCategory === "All" || item.category?.includes(selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-[#111827] px-8 py-10">
-      <h1 className="text-3xl font-bold mb-8 text-center text-[#111827]">
+    <div className="min-h-screen bg-[#F5F5F5] text-[#121212] px-6 sm:px-10 lg:px-16 py-12">
+      {/* Header */}
+      <h1 className="text-3xl sm:text-4xl font-semibold text-center mb-10 text-[#0B132B] tracking-tight">
         Items Available in This Shop
       </h1>
 
       {/* Search + Category Filter */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-        {/* Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 max-w-4xl mx-auto">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search for an item..."
-          className="w-full sm:w-1/2 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[#D4AF37] shadow-sm transition"
+          placeholder="Search items..."
+          className="w-full sm:w-2/3 px-4 py-2 border border-[#0B132B]/30 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00ADB5] shadow-sm bg-white text-[#121212] placeholder-gray-400 font-medium transition"
         />
-
-        {/* Category Dropdown */}
         <select
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          className="w-full sm:w-1/4 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[#D4AF37] shadow-sm transition bg-white"
+          className="w-full sm:w-1/3 px-4 py-2 border border-[#0B132B]/30 rounded-md focus:outline-none focus:ring-2 focus:ring-[#00ADB5] shadow-sm bg-white text-[#121212] font-medium transition"
         >
           {categories.map((cat, idx) => (
             <option key={idx} value={cat}>
@@ -90,35 +80,35 @@ export default function GetItems() {
       </div>
 
       {/* Items Grid */}
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredItems.length > 0 ? (
           filteredItems.map((item) => (
             <Link
               key={item.id}
               href={`/customer/getShops/${shop_id}/item/${item.id}`}
-              className="bg-white border border-gray-800 rounded-2xl shadow-md hover:shadow-xl transition transform hover:-translate-y-1"
+              className="bg-white rounded-2xl shadow-sm hover:shadow-md transition transform hover:-translate-y-1 duration-300 flex flex-col overflow-hidden relative"
             >
+              {/* Top Accent */}
+
               {/* Image */}
               <div className="h-48 w-full overflow-hidden rounded-t-2xl bg-gray-100">
                 <img
                   src={item.images?.[0]?.url || "/placeholder.png"}
                   alt={item.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                 />
               </div>
 
               {/* Content */}
-              <div className="p-4">
-                <h2 className="text-lg font-semibold mb-1">{item.name}</h2>
-                <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                  {item.description}
-                </p>
+              <div className="p-4 flex flex-col flex-1">
+                <h2 className="text-lg sm:text-xl font-semibold mb-1 text-[#0B132B]">{item.name}</h2>
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{item.description}</p>
 
-                <div className="flex flex-wrap gap-2 mb-3">
+                <div className="mt-auto flex flex-wrap gap-2 mb-3">
                   {item.category?.map((cat, idx) => (
                     <span
                       key={idx}
-                      className="text-xs bg-[#D4AF37]/20 text-[#111827] px-2 py-1 rounded-full"
+                      className="text-xs font-medium bg-[#E8C547]/20 text-[#121212] px-3 py-1 rounded-full"
                     >
                       {cat}
                     </span>
@@ -126,17 +116,16 @@ export default function GetItems() {
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <p className="text-md font-bold text-[#D4AF37]">
-                    ₹{item.price}
-                  </p>
+                  <p className="text-md font-bold text-[#00ADB5]">₹{item.price}</p>
                 </div>
               </div>
+
+              {/* Hover Glow */}
+              <span className="absolute inset-0 rounded-2xl pointer-events-none transition-shadow duration-300 hover:shadow-[0_0_15px_#00ADB5]/50"></span>
             </Link>
           ))
         ) : (
-          <p className="text-center text-gray-500 col-span-full">
-            No items found.
-          </p>
+          <p className="text-center text-gray-500 col-span-full text-lg">No items found.</p>
         )}
       </div>
     </div>
