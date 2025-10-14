@@ -108,22 +108,78 @@ const Checkout = () => {
   };
 
   const handleCheckOut = async () =>{
+    if (!selectedAddressId) {
+      alert("Please select a delivery address");
+      return;
+    }
+    
+    if (!paymentMethod) {
+      alert("Please select a payment method");
+      return;
+    }
+
     const token = await getToken();
-    const result = await axios.post(`${API_URL}/api/order/placeOrder`,{
-      clerkId: user.id,
-      shop_id: checkOutDetails.shop_id,
-      cart_id: checkOutDetails.cart_id,
-      payment_method: paymentMethod,
-      amount: checkOutDetails.totalPrice,
-      address_id: selectedAddressId,
-      payment_status: (paymentMethod === "cod") ? "pending" : "processing"
-    },{
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    console.log(result.data);
-    if(result.status === 200){
-      alert("Order Placed Successfully!");
-      router.push("/customer/cart");
+
+    if (paymentMethod === "cod") {
+      // Handle Cash on Delivery
+      const result = await axios.post(`${API_URL}/api/order/placeOrder`,{
+        clerkId: user.id,
+        shop_id: checkOutDetails.shop_id,
+        cart_id: checkOutDetails.cart_id,
+        payment_method: paymentMethod,
+        amount: checkOutDetails.totalPrice,
+        address_id: selectedAddressId,
+        payment_status: "pending"
+      },{
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log(result.data);
+      if(result.status === 200){
+        alert("Order Placed Successfully!");
+        router.push("/customer/cart");
+      }
+    } else if (paymentMethod === "online") {
+      // Handle Stripe Online Payment
+      try {
+        // Step 1: Create order from cart with selected address
+        const orderResponse = await axios.post(
+          `${API_URL}/stripe/create-order-from-cart`,
+          { 
+            clerkId: user.id,
+            addressId: selectedAddressId 
+          },
+          { 
+            headers: { 
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}` 
+            } 
+          }
+        );
+        
+        const orderId = orderResponse.data.order.id;
+        
+        // Step 2: Create Stripe checkout session
+        const checkoutResponse = await axios.post(
+          `${API_URL}/stripe/create-checkout-session`,
+          { 
+            orderId: orderId, 
+            clerkId: user.id 
+          },
+          { 
+            headers: { 
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}` 
+            } 
+          }
+        );
+        
+        // Step 3: Redirect to Stripe Checkout
+        window.location.href = checkoutResponse.data.url;
+        
+      } catch (error) {
+        console.error("Stripe checkout error:", error);
+        alert("Failed to start online payment. Please try again.");
+      }
     }
   }
 
