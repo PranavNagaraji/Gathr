@@ -156,7 +156,7 @@ export const addAddress = async (req, res) => {
     console.log("Error while adding address");
     return res.status(500).json({ message: "Failed to add address", error: error.message });
   }
-  return res.status(200).json({ address: data });
+  return res.status(200).json({ address: data[0] });
 }
 
 export const deleteAddress=async (req, res)=>{
