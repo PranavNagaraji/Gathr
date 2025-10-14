@@ -5,210 +5,191 @@ import { Menu, X } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@mui/material";
 
-const navLinks = [
+const merchantLinks = [
+  { name: "Home", href: "/" },
   { name: "Dashboard", href: "/merchant/dashboard" },
-  { name: "Services", href: "/services" },
-  { name: "Cart", href: "/customer/cart" },
-  { name: "Contact", href: "/contact" },
-  { name: "updateShop", href: "/merchant/updateShop" },
+  { name: "Update Shop", href: "/merchant/updateShop" },
+  { name: "Orders", href: "/merchant/orders" }
 ];
 
+const customerLinks = [
+  { name: "Home", href: "/" },
+  { name: "Shops", href: "/customer/getShops" },
+  { name: "Cart", href: "/customer/cart" },
+  { name: "Orders", href: "/orders" },
+];
+
+const carrierLinks = [
+  { name: "Dashboard", href: "/carrier/dashboard" },
+  { name: "Assigned Deliveries", href: "/carrier/deliveries" },
+  { name: "Delivery History", href: "/carrier/history" },
+  { name: "Earnings", href: "/carrier/earnings" },
+  { name: "Support", href: "/carrier/support" },
+];
+
+// NAVBAR COMPONENT
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
   const menuRef = useRef(null);
+  const router = useRouter();
   const pathname = usePathname();
   const isHome = pathname === '/';
-  const { isSignedIn, user, isLoaded } = useUser();
-  const profileImage = user?.imageUrl;
 
+  const { isSignedIn, user } = useUser();
+  const profileImage = user?.imageUrl;
+  const role = user?.publicMetadata?.role || "customer";
+
+  const navLinks =
+    role === "merchant" ? merchantLinks :
+    role === "carrier" ? carrierLinks :
+    customerLinks;
+
+  // Close dropdown when clicking outside
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
         setIsOpen(false);
       }
-    }
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
     <nav
-      className={`border-gray-200 shadow-md transition-all duration-300 sticky p-4 z-50 ${isHome
-        ? 'bg-transparent absolute top-0 left-0 right-0'
-        : 'bg-white dark:bg-gray-900'
-        }`}
-      style={{ fontFamily: "'Outfit', 'sans-serif'" }}
+      className={`sticky top-0 z-50 transition-all duration-300 backdrop-blur-md border-b border-[#E8C547]/20 
+        ${isHome ? 'bg-[#F5F5F5]/90' : 'bg-[#F5F5F5]/95 shadow-[0_2px_10px_rgba(0,0,0,0.03)]'}`}
+      style={{ fontFamily: "'Inter', sans-serif'" }}
     >
-      <div className="w-full mx-auto flex items-center justify-between flex-wrap">
-        {/* Logo */}
-        <a href="/" className="flex items-center space-x-3">
+      <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+        {/* LOGO */}
+        <a href="/" className="flex items-center gap-2">
           <span
-            className="text-5xl tracking-wide font-semibold dark:text-white"
-            style={{
-              fontFamily: "'Yesteryear', cursive",
-              fontWeight: "400",
-              whiteSpace: "nowrap",
-            }}
+            className="text-4xl font-extrabold tracking-tight text-[#0B132B]"
+            style={{ fontFamily: "'Manrope', sans-serif" }}
           >
             Gathr
           </span>
         </a>
 
-        {/* Hamburger Icon */}
-        <div className="md:hidden">
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="text-gray-700 dark:text-white"
-          >
-            {menuOpen ? <X size={28} /> : <Menu size={28} />}
-          </button>
-        </div>
-
         {/* Desktop Nav */}
-        <div
-          className="hidden md:flex items-center gap-6 relative"
-          ref={menuRef}
-        >
-          {navLinks.map((navLink) => (
+        <div className="hidden md:flex items-center gap-8" ref={menuRef}>
+          {navLinks.map((link) => (
             <a
-              key={navLink.href}
-              href={navLink.href}
-              className="text-gray-700 dark:text-white hover:scale-110 tracking-wider relative
-                after:content-[''] after:absolute after:left-0 after:h-0.5 after:bg-white after:rounded-lg after:w-full
-                after:top-full after:scale-0 hover:after:scale-100 after:transition-all after:duration-500 transition-transform"
+              key={link.href}
+              href={link.href}
+              className={`relative text-[15px] font-medium tracking-wide transition-all duration-300
+                ${pathname === link.href ? 'text-[#00ADB5]' : 'text-[#121212] hover:text-[#00ADB5]'}
+                after:content-[''] after:absolute after:w-0 after:h-[2px] after:bg-[#00ADB5]
+                after:left-0 after:-bottom-1 hover:after:w-full after:transition-all after:duration-300`}
             >
-              {navLink.name}
+              {link.name}
             </a>
           ))}
+
           {isSignedIn ? (
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="flex text-sm bg-gray-800 rounded-full ring-1 hover:ring-2 ring-black focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
-            >
-              <img
-                className="w-8 h-8 rounded-full"
-                src={profileImage}
-                alt="user avatar"
-              />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-2 bg-[#0B132B] hover:bg-[#00ADB5] transition-all duration-300 text-white px-3 py-1 rounded-full"
+              >
+                <img
+                  src={profileImage}
+                  alt="user avatar"
+                  className="w-7 h-7 rounded-full border border-white/40"
+                />
+              </button>
+
+              {isOpen && (
+                <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    Profile
+                  </a>
+                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    Settings
+                  </a>
+                  <SignOutButton>
+                    <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50">
+                      Sign out
+                    </button>
+                  </SignOutButton>
+                </div>
+              )}
+            </div>
           ) : (
             <Button
-              variant="contained"
-              color="primary"
-              onClick={() => {
-                router.push('/sign-up');
-                console.log('Clicked!');
-              }}
+              onClick={() => router.push('/sign-up')}
               sx={{
-                px: 2,
+                px: 3,
                 py: 1,
-                fontFamily: "'Outfit', 'sans-serif'",
-                fontWeight: "400",
-                fontSize: '1rem',
                 borderRadius: '30px',
                 textTransform: 'none',
-                backgroundColor: '#4338CA',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  backgroundColor: '#6F0FFF',
-                  transform: 'scale(1.03)',
-                  borderRadius: '10px',
-                },
+                fontFamily: "'Inter', sans-serif",
+                backgroundColor: '#00ADB5',
+                color: '#fff',
+                boxShadow: '0 4px 12px rgba(0, 173, 181, 0.3)',
+                '&:hover': { backgroundColor: '#08C1C9', transform: 'translateY(-1px)' },
               }}
             >
-              SignUp
+              Sign Up
             </Button>
-          )}
-          {isOpen && (
-            <div className="absolute right-0 top-12 w-48 bg-white rounded-md shadow-lg dark:bg-gray-800 z-50">
-              <div className="py-1">
-                <a
-                  href="#"
-                  className="block px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  Profile
-                </a>
-                <a
-                  href="#"
-                  className="block px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  Settings
-                </a>
-                <SignOutButton>
-                  <button className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    Sign out
-                  </button>
-                </SignOutButton>
-              </div>
-            </div>
           )}
         </div>
 
-        {/* Mobile Nav */}
-        {menuOpen && (
-          <div className="w-full mt-4 md:hidden flex flex-col gap-3 px-2 pb-4 bg-white dark:bg-gray-900 rounded-md shadow-md">
-            {navLinks.map((navLink) => (
+        {/* Mobile Hamburger */}
+        <div className="md:hidden">
+          <button onClick={() => setMenuOpen(!menuOpen)} className="text-[#0B132B]">
+            {menuOpen ? <X size={26} /> : <Menu size={26} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="md:hidden bg-[#F5F5F5] border-t border-[#E8C547]/20 shadow-md">
+          <div className="flex flex-col gap-2 py-3 px-4">
+            {navLinks.map((link) => (
               <a
-                key={navLink.href}
-                href={navLink.href}
-                className="block text-gray-700 dark:text-white px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+                key={link.href}
+                href={link.href}
+                className={`block py-2 text-[15px] font-medium rounded-md transition-all 
+                  ${pathname === link.href
+                    ? 'text-[#00ADB5]'
+                    : 'text-[#121212] hover:text-[#00ADB5]'}`}
                 onClick={() => setMenuOpen(false)}
               >
-                {navLink.name}
+                {link.name}
               </a>
             ))}
+
             {isSignedIn ? (
               <>
-                <a
-                  href="#"
-                  className="block text-gray-700 dark:text-white px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  Profile
-                </a>
-                <a
-                  href="#"
-                  className="block text-gray-700 dark:text-white px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  Settings
-                </a>
+                <a href="#" className="block py-2 text-gray-700 hover:text-[#00ADB5]">Profile</a>
+                <a href="#" className="block py-2 text-gray-700 hover:text-[#00ADB5]">Settings</a>
                 <SignOutButton>
-                  <button className="block w-full text-left px-3 py-2 text-red-700 dark:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800">
-                    Sign out
-                  </button>
+                  <button className="block text-left text-red-600 py-2">Sign out</button>
                 </SignOutButton>
               </>
             ) : (
               <Button
                 fullWidth
                 variant="contained"
-                onClick={() => {
-                  router.push('/sign-up');
-                  setMenuOpen(false);
-                }}
+                onClick={() => { router.push('/sign-up'); setMenuOpen(false); }}
                 sx={{
-                  fontFamily: "'Outfit', 'sans-serif'",
-                  fontWeight: "400",
-                  fontSize: '1rem',
                   borderRadius: '30px',
                   textTransform: 'none',
-                  backgroundColor: '#4338CA',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                  '&:hover': {
-                    backgroundColor: '#6F0FFF',
-                    transform: 'scale(1.03)',
-                    borderRadius: '10px',
-                  },
+                  backgroundColor: '#00ADB5',
+                  color: '#fff',
+                  '&:hover': { backgroundColor: '#08C1C9' },
                 }}
               >
-                SignUp
+                Sign Up
               </Button>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </nav>
   );
 }
