@@ -7,6 +7,7 @@ import supabase from "./db.js";
 import merchantRoutes from "./routes/merchantRoute.js";
 import customerRoutes from "./routes/customerRoute.js";
 import orderRoutes from "./routes/orderRoute.js";
+import stripeRoutes from "./stripeIntegration.js";
 import deliveryRoutes from "./routes/deliveryRoute.js";
 dotenv.config();
 
@@ -15,6 +16,16 @@ const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 const app = express();
 
 app.use(cors());
+
+// CRITICAL: Webhook route MUST come BEFORE express.json()
+// Stripe needs raw body for signature verification
+app.post("/stripe/webhook", express.raw({type: 'application/json'}), async (req, res, next) => {
+  // Forward to stripe routes
+  req.url = '/webhook';
+  stripeRoutes(req, res, next);
+});
+
+// Now apply JSON parser for all other routes
 app.use(express.json({ limit: "50mb"}));
 app.use(express.urlencoded({ extended: true , limit: '50mb'}));
 
@@ -24,6 +35,7 @@ app.use(clerkMiddleware());
 app.use("/api/merchant", merchantRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/order", orderRoutes);
+app.use("/stripe", stripeRoutes);
 app.use("/api/delivery", deliveryRoutes);
 //test route
 app.get("/", (req, res) => res.send("Hello from backend!"));

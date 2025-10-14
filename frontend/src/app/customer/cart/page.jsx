@@ -4,6 +4,7 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+// Stripe integration now handled through checkout page
 
 const Cart = () => {
   const { user } = useUser();
@@ -252,12 +253,16 @@ const Cart = () => {
           </ul>
 
           <div className="mt-6 border-t pt-4 text-right">
-            <p className="text-lg font-semibold">
-              Total: ₹{totalPrice.toFixed(2)}
-            </p>
-            <button className="p-2 bg-green-500 text-black rounded-lg m-2" 
-            onClick={() => router.push("/customer/checkout")}>Checkout</button>
-          </div>
+          <p className="text-lg font-semibold">
+            Total: ₹{totalPrice.toFixed(2)}
+          </p>
+          <button 
+            className="p-2 rounded-lg m-2 font-medium bg-green-500 text-white hover:bg-green-600"
+            onClick={() => router.push("/customer/checkout")}
+          >
+            Proceed to Checkout
+          </button>
+        </div>
         </>
       )}
     </div>
