@@ -1,70 +1,60 @@
 "use client";
+
 import { useAuth, useUser } from "@clerk/nextjs";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Plus, Minus } from "lucide-react";
 import { useRouter } from "next/navigation";
-// Stripe integration now handled through checkout page
 
 const Cart = () => {
   const { user } = useUser();
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
   const [items, setItems] = useState([]);
   const [loadingItem, setLoadingItem] = useState(null);
-  const router = useRouter();
-  // 🆕 Add this state
   const [isMixedShops, setIsMixedShops] = useState(false);
 
-  // 🧩 Fetch cart items
+  const router = useRouter();
+
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return;
+
     const getItems = async () => {
       const token = await getToken();
       try {
         const res = await axios.post(
           `${API_URL}/api/customer/getCart`,
           { clerkId: user.id },
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
+          { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
         );
 
-        // store both originalQuantity & current quantity
         const updatedItems = (res.data.cartItems || []).map((it) => ({
           ...it,
           originalQuantity: it.quantity,
         }));
 
         setItems(updatedItems);
-        console.log(updatedItems);
 
-        // 🆕 Check if items belong to multiple shops
         const shopIds = updatedItems.map((it) => it.Items?.shop_id);
         const uniqueShopIds = [...new Set(shopIds.filter(Boolean))];
         setIsMixedShops(uniqueShopIds.length > 1);
-      } catch (error) {
-        console.error("Error fetching cart:", error);
+      } catch (err) {
+        console.error("Error fetching cart:", err);
       }
     };
+
     getItems();
   }, [isLoaded, isSignedIn, user]);
 
-  // 🧮 Change quantity locally (no backend call)
   const handleQuantityChange = (itemId, delta) => {
     setItems((prev) =>
       prev.map((it) =>
-        it.item_id === itemId
-          ? { ...it, quantity: Math.max(1, it.quantity + delta) }
-          : it
+        it.item_id === itemId ? { ...it, quantity: Math.max(1, it.quantity + delta) } : it
       )
     );
   };
 
-  // ❌ Delete item from backend
   const handleDeleteItem = async (itemId) => {
     if (!user) return;
     setLoadingItem(itemId);
@@ -73,36 +63,31 @@ const Cart = () => {
     try {
       const item = items.find((it) => it.item_id === itemId);
       const quantity = item ? item.originalQuantity || item.quantity : 1;
+
       const result = await axios.post(
         `${API_URL}/api/customer/deleteFromCart`,
         { clerkId: user.id, itemId, quantity },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
       );
+
       if (result.status !== 200) throw new Error(result.data.message);
 
       const updatedItems = items.filter((it) => it.item_id !== itemId);
       setItems(updatedItems);
 
-      // 🆕 Recheck after deletion
       const shopIds = updatedItems.map((it) => it.Items?.shop_id);
       const uniqueShopIds = [...new Set(shopIds.filter(Boolean))];
       setIsMixedShops(uniqueShopIds.length > 1);
 
       alert("Item removed from cart");
-    } catch (error) {
-      console.error("Error deleting item:", error);
+    } catch (err) {
+      console.error("Error deleting item:", err);
       alert("Failed to delete item");
     } finally {
       setLoadingItem(null);
     }
   };
 
-  // 🚀 Submit updated quantity
   const handleSubmitItem = async (item) => {
     if (!user) return;
     setLoadingItem(item.item_id);
@@ -123,147 +108,136 @@ const Cart = () => {
           : { clerkId: user.id, itemId: item.item_id, quantity: -delta };
 
       const result = await axios.post(endpoint, body, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
 
       if (result.status !== 200) throw new Error(result.data.message);
 
       const updated = items.map((it) =>
-        it.item_id === item.item_id
-          ? { ...it, originalQuantity: it.quantity }
-          : it
+        it.item_id === item.item_id ? { ...it, originalQuantity: it.quantity } : it
       );
       setItems(updated);
 
-      // 🆕 Recheck after quantity update
       const shopIds = updated.map((it) => it.Items?.shop_id);
       const uniqueShopIds = [...new Set(shopIds.filter(Boolean))];
       setIsMixedShops(uniqueShopIds.length > 1);
 
       alert("Quantity updated successfully");
-    } catch (error) {
-      console.error("Error updating quantity:", error);
+    } catch (err) {
+      console.error("Error updating quantity:", err);
       alert("Failed to update item");
     } finally {
       setLoadingItem(null);
     }
   };
 
-  // 🧾 Total price
-  const totalPrice = items.reduce(
-    (acc, item) => acc + item.Items?.price * item.quantity,
-    0
-  );
+  const totalPrice = items.reduce((acc, item) => acc + item.Items?.price * item.quantity, 0);
 
   return (
-    <div className="p-6">
-      <h2 className="text-xl font-semibold mb-4">🛒 Your Cart</h2>
+    <div className="px-6 md:px-16 py-10 max-w-5xl mx-auto bg-[#faf9f5] min-h-screen">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-10">
+        <h1 className="text-5xl font-extrabold tracking-tight text-black">YOUR</h1>
+        <h1 className="text-5xl font-extrabold tracking-tight text-black">CART</h1>
+      </div>
+
+      <hr className="border-black/20 mb-10" />
 
       {items.length === 0 ? (
-        <p>No items in your cart.</p>
+        <p className="text-gray-600 text-lg">No items in your cart yet.</p>
       ) : (
         <>
-          {/* 🆕 Show warning if multiple shops */}
           {isMixedShops && (
-            <div className="text-red-600 font-medium mb-4">
-              ⚠️ Items must be from the same shop. Please remove items from
-              other shops to proceed.
+            <div className="bg-red-50 text-red-700 font-semibold p-4 rounded-lg mb-6 border border-red-200">
+              ⚠️ Items must be from the same shop. Remove others to proceed.
             </div>
           )}
 
-          <ul className="space-y-4">
-            {items.map((item) => {
-              const hasChanged = item.quantity !== item.originalQuantity;
-              return (
-                <li
-                  key={item.id}
-                  className="p-4 border rounded-lg shadow-sm flex justify-between items-center"
-                >
-                  <div className="flex items-center">
-                    <img
-                      src={item.Items?.images?.[0]?.url || "/placeholder.png"}
-                      alt={item.Items?.name}
-                      className="w-24 h-24 object-cover mr-4 rounded-md"
-                    />
-                    <div>
-                      <h3 className="text-lg font-medium">
+          <ul className="space-y-6">
+            {items.map((item) => (
+              <li
+                key={item.item_id}
+                className="flex flex-col sm:flex-row justify-between items-center bg-white rounded-2xl p-5 shadow-md border border-gray-100 hover:shadow-lg transition"
+              >
+                {/* Left section */}
+                <div className="flex items-center gap-5 w-full sm:w-auto">
+                  <img
+                    src={item.Items?.images?.[0]?.url || "/placeholder.png"}
+                    alt={item.Items?.name}
+                    className="w-24 h-24 object-cover rounded-xl border"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-lg text-gray-900">
                         {item.Items?.name || "Unknown Item"}
                       </h3>
-                      <p className="text-sm text-gray-600">
-                        {item.Items?.description}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Price: ₹{item.Items?.price}
-                      </p>
-
-                      <div className="flex items-center gap-2 mt-2">
-                        <button
-                          onClick={() =>
-                            item.quantity > 1 &&
-                            handleQuantityChange(item.item_id, -1)
-                          }
-                          className="px-2 py-1 border rounded"
-                        >
-                          −
-                        </button>
-                        <span>{item.quantity}</span>
-                        <button
-                          onClick={() => handleQuantityChange(item.item_id, 1)}
-                          className="px-2 py-1 border rounded"
-                        >
-                          +
-                        </button>
+                      <div className="relative group inline-block">
+                        <span className="text-gray-400 text-sm cursor-pointer hover:text-gray-600">
+                          ℹ️
+                        </span>
+                        <div className="absolute left-1 -translate-x-1/2 w-max max-w-[150px] bg-gray-800 text-white text-xs rounded-md px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                          {`${item.Items?.description?.slice(0, 100)}...` || item.Items?.name}
+                        </div>
                       </div>
-
-                      {hasChanged && (
-                        <button
-                          onClick={() => handleSubmitItem(item)}
-                          disabled={loadingItem === item.item_id}
-                          className={`mt-3 px-3 py-1 rounded text-white ${
-                            loadingItem === item.item_id
-                              ? "bg-gray-400"
-                              : "bg-blue-600 hover:bg-blue-700"
-                          }`}
-                        >
-                          {loadingItem === item.item_id
-                            ? "Submitting..."
-                            : "Submit Changes"}
-                        </button>
-                      )}
                     </div>
+                    <p className="text-gray-700 text-base mt-1">
+                      {item.Items?.priceType === "monthly"
+                        ? `$${item.Items?.price}/mo`
+                        : `$${item.Items?.price?.toLocaleString()}`}
+                    </p>
                   </div>
+                </div>
 
-                  <div className="text-right">
-                    <div className="font-semibold text-green-600 mb-2">
-                      ₹{item.Items?.price * item.quantity}
-                    </div>
+                {/* Quantity and Actions */}
+                <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                  <div className="flex items-center border rounded-xl overflow-hidden">
                     <button
-                      onClick={() => handleDeleteItem(item.item_id)}
-                      disabled={loadingItem === item.item_id}
-                      className="text-red-500 hover:text-red-700 flex items-center gap-1"
+                      onClick={() => handleQuantityChange(item.item_id, -1)}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 transition"
                     >
-                      <Trash2 size={16} /> Remove
+                      <Minus size={16} className="text-gray-700" />
+                    </button>
+                    <span className="px-4 font-medium text-gray-800">{item.quantity}</span>
+                    <button
+                      onClick={() => handleQuantityChange(item.item_id, 1)}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 transition"
+                    >
+                      <Plus size={16} className="text-gray-700" />
                     </button>
                   </div>
-                </li>
-              );
-            })}
+
+                  <button
+                    onClick={() => handleSubmitItem(item)}
+                    disabled={loadingItem === item.item_id}
+                    className="px-4 py-2 rounded-xl text-white bg-black hover:bg-gray-900 text-sm font-semibold transition"
+                  >
+                    {loadingItem === item.item_id ? "Updating..." : "Update"}
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteItem(item.item_id)}
+                    disabled={loadingItem === item.item_id}
+                    className="text-gray-400 hover:text-red-600 transition"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </div>
+              </li>
+            ))}
           </ul>
 
-          <div className="mt-6 border-t pt-4 text-right">
-          <p className="text-lg font-semibold">
-            Total: ₹{totalPrice.toFixed(2)}
-          </p>
-          <button 
-            className="p-2 rounded-lg m-2 font-medium bg-green-500 text-white hover:bg-green-600"
-            onClick={() => router.push("/customer/checkout")}
-          >
-            Proceed to Checkout
-          </button>
-        </div>
+          {/* Checkout Section */}
+          <div className="mt-12 border-t pt-6 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-2xl font-bold text-gray-900">
+              Total: ${totalPrice.toLocaleString()}
+            </p>
+            <button
+              onClick={() => router.push("/customer/checkout")}
+              className="mt-4 md:mt-0 px-8 py-3 bg-black text-white rounded-2xl font-semibold hover:bg-gray-900 transition"
+            >
+              Proceed to Checkout
+            </button>
+          </div>
         </>
       )}
     </div>
