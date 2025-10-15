@@ -1,10 +1,12 @@
 import requireAuth from "../utils/check.js";
 import express from "express";
-import { addComments, addRating, addToCart, deleteFromCart, getCurrentCart, getLocalShops, getShopItems } from "../controllers/customer.controller.js";
+import { addComments, addRating, addToCart, deleteFromCart, getCurrentCart, getLocalShops, getShopItems, getUserId } from "../controllers/customer.controller.js";
 import { getComments, deleteComment, getitem, getAddressesByUser, addAddress, deleteAddress, updateAddress } from "../controllers/customer2.controller.js";
 import { getcarthistory, getcartitems } from "../controllers/customer2.controller.js";
 
 const router = express.Router();
+
+router.get("/getUserId/:clerkId", requireAuth, getUserId);
 
 router.post("/getShops", getLocalShops);
 router.get("/getShopItem/:shopId", getShopItems);
@@ -13,7 +15,7 @@ router.post("/addRating", requireAuth, addRating);
 
 
 router.get("/getComments/:itemId", getComments);
-router.delete("/deleteComment", requireAuth, deleteComment);
+router.post("/deleteComment", requireAuth, deleteComment);
 router.get("/getItem/:itemId", getitem);
 
 router.post("/getCart", requireAuth, getCurrentCart);

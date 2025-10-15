@@ -15,6 +15,8 @@ export default function CustomerDashboard() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [categories, setCategories] = useState([]);
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const [focused, setFocused] = useState(false);
+  const [focused2, setFocused2] = useState(false);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return;
@@ -91,11 +93,25 @@ export default function CustomerDashboard() {
     show: { transition: { staggerChildren: 0.08 } },
   };
 
-  const cardVariants = {
-    hidden: { opacity: 0, y: 18, scale: 0.995 },
-    show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: "easeOut" } },
-    hover: { scale: 1.02, transition: { duration: 0.18 } },
-  };
+const cardVariants = {
+  hidden: {
+    opacity: 0,
+    y: 50, // starts 50px below
+  },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 80,
+      damping: 12,
+    },
+  },
+  hover: {
+    scale: 1.05,
+    transition: { duration: 0.3 },
+  },
+};
 
   const buttonTap = { scale: 0.97 };
 
@@ -106,20 +122,16 @@ export default function CustomerDashboard() {
     >
       {/* Animated decorative shapes (GATHR-inspired) */}
       <motion.div
-        className="pointer-events-none absolute left-8 top-24 w-28 h-28 rounded-full bg-[#F44336] opacity-95 shadow-2xl transform -translate-x-2"
-        variants={shapesVariants}
-        animate="float1"
+        className="absolute top-10 left-10 w-24 h-24 bg-[#ff3b3b] rounded-full mix-blend-multiply"
+        animate={{ y: [0, 40, 0], scale: [1, 1.05, 1] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="pointer-events-none absolute right-12 bottom-12 w-24 h-24 rounded-2xl bg-[#C7FF00] rotate-12 opacity-95 shadow-2xl"
-        variants={shapesVariants}
-        animate="float2"
+        className="absolute bottom-10 right-16 w-28 h-28 bg-[#b4ff00] rounded-[2rem] mix-blend-multiply"
+        animate={{ x: [0, -30, 0], rotate: [0, 10, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
       />
-      <motion.div
-        className="pointer-events-none absolute left-6 bottom-8 w-12 h-12 rounded-full bg-[#2B2B2B] opacity-90"
-        variants={shapesVariants}
-        animate="float3"
-      />
+
 
       {/* Header */}
       <div className="max-w-5xl mx-auto text-center mb-10">
@@ -134,17 +146,27 @@ export default function CustomerDashboard() {
 
       {/* Search + Filter */}
       <div className="max-w-4xl mx-auto mb-12">
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+        <div className="flex flex-col sm:flex-row gap-8 items-center justify-center">
           <div className="flex-1 w-full">
             <label className="sr-only">Search shops</label>
             <div className="relative">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search shops, eg. bakery, bookstore..."
-                className="w-full px-5 py-3 rounded-2xl bg-white border border-[#EDE0D8] shadow-sm placeholder:text-[#9A8F89] focus:outline-none focus:ring-2 focus:ring-[#F85B57]/30 transition"
-              />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onFocus={(e) => {
+                      setFocused(true);
+                      e.currentTarget.classList.add("click-bounce");
+                    }}
+                    onBlur={(e) => {
+                      setFocused(false);
+                      e.currentTarget.style.transform = "scale(1)";
+                    }}
+                    onAnimationEnd={(e) => e.currentTarget.classList.remove("click-bounce")}
+                    placeholder="Search shops, eg. bakery, bookstore..."
+                    className="w-full px-5 py-3 bg-[#1C1C1C] text-white border border-[#EDE0D8] shadow-sm placeholder:text-[#9A8F89] focus:outline-none focus:ring-2 focus:ring-[#F85B57]/30 transition-transform duration-300"
+                    style={{ transform: focused ? "scale(1.05)" : "scale(1)" }}
+                  />
               <svg className="w-5 h-5 text-[#9A8F89] absolute right-4 top-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
               </svg>
@@ -155,10 +177,24 @@ export default function CustomerDashboard() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-3 rounded-2xl bg-white border border-[#EDE0D8] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F85B57]/30 transition"
+              onFocus={(e) => {
+                setFocused2(true);
+                e.currentTarget.classList.add("click-bounce");
+              }}
+              onBlur={(e) => {
+                setFocused2(false);
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+              onAnimationEnd={(e) => e.currentTarget.classList.remove("click-bounce")}
+              className="w-full px-4 py-3 bg-[#1C1C1C] text-white border border-[#EDE0D8] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F85B57]/30 transition-transform duration-300"
+              style={{ transform: focused2 ? "scale(1.05)" : "scale(1)" }}
             >
               {categories.map((cat, idx) => (
-                <option key={idx} value={cat}>
+                <option
+                  key={idx}
+                  value={cat}
+                  className="hover:bg-[#EDE0D8] hover:text-black"
+                >
                   {cat}
                 </option>
               ))}
@@ -167,19 +203,19 @@ export default function CustomerDashboard() {
         </div>
       </div>
 
-      {/* Shops Grid - only CARD UI changed to EmviUI-like (dark lower section #1C1C1C) */}
       <div className="max-w-7xl mx-auto">
         <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
           <AnimatePresence>
             {filteredShops.length > 0 ? (
               filteredShops.map((shop, idx) => (
-                <motion.div
+                 <motion.div
                   key={shop.id}
                   variants={cardVariants}
                   initial="hidden"
                   animate="show"
                   whileHover="hover"
-                  className="relative"
+                  delay={idx * 0.1}
+                  className="relative bg-[#1C1C1C] text-white rounded-2xl shadow-md overflow-hidden border border-[#EDE0D8]/40"
                 >
                   <Link href={`/customer/getShops/${shop.id}`} className="block">
                     {/* Card wrapper */}

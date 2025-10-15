@@ -5,6 +5,18 @@ import dotenv from "dotenv";
 dotenv.config();
 const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 
+export const getUserId=async (req, res)=>{
+  try{
+    const {clerkId}=req.params;
+    const {data: user, error:userError}=await supabase.from('Users').select('*').eq('clerk_id', clerkId);
+    if(userError) return res.status(500).json({ message: "Error fetching user", error: userError });
+    res.status(200).json({user_id:user[0].id});
+  }catch(e){
+    console.log(e);
+    return res.status(500).json({ message: "Error fetching user", error: e });
+  }
+}
+
 export const getLocalShops=async (req, res)=>{
     const {lat, long}=req.body;
     const distanceKm = 11;
@@ -64,7 +76,7 @@ export const addComments=async (req, res)=>{
         comment: comment,
         }
     ])
-    .select();
+    .select("*").single();
 
     if (error) {
         console.error('Error inserting record:', error);
@@ -73,7 +85,7 @@ export const addComments=async (req, res)=>{
         console.log('Record inserted successfully:', data);
         return res.status(201).json({
         message: "Comment added successfully!",
-        comment: data[0]
+        comment: data
         });
     }
 }

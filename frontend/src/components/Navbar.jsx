@@ -73,7 +73,7 @@ export default function Navbar() {
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="fixed top-0 z-50 w-full border-b-[4px] border-[#ff3b3b] bg-[#f5e9e0]/80 backdrop-blur-md"
+        className="sticky top-0 z-50 w-full border-b-[4px] border-[#ff3b3b] bg-[#f5e9e0] backdrop-blur-md"
         style={{ fontFamily: "'Neue Haas Grotesk Display Pro', 'Inter', sans-serif" }}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
@@ -143,7 +143,7 @@ export default function Navbar() {
               </div>
             ) : (
               <button
-                onClick={() => router.push("/sign-up")}
+                onClick={() => router.push("/sign-in")}
                 className="uppercase text-sm font-semibold border-2 border-[#111] px-5 py-1.5 rounded-full bg-[#ff3b3b] text-white hover:bg-[#111] transition"
               >
                 Join Us
@@ -189,7 +189,7 @@ export default function Navbar() {
                 </>
               ) : (
                 <button
-                  onClick={() => { router.push("/sign-up"); setMenuOpen(false); }}
+                  onClick={() => { router.push("/sign-in"); setMenuOpen(false); }}
                   className="w-full mt-2 uppercase text-sm font-semibold border-2 border-[#111] px-5 py-1.5 rounded-full bg-[#ff3b3b] text-white hover:bg-[#111] transition"
                 >
                   Join Us

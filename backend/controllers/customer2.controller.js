@@ -77,7 +77,7 @@ export const getComments = async (req, res) => {
 };
 
 export const deleteComment = async (req, res) => {
-  const { commentId, clerkId, commentUser } = req.body;
+  const { commentId, clerkId} = req.body;
 
   const { data: user, error: userError } = await supabase
     .from('Users')
@@ -91,9 +91,11 @@ export const deleteComment = async (req, res) => {
   if (user.role !== 'customer') {
     return res.status(403).json({ message: "Unauthorized: Only logged in users can post comments" });
   }
-
-  if (commentUser !== user.id) {
-    return res.status(403).json({ message: "Unauthorized: Only the user who posted the comment can delete it" });
+  const {data:commentUser, error:commentUserError} = await supabase.from("Comments").select("user_id").eq("id", commentId).single();
+  if(commentUserError)
+      return res.status(500).json({ message: "Failed to fetch the user of a comment", error: commentUserError.message });
+  if (commentUser.user_id !== user.id) {
+    return res.status(403).json({commentUser:commentUser, userId:user.id, message: "Unauthorized: Only the user who posted the comment can delete it" });
   }
 
   const { error } = await supabase.from("Comments").delete().eq("id", commentId);
