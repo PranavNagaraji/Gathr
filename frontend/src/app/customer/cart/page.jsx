@@ -40,6 +40,7 @@ const Cart = () => {
         }));
 
         setItems(updatedItems);
+        console.log(updatedItems);
 
         // 🆕 Check if items belong to multiple shops
         const shopIds = updatedItems.map((it) => it.Items?.shop_id);

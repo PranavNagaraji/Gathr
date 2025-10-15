@@ -3,10 +3,10 @@ import { SignOutButton, useUser } from "@clerk/nextjs";
 import React, { useState, useRef, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
-import { Button } from "@mui/material";
+import { motion, useScroll, useSpring } from "framer-motion";
 
+// --- Link configurations for different user roles ---
 const merchantLinks = [
-  { name: "Home", href: "/" },
   { name: "Dashboard", href: "/merchant/dashboard" },
   { name: "Update Shop", href: "/merchant/updateShop" },
   { name: "Orders", href: "/merchant/orders" }
@@ -23,33 +23,42 @@ const carrierLinks = [
   { name: "Dashboard", href: "/carrier/dashboard" },
   { name: "Assigned Deliveries", href: "/carrier/deliveries" },
   { name: "Delivery History", href: "/carrier/history" },
-  { name: "Earnings", href: "/carrier/earnings" },
-  { name: "Support", href: "/carrier/support" },
 ];
 
-// NAVBAR COMPONENT
 export default function Navbar() {
+  // --- State and Hooks ---
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const menuRef = useRef(null);
-  const router = useRouter();
   const pathname = usePathname();
-  const isHome = pathname === '/';
+  const router = useRouter();
 
+  // Framer Motion hooks for scroll progress bar
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 120,
+    damping: 30,
+    restDelta: 0.001,
+  });
+
+  // Clerk hook to get user data and role
   const { isSignedIn, user } = useUser();
   const profileImage = user?.imageUrl;
   const role = user?.publicMetadata?.role || "customer";
 
+  // Dynamically select navigation links based on user role
   const navLinks =
-    role === "merchant" ? merchantLinks :
-    role === "carrier" ? carrierLinks :
-    customerLinks;
+    role === "merchant"
+      ? merchantLinks
+      : role === "carrier"
+      ? carrierLinks
+      : customerLinks;
 
-  // Close dropdown when clicking outside
+  // Effect to close profile dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setIsOpen(false);
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsProfileOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -57,139 +66,139 @@ export default function Navbar() {
   }, []);
 
   return (
-    <nav
-      className={`sticky top-0 z-50 transition-all duration-300 backdrop-blur-md border-b border-[#E8C547]/20 
-        ${isHome ? 'bg-[#F5F5F5]/90' : 'bg-[#F5F5F5]/95 shadow-[0_2px_10px_rgba(0,0,0,0.03)]'}`}
-      style={{ fontFamily: "'Inter', sans-serif'" }}
-    >
-      <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-        {/* LOGO */}
-        <a href="/" className="flex items-center gap-2">
-          <span
-            className="text-4xl font-extrabold tracking-tight text-[#0B132B]"
-            style={{ fontFamily: "'Manrope', sans-serif" }}
+    <>
+
+      
+      <motion.nav
+        initial={{ y: -80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="fixed top-0 z-50 w-full border-b-[4px] border-[#ff3b3b] bg-[#f5e9e0]/80 backdrop-blur-md"
+        style={{ fontFamily: "'Neue Haas Grotesk Display Pro', 'Inter', sans-serif" }}
+      >
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+          {/* LOGO */}
+          <motion.a
+            href="/"
+            whileHover={{ scale: 1.05, rotate: -2 }}
+            className="text-[1.8rem] font-black uppercase tracking-tighter text-[#111] hover:text-[#ff3b3b]"
           >
-            Gathr
-          </span>
-        </a>
+            gathr
+          </motion.a>
 
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-8" ref={menuRef}>
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className={`relative text-[15px] font-medium tracking-wide transition-all duration-300
-                ${pathname === link.href ? 'text-[#00ADB5]' : 'text-[#121212] hover:text-[#00ADB5]'}
-                after:content-[''] after:absolute after:w-0 after:h-[2px] after:bg-[#00ADB5]
-                after:left-0 after:-bottom-1 hover:after:w-full after:transition-all after:duration-300`}
-            >
-              {link.name}
-            </a>
-          ))}
-
-          {isSignedIn ? (
-            <div className="relative">
-              <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 bg-[#0B132B] hover:bg-[#00ADB5] transition-all duration-300 text-white px-3 py-1 rounded-full"
+          {/* Desktop Links */}
+          <div className="hidden md:flex items-center gap-8">
+            {navLinks.map((link) => (
+              <motion.a
+                key={link.href}
+                href={link.href}
+                whileHover={{
+                  color: "#fff",
+                  backgroundColor: "#ff3b3b",
+                  borderRadius: "6px",
+                  paddingInline: "12px",
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                className={`uppercase text-[0.9rem] font-semibold tracking-wide ${
+                  pathname === link.href ? "text-[#ff3b3b]" : "text-[#111]"
+                }`}
               >
-                <img
-                  src={profileImage}
-                  alt="user avatar"
-                  className="w-7 h-7 rounded-full border border-white/40"
-                />
+                {link.name}
+              </motion.a>
+            ))}
+          </div>
+
+          {/* Right Side: Profile Dropdown or Join Us Button */}
+          <div className="hidden md:flex items-center" ref={menuRef}>
+            {isSignedIn ? (
+              <div className="relative">
+                <button onClick={() => setIsProfileOpen(!isProfileOpen)}>
+                  <img
+                    src={profileImage}
+                    alt="User profile"
+                    className="w-9 h-9 rounded-full border-2 border-[#111]/50 hover:border-[#ff3b3b] transition"
+                  />
+                </button>
+
+                {isProfileOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute right-0 mt-3 w-48 bg-[#f5e9e0] rounded-lg shadow-xl border border-black/10 overflow-hidden z-50"
+                  >
+                    <a href="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#ff3b3b]/20">
+                      Profile
+                    </a>
+                    <a href="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-[#ff3b3b]/20">
+                      Settings
+                    </a>
+                    <SignOutButton>
+                      <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-[#ff3b3b]/20 font-medium">
+                        Sign Out
+                      </button>
+                    </SignOutButton>
+                  </motion.div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => router.push("/sign-up")}
+                className="uppercase text-sm font-semibold border-2 border-[#111] px-5 py-1.5 rounded-full bg-[#ff3b3b] text-white hover:bg-[#111] transition"
+              >
+                Join Us
               </button>
+            )}
+          </div>
 
-              {isOpen && (
-                <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
-                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                    Profile
-                  </a>
-                  <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                    Settings
-                  </a>
-                  <SignOutButton>
-                    <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50">
-                      Sign out
-                    </button>
-                  </SignOutButton>
-                </div>
-              )}
-            </div>
-          ) : (
-            <Button
-              onClick={() => router.push('/sign-up')}
-              sx={{
-                px: 3,
-                py: 1,
-                borderRadius: '30px',
-                textTransform: 'none',
-                fontFamily: "'Inter', sans-serif",
-                backgroundColor: '#00ADB5',
-                color: '#fff',
-                boxShadow: '0 4px 12px rgba(0, 173, 181, 0.3)',
-                '&:hover': { backgroundColor: '#08C1C9', transform: 'translateY(-1px)' },
-              }}
-            >
-              Sign Up
-            </Button>
-          )}
-        </div>
-
-        {/* Mobile Hamburger */}
-        <div className="md:hidden">
-          <button onClick={() => setMenuOpen(!menuOpen)} className="text-[#0B132B]">
+          {/* Mobile Menu Toggle */}
+          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden text-[#111]">
             {menuOpen ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>
-      </div>
 
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="md:hidden bg-[#F5F5F5] border-t border-[#E8C547]/20 shadow-md">
-          <div className="flex flex-col gap-2 py-3 px-4">
+        {/* Mobile Menu */}
+        {menuOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            transition={{ duration: 0.4 }}
+            className="md:hidden flex flex-col bg-[#f8e9e2] border-t-4 border-[#ff3b3b] overflow-hidden"
+          >
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
-                className={`block py-2 text-[15px] font-medium rounded-md transition-all 
-                  ${pathname === link.href
-                    ? 'text-[#00ADB5]'
-                    : 'text-[#121212] hover:text-[#00ADB5]'}`}
                 onClick={() => setMenuOpen(false)}
+                className="py-3 px-6 text-[#111] font-semibold uppercase hover:bg-[#ff3b3b] hover:text-white transition"
               >
                 {link.name}
               </a>
             ))}
-
-            {isSignedIn ? (
-              <>
-                <a href="#" className="block py-2 text-gray-700 hover:text-[#00ADB5]">Profile</a>
-                <a href="#" className="block py-2 text-gray-700 hover:text-[#00ADB5]">Settings</a>
-                <SignOutButton>
-                  <button className="block text-left text-red-600 py-2">Sign out</button>
-                </SignOutButton>
-              </>
-            ) : (
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={() => { router.push('/sign-up'); setMenuOpen(false); }}
-                sx={{
-                  borderRadius: '30px',
-                  textTransform: 'none',
-                  backgroundColor: '#00ADB5',
-                  color: '#fff',
-                  '&:hover': { backgroundColor: '#08C1C9' },
-                }}
-              >
-                Sign Up
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-    </nav>
+            
+            {/* Mobile Auth Links */}
+            <div className="border-t border-[#ff3b3b]/30 mt-2 pt-2 px-6 pb-4">
+              {isSignedIn ? (
+                <>
+                  <a href="/profile" className="block py-2 font-semibold text-gray-700 hover:text-[#ff3b3b]">Profile</a>
+                  <SignOutButton>
+                    <button className="w-full text-left py-2 font-semibold text-red-600 hover:text-[#ff3b3b]">
+                      Sign Out
+                    </button>
+                  </SignOutButton>
+                </>
+              ) : (
+                <button
+                  onClick={() => { router.push("/sign-up"); setMenuOpen(false); }}
+                  className="w-full mt-2 uppercase text-sm font-semibold border-2 border-[#111] px-5 py-1.5 rounded-full bg-[#ff3b3b] text-white hover:bg-[#111] transition"
+                >
+                  Join Us
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </motion.nav>
+    </>
   );
 }
