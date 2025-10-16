@@ -121,7 +121,7 @@ const cardVariants = {
       style={{ paddingTop: 92 }} // keeps content below navbar
     >
       {/* Animated decorative shapes (GATHR-inspired) */}
-      <motion.div
+      {/* <motion.div
         className="absolute top-10 left-10 w-24 h-24 bg-[#ff3b3b] rounded-full mix-blend-multiply"
         animate={{ y: [0, 40, 0], scale: [1, 1.05, 1] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -130,7 +130,7 @@ const cardVariants = {
         className="absolute bottom-10 right-16 w-28 h-28 bg-[#b4ff00] rounded-[2rem] mix-blend-multiply"
         animate={{ x: [0, -30, 0], rotate: [0, 10, 0] }}
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-      />
+      /> */}
 
 
       {/* Header */}
