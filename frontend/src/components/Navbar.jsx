@@ -25,7 +25,8 @@ const customerLinks = [
 const carrierLinks = [
   { name: "Dashboard", href: "/carrier/dashboard" },
   { name: "Assigned Deliveries", href: "/carrier/assignedDeliveries" },
-  { name: "Delivery History", href: "/carrier/history" },
+  { name: "Delivery History", href: "/carrier/deliveryHistory" },
+  { name: "Update Profile", href: "/carrier/updateProfile" },
 ];
 
 const links = [

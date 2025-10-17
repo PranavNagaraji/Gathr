@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from '@clerk/nextjs';
 import {
   GoogleMap,
   useJsApiLoader,
@@ -7,7 +9,6 @@ import {
   DirectionsRenderer,
   Marker,
 } from '@react-google-maps/api';
-import { Truck, Store, User } from 'lucide-react';
 
 const containerStyle = {
   width: '100%',
@@ -15,30 +16,63 @@ const containerStyle = {
   borderRadius: '8px',
 };
 
-// Utility to convert Lucide React component to SVG string
-const lucideToSvgUrl = (Icon, color = 'black', size = 32) => {
-  const svg = encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${Icon().props.children
-      .map((c) => c.props.d)
-      .map((d) => `<path d="${d}"/>`)
-      .join('')}</svg>`
-  );
-  return `data:image/svg+xml;charset=UTF-8,${svg}`;
-};
-
 export default function DeliveryRouteMap({
   carrierLocation,
   shopLocation,
   deliveryLocation,
+  selectedOrder,
   onDeliveryComplete,
 }) {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
   });
-
+  const { getToken } = useAuth();
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const [directions, setDirections] = useState(null);
-  const [currentStep, setCurrentStep] = useState('toShop'); // 'toShop' or 'toCustomer'
+  const [currentStep, setCurrentStep] = useState('toShop');
   const [mapCenter, setMapCenter] = useState(carrierLocation);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+
+  // --- Helper functions ---
+  const sendOtp = async (email) => {
+    try {
+      const token = await getToken();
+      console.log(email);
+      const res = await axios.post(`${API_URL}/api/otp`, { email }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+      setOtpSent(true);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to send OTP');
+    }
+  };
+
+  const verifyOtp = async (email) => {
+    try {
+      const token = await getToken();
+      const res = await axios.post(`${API_URL}/api/otp`, { email, otp },{headers:{
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+    });
+      if (res.data.verified) {
+        alert('Delivery verified successfully!');
+        onDeliveryComplete?.();
+        setShowOtpModal(false);
+      } else {
+        alert(res.data.message || 'Invalid OTP. Try again.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error verifying OTP');
+    }
+  };
 
   const formatLocation = (loc) => {
     if (!loc) return null;
@@ -48,14 +82,13 @@ export default function DeliveryRouteMap({
     };
   };
 
+
   const carrier = formatLocation(carrierLocation);
   const shop = formatLocation(shopLocation);
   const customer = formatLocation(deliveryLocation);
 
-  // Reset directions on step change
   useEffect(() => setDirections(null), [currentStep]);
 
-  // Update map center
   useEffect(() => {
     if (currentStep === 'toShop' && carrier) setMapCenter(carrier);
     else if (currentStep === 'toCustomer' && shop) setMapCenter(shop);
@@ -70,31 +103,9 @@ export default function DeliveryRouteMap({
     <div className="flex flex-col gap-2">
       {canRenderMap ? (
         <GoogleMap mapContainerStyle={containerStyle} center={mapCenter} zoom={12}>
-          {/* Custom Lucide markers */}
-          <Marker
-            position={carrier}
-            icon={{
-              url: '/icons/truck.svg', // temporary: you can also generate a data URL
-              scaledSize: new window.google.maps.Size(32, 32),
-            }}
-            title="You (Carrier)"
-          />
-          <Marker
-            position={shop}
-            icon={{
-              url: '/icons/store.svg',
-              scaledSize: new window.google.maps.Size(32, 32),
-            }}
-            title="Shop"
-          />
-          <Marker
-            position={customer}
-            icon={{
-              url: '/icons/user.svg',
-              scaledSize: new window.google.maps.Size(32, 32),
-            }}
-            title="Customer"
-          />
+          <Marker position={carrier} title="You (Carrier)" />
+          <Marker position={shop} title="Shop" />
+          <Marker position={customer} title="Customer" />
 
           {!directions && (
             <DirectionsService
@@ -102,7 +113,8 @@ export default function DeliveryRouteMap({
                 origin: routeOrigin,
                 destination: routeDestination,
                 travelMode: 'DRIVING',
-                waypoints: currentStep === 'toCustomer' ? [{ location: shop, stopover: true }] : [],
+                waypoints:
+                  currentStep === 'toCustomer' ? [{ location: shop, stopover: true }] : [],
               }}
               callback={(result, status) => {
                 if (status === 'OK' && result) setDirections(result);
@@ -129,10 +141,49 @@ export default function DeliveryRouteMap({
       ) : (
         <button
           className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-2"
-          onClick={() => onDeliveryComplete && onDeliveryComplete()}
+          onClick={() => {
+            setShowOtpModal(true);
+            sendOtp(selectedOrder?.Users?.email);
+          }}
         >
           Complete Delivery (Verify OTP)
         </button>
+      )}
+
+      {/* OTP Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-80">
+            <h2 className="text-xl font-semibold mb-4 text-center">Enter OTP</h2>
+            {!otpSent ? (
+              <p className="text-center">Sending OTP to {selectedOrder?.Users?.email}...</p>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="Enter 6-digit OTP"
+                  className="border p-2 rounded w-full mb-3 text-center text-black"
+                />
+                <div className="flex gap-2 justify-center">
+                  <button
+                    onClick={() => verifyOtp(selectedOrder?.Users?.email)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  >
+                    Verify
+                  </button>
+                  <button
+                    onClick={() => setShowOtpModal(false)}
+                    className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

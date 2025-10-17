@@ -41,6 +41,7 @@ export default function AssignedDeliveries() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setOrders(res.data.ShopsAndAddresses || []);
+        console.log(res.data.ShopsAndAddresses);
       } catch (err) {
         console.log(err);
       }
@@ -66,6 +67,23 @@ export default function AssignedDeliveries() {
     fetchOrders();
     getCarrierLocation();
   }, [user, isLoaded, isSignedIn]);
+
+  const handelDeliveryComplete = async (orderId) => {
+      try {
+        const token = await getToken();
+        const res = await axios.post(
+          `${API_URL}/api/delivery/completeDelivery`,
+          { orderId , clerkId: user.id },
+          { headers: { Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        } }
+        );
+        alert(res.data.message);
+        setOrders((prevOrders) => prevOrders.filter((order) => order.id !== orderId));
+      } catch (error) {
+        console.error("Error accepting order:", error);
+      }
+  }
 
   return (
     <div className="p-4">
@@ -100,7 +118,8 @@ export default function AssignedDeliveries() {
             carrierLocation={carrierLocation}
             shopLocation={selectedOrder.Shops.Location}
             deliveryLocation={selectedOrder.Addresses.location}
-            onDeliveryComplete={() => alert('OTP verification flow here')}
+            onDeliveryComplete={() => handelDeliveryComplete(selectedOrder.id)}
+            selectedOrder={selectedOrder}
           />
         </div>
       )}

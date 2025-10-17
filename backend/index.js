@@ -9,6 +9,8 @@ import customerRoutes from "./routes/customerRoute.js";
 import orderRoutes from "./routes/orderRoute.js";
 import stripeRoutes from "./stripeIntegration.js";
 import deliveryRoutes from "./routes/deliveryRoute.js";
+import otpRouter from "./routes/otpRoute.js";
+
 dotenv.config();
 
 const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
@@ -37,6 +39,7 @@ app.use("/api/customer", customerRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/stripe", stripeRoutes);
 app.use("/api/delivery", deliveryRoutes);
+app.use("/api/otp", otpRouter);
 //test route
 app.get("/", (req, res) => res.send("Hello from backend!"));
 

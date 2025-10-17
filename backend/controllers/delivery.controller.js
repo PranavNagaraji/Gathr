@@ -111,7 +111,7 @@ export const getOnTheWay = async (req, res) => {
         }
         const { data: onethewayOrders, error } = await supabase
             .from("Orders")
-            .select("*, Shops(*), Addresses(*)").eq('carrier_id', user.id).eq('status', 'ontheway');
+            .select("*, Shops(*), Addresses(*) , Users:customer_id(*)").eq('carrier_id', user.id).eq('status', 'ontheway');
         if (error) {
             return res.status(403).json({ error });
         }
@@ -207,3 +207,67 @@ const uploadImageAndUpdate = async (image, clerkId) => {
     console.error(`❌ Background image upload failed for delivery guy ${clerkId}:`, error);
   }
 };
+
+export const completeDelivery = async (req, res) => {
+    try {
+        const { clerkId, orderId } = req.body;
+        if (!clerkId || !orderId) {
+            return res.status(400).json({ message: "Missing clerkId or orderId" });
+        }
+        console.log(clerkId, orderId);
+        const { data: user, error: userError } = await supabase
+            .from("Users")
+            .select("id, role")
+            .eq("clerk_id", clerkId)
+            .single();
+        
+        console.log(1);
+        if (userError || !user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        console.log(2);
+        if (user.role !== "carrier") {
+            return res
+                .status(403)
+                .json({ message: "Unauthorized: Only carriers can accept deliveries" });
+        }
+        console.log(3);
+        await supabase.from("Orders").update({ status: "delivered" }).eq("id", orderId);
+        return res.status(200).json({ message: "Delivery accepted successfully" });
+    } catch (err) {
+        console.error("Unexpected error:", err);
+        return res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+export const getAllOrders = async (req,res)=>{
+    const { clerkId } = req.params;
+    if (!clerkId) {
+        return res.status(400).json({ message: "Missing clerkId" });
+    }
+        const { data: user, error: userError } = await supabase
+            .from("Users")
+            .select("id, role")
+            .eq("clerk_id", clerkId)
+            .single();
+        if (userError || !user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        if (user.role !== "carrier") {
+            return res
+                .status(403)
+                .json({ message: "Unauthorized: Only carriers can get addresses" });
+        }
+        const { data: acceptedOrders, error } = await supabase
+            .from("Orders")
+            .select(`
+        *,
+        Addresses(*),
+        Shops(*)
+      `).eq('carrier_id', user.id);
+      console.log(acceptedOrders);
+        if (error) {
+            return res.status(403).json({ error });
+        }
+        return res.status(200).json({ ShopsAndAddresses: acceptedOrders });
+} 
