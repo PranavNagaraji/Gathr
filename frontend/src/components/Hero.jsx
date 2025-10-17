@@ -12,6 +12,7 @@ const COLORS = {
   deepGreen: '#123626',
 };
 
+// This component is not used to match the video but is kept for your reference.
 function CursorGlow() {
   const cursor = useRef(null);
 
@@ -19,10 +20,7 @@ function CursorGlow() {
     const move = (e) => {
       const { clientX, clientY } = e;
       if (cursor.current) {
-        cursor.current.animate(
-          { left: `${clientX}px`, top: `${clientY}px` },
-          { duration: 600, fill: 'forwards' }
-        );
+        cursor.current.animate({ left: `${clientX}px`, top: `${clientY}px` }, { duration: 600, fill: 'forwards' });
       }
     };
     window.addEventListener('mousemove', move);
@@ -39,6 +37,18 @@ function CursorGlow() {
 }
 
 /* ---------------------- 🎞️ Scroll Animation Variants ---------------------- */
+// Variant for parent containers to stagger child animations
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+    },
+  },
+};
+
+// Variant for text elements to fade and rise into view
 const fadeRise = {
   hidden: { opacity: 0, y: 60 },
   visible: {
@@ -48,78 +58,80 @@ const fadeRise = {
   },
 };
 
+// ✨ NEW: Variant for section images to fade in while zooming out slightly
+const imageZoom = {
+    hidden: { opacity: 0, scale: 1.1 },
+    visible: {
+        opacity: 1,
+        scale: 1,
+        transition: {
+            duration: 0.9,
+            ease: [0.25, 0.1, 0.25, 1]
+        }
+    }
+}
+
 /* ---------------------- 🏠 Hero Section ---------------------- */
 function HeroSection() {
   return (
-   <section className="relative flex items-center h-screen bg-[#F7F5F2] overflow-hidden">
-  {/* Background Accent Circle
-  <div
-    aria-hidden
-    className="absolute -right-40 top-40 w-[500px] h-[500px] bg-[#FDE4DC] rounded-full blur-3xl opacity-50"
-  /> */}
+    <section className="relative flex items-center h-screen bg-[#F7F5F2] overflow-hidden">
+      <div className="max-w-7xl mx-auto w-full px-4 lg:px-4 grid md:grid-cols-2 relative">
+        {/* Left: Text */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          viewport={{ once: true }}
+          className="space-y-8"
+        >
+          <h1
+            style={{ fontFamily: "'Playfair Display', serif" }}
+            className="text-6xl lg:text-7xl font-bold text-[#1a1a1a] leading-[1.1]"
+          >
+            Empowering Local <br />
+            <span className="text-[#F15B3B]">Commerce</span>
+          </h1>
 
-  {/* Content Wrapper */}
-  <div className="max-w-7xl mx-auto w-full px-4 lg:px-4 grid md:grid-cols-2 relative">
-    {/* Left: Text */}
-    <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: 'easeOut' }}
-      viewport={{ once: true }}
-      className="space-y-8"
-    >
-      <h1
-        style={{ fontFamily: "'Playfair Display', serif" }}
-        className="text-6xl lg:text-7xl font-bold text-[#1a1a1a] leading-[1.1]"
-      >
-        Empowering Local <br />
-        <span className="text-[#F15B3B]">Commerce</span>
-      </h1>
+          <p
+            style={{ fontFamily: "'Inter', sans-serif" }}
+            className="text-[#333] text-lg leading-relaxed max-w-md font-normal"
+          >
+            Gathr bridges customers, shopkeepers, and delivery heroes — creating a thriving local ecosystem built on
+            trust, community, and genuine connection.
+          </p>
 
-      <p
-        style={{ fontFamily: "'Inter', sans-serif" }}
-        className="text-[#333] text-lg leading-relaxed max-w-md font-normal"
-      >
-        Gathr bridges customers, shopkeepers, and delivery heroes — creating a thriving local ecosystem built on
-        trust, community, and genuine connection.
-      </p>
+          <motion.a
+            whileHover={{
+              scale: 1.07,
+              backgroundColor: '#111',
+              color: '#fff',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+            }}
+            transition={{ type: 'spring', stiffness: 250 }}
+            className="inline-block px-10 py-4 rounded-full bg-[#F15B3B] text-white font-semibold text-lg tracking-wide transition-all duration-300"
+            href="#customers"
+          >
+            Get Started →
+          </motion.a>
+        </motion.div>
 
-      <motion.a
-        whileHover={{
-          scale: 1.07,
-          backgroundColor: '#111',
-          color: '#fff',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-        }}
-        transition={{ type: 'spring', stiffness: 250 }}
-        className="inline-block px-10 py-4 rounded-full bg-[#F15B3B] text-white font-semibold text-lg tracking-wide transition-all duration-300"
-        href="#customers"
-      >
-        Get Started →
-      </motion.a>
-    </motion.div>
-
-    {/* Right: Image */}
-    <motion.div
-      initial={{ opacity: 0, y: 80 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.9, delay: 0.2, ease: 'easeOut' }}
-      viewport={{ once: true }}
-      className="flex justify-end"
-    >
-      <div className="relative w-[95%] md:w-[90%] lg:w-[85%] rounded-[2rem] overflow-hidden shadow-xl group">
-        <img
-          src="/hero_image.jpeg"
-          alt="local community market"
-          className="w-full h-[75vh] object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-out rounded-[2rem]"
-        />
+        {/* Right: Image */}
+        {/* ✨ UPDATED: Animation is now directly on the image for the pan/zoom effect */}
+        <div className="flex justify-end">
+          <div className="relative w-[95%] md:w-[90%] lg:w-[85%] rounded-[2rem] overflow-hidden shadow-xl group">
+            <motion.img
+              initial={{ opacity: 0, scale: 1.2, y: -60 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+              viewport={{ once: true }}
+              src="/hero_image.jpeg"
+              alt="local community market"
+              className="w-full h-[75vh] object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-out rounded-[2rem]"
+            />
+          </div>
+        </div>
       </div>
-    </motion.div>
-  </div>
-</section>
-
-
-
+    </section>
   );
 }
 
@@ -128,11 +140,12 @@ function CustomersSection() {
   return (
     <section className="relative bg-[#faf6f2] py-28 overflow-hidden">
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 px-6 items-center">
+        {/* ✨ UPDATED: Using the new 'imageZoom' variant */}
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true }}
-          variants={fadeRise}
+          viewport={{ once: true, amount: 0.4 }}
+          variants={imageZoom}
           className="rounded-3xl shadow-xl overflow-hidden group"
         >
           <img
@@ -205,11 +218,12 @@ function ShopkeeperSection() {
           </motion.button>
         </motion.div>
 
+        {/* ✨ UPDATED: Using the new 'imageZoom' variant */}
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true }}
-          variants={fadeRise}
+          viewport={{ once: true, amount: 0.4 }}
+          variants={imageZoom}
           className="rounded-3xl overflow-hidden shadow-2xl group"
         >
           <img
@@ -228,11 +242,12 @@ function DeliverySection() {
   return (
     <section className="relative py-28 overflow-hidden bg-[#F4B89B]">
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 px-6 items-center">
+        {/* ✨ UPDATED: Using the new 'imageZoom' variant */}
         <motion.div
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true }}
-          variants={fadeRise}
+          viewport={{ once: true, amount: 0.4 }}
+          variants={imageZoom}
           className="rounded-3xl overflow-hidden shadow-2xl group"
         >
           <img

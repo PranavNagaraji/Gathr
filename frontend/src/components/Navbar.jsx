@@ -8,9 +8,11 @@ import { Home, ShoppingCart,  } from "lucide-react";
 
 // --- Link configurations for different user roles ---
 const merchantLinks = [
-  { name: "Dashboard", href: "/merchant/dashboard" },
+  { name: "Inventory", href: "/merchant/dashboard" },
   { name: "Update Shop", href: "/merchant/updateShop" },
-  { name: "Orders", href: "/merchant/orders" }
+  { name: "New Orders", href: "/merchant/orders" },
+  { name: "All Orders", href: "/merchant/allOrders" }
+
 ];
 
 const customerLinks = [
@@ -22,8 +24,14 @@ const customerLinks = [
 
 const carrierLinks = [
   { name: "Dashboard", href: "/carrier/dashboard" },
-  { name: "Assigned Deliveries", href: "/carrier/deliveries" },
+  { name: "Assigned Deliveries", href: "/carrier/assignedDeliveries" },
   { name: "Delivery History", href: "/carrier/history" },
+];
+
+const links = [
+  { name: "Home", href: "/" },
+  { name: "Shops", href: "/customer/getShops" },
+  { name: "contact", href: "/customer/orders" },
 ];
 
 export default function Navbar() {
@@ -42,14 +50,16 @@ export default function Navbar() {
 
   const { isSignedIn, user } = useUser();
   const profileImage = user?.imageUrl;
-  const role = user?.publicMetadata?.role || "customer";
+  const role = user?.publicMetadata?.role;
 
   const navLinks =
     role === "merchant"
       ? merchantLinks
       : role === "carrier"
       ? carrierLinks
-      : customerLinks;
+      : role === "customer"
+      ? customerLinks
+      : links;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
