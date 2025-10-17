@@ -39,6 +39,7 @@ export default function UpdateCarrier() {
           bankAccount: data.bankAccount || '',
           profilePic: data.profile || null,
         });
+        console.log(res.data.carrier.delivery_details);
         setPreview(data.profile?.url || null);
       } catch (error) {
         console.error('Error fetching carrier:', error);
@@ -80,6 +81,8 @@ export default function UpdateCarrier() {
       licenseNumber: form.licenseNumber,
       bankAccount: form.bankAccount,
       profile: imageData,
+      phone: form.phone,
+      aadharNumber: form.aadharNumber,
     };
 
     try {
@@ -110,8 +113,9 @@ export default function UpdateCarrier() {
             value={form.phone}
             fullWidth
             variant="outlined"
-            InputProps={{ readOnly: true }}
+            disabled
           />
+
 
           <TextField
             label="License Number"
@@ -128,8 +132,8 @@ export default function UpdateCarrier() {
             value={form.aadharNumber}
             fullWidth
             variant="outlined"
-            InputProps={{ readOnly: true }}
-          />
+            disabled
+            />
 
           <TextField
             label="Bank Account"
