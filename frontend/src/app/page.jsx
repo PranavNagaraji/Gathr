@@ -4,6 +4,7 @@ import Hero from "@/components/Hero";
 import DarkVeil from "@/components/gsap/DarkVeil";
 import { Box } from "@mui/material";
 import { useEffect } from "react";
+import { FadeIn } from "@/components/motion/MotionPrimitives";
 
 export default function Home() {
   const { getToken } = useAuth();
@@ -43,7 +44,9 @@ export default function Home() {
           amplitude={1.0}
           speed={0.5} /> */}
       </Box>
-      <Hero />
+      <FadeIn>
+        <Hero />
+      </FadeIn>
     </div>
   </>);
 }

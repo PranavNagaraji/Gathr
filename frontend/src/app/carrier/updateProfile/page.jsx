@@ -6,6 +6,7 @@ import { Button, TextField, Typography, Box, Paper } from '@mui/material';
 import axios from 'axios';
 import { useUser, useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 export default function UpdateCarrier() {
   const { user } = useUser();
@@ -92,18 +93,18 @@ export default function UpdateCarrier() {
         { carrierData, clerkId: user.id, profile: imageData },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      alert('Carrier updated successfully!');
+      toast.success('Carrier updated successfully!');
       router.push('/carrier/dashboard');
     } catch (error) {
       console.error('Error updating carrier:', error);
-      alert('Failed to update carrier. Check console for details.');
+      toast.error('Failed to update carrier. Check console for details.');
     }
   };
 
   return (
-    <Box className="flex justify-center items-center min-h-screen bg-gray-100 p-4">
-      <Paper className="w-full max-w-md p-6 rounded-3xl shadow-lg">
-        <Typography variant="h4" className="text-center mb-6 font-bold">
+    <Box className="flex justify-center items-center min-h-screen bg-[var(--background)] text-[var(--foreground)] p-4">
+      <Paper className="w-full max-w-md p-6 rounded-3xl shadow-lg border border-[var(--border)]" style={{ background: 'var(--card)', color: 'var(--card-foreground)' }}>
+        <Typography variant="h4" className="text-center mb-6 font-bold" component="h1">
           Update Carrier
         </Typography>
 
@@ -114,6 +115,12 @@ export default function UpdateCarrier() {
             fullWidth
             variant="outlined"
             disabled
+            InputLabelProps={{ style: { color: 'var(--muted-foreground)' } }}
+            inputProps={{ style: { color: 'var(--card-foreground)' } }}
+            sx={{
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--border)' },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--ring)' },
+            }}
           />
 
 
@@ -125,6 +132,12 @@ export default function UpdateCarrier() {
             fullWidth
             variant="outlined"
             required
+            InputLabelProps={{ style: { color: 'var(--muted-foreground)' } }}
+            inputProps={{ style: { color: 'var(--card-foreground)' } }}
+            sx={{
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--border)' },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--ring)' },
+            }}
           />
 
           <TextField
@@ -133,6 +146,12 @@ export default function UpdateCarrier() {
             fullWidth
             variant="outlined"
             disabled
+            InputLabelProps={{ style: { color: 'var(--muted-foreground)' } }}
+            inputProps={{ style: { color: 'var(--card-foreground)' } }}
+            sx={{
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--border)' },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--ring)' },
+            }}
             />
 
           <TextField
@@ -142,10 +161,16 @@ export default function UpdateCarrier() {
             onChange={handleChange}
             fullWidth
             variant="outlined"
+            InputLabelProps={{ style: { color: 'var(--muted-foreground)' } }}
+            inputProps={{ style: { color: 'var(--card-foreground)' } }}
+            sx={{
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--border)' },
+              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'var(--ring)' },
+            }}
           />
 
           <Box>
-            <Button variant="contained" component="label" fullWidth>
+            <Button variant="contained" component="label" fullWidth style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>
               Upload Profile Picture
               <input type="file" hidden accept="image/*" onChange={handleImage} />
             </Button>
@@ -162,7 +187,7 @@ export default function UpdateCarrier() {
             )}
           </Box>
 
-          <Button type="submit" variant="contained" color="success" fullWidth>
+          <Button type="submit" variant="contained" fullWidth style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>
             Update Carrier
           </Button>
         </form>

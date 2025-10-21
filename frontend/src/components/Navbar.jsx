@@ -4,7 +4,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, useScroll, useSpring, AnimatePresence } from "framer-motion";
-import { Home, ShoppingCart,  } from "lucide-react";
+import { Home, ShoppingCart, } from "lucide-react";
+import ThemeToggle from "@/components/theme/ThemeToggle";
 
 // --- Link configurations for different user roles ---
 const merchantLinks = [
@@ -17,7 +18,7 @@ const merchantLinks = [
 
 const customerLinks = [
   { name: "Home", href: "/" },
-  { name: "Shops", href: "/customer/getShops" }, 
+  { name: "Shops", href: "/customer/getShops" },
   { name: "Cart", href: "/customer/cart" },
   { name: "Orders", href: "/customer/orders" },
 ];
@@ -57,10 +58,10 @@ export default function Navbar() {
     role === "merchant"
       ? merchantLinks
       : role === "carrier"
-      ? carrierLinks
-      : role === "customer"
-      ? customerLinks
-      : links;
+        ? carrierLinks
+        : role === "customer"
+          ? customerLinks
+          : links;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -84,22 +85,23 @@ export default function Navbar() {
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 1, ease: "easeOut" }}
-        className="sticky top-0 z-50 w-full bg-[#3C2F2F] text-[#F4ECE6]  shadow-[0_6px_20px_rgba(0,0,0,0.1)]"
+        className="sticky top-0 z-50 w-full bg-[var(--card)] text-[var(--foreground)] shadow-[0_6px_20px_rgba(0,0,0,0.1)] backdrop-blur supports-[backdrop-filter]:bg-[color:var(--card)/0.85]"
         style={{ fontFamily: "'Inter', sans-serif" }}
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3 relative">
-          
+
           {/* LOGO */}
           <motion.a
             href="/"
+            aria-label="Gathr Home"
             whileHover={{
               rotate: [-3, 3, -2, 2, 0],
               transition: { duration: 0.6 },
             }}
-            className="text-[1.8rem] font-black uppercase tracking-tighter text-[#F4ECE6] text-[#F15B3B] hover:text-[#F15B3B] relative"
+            className="text-[1.8rem] font-black uppercase tracking-tighter text-[var(--foreground)] hover:text-[var(--primary)] relative"
           >
             <motion.span
-              className="absolute -bottom-1 left-0 h-[3px] bg-[#F15B3B] text-[#F15B3B] rounded-full"
+              className="absolute -bottom-1 left-0 h-[3px] bg-[var(--primary)] rounded-full"
               initial={{ width: 0 }}
               whileHover={{ width: "100%" }}
               transition={{ duration: 0.4 }}
@@ -114,15 +116,18 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 whileHover={{
-                  color: "#FFFFFF",
-                  backgroundColor: "#F15B3B",
+                  color: "var(--primary-foreground)",
+                  backgroundColor: "var(--primary)",
                   borderRadius: "9999px",
                   scale: 1.05,
                 }}
-                transition={{ type: "spring", stiffness: 260, damping: 15 }}
-                className={`uppercase px-3 py-1 text-[0.9rem] font-semibold tracking-wide ${
-                  pathname === link.href ? "text-[#F15B3B]" : "text-[#F4ECE6]"
-                }`}
+                transition={{
+                  backgroundColor: { duration: 0.25, ease: "easeInOut" },
+                  color: { duration: 0.25, ease: "easeInOut" },
+                  scale: { type: "spring", stiffness: 260, damping: 15 },
+                }}
+                className={`uppercase px-3 py-1 text-[0.9rem] font-semibold tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-colors duration-200 ${pathname === link.href ? "text-[var(--primary)]" : "text-[var(--foreground)]"
+                  }`}
               >
                 {link.name}
               </motion.a>
@@ -136,11 +141,13 @@ export default function Navbar() {
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 2 }}
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  aria-haspopup="menu"
+                  aria-expanded={isProfileOpen}
                 >
                   <img
                     src={profileImage}
                     alt="User"
-                    className="w-9 h-9 rounded-full border-2 border-[#F4ECE6]/70 hover:border-[#F15B3B] transition-all"
+                    className="w-9 h-9 rounded-full border-2 border-[color:var(--border)] hover:border-[color:var(--primary)] transition-all"
                   />
                 </motion.button>
 
@@ -151,16 +158,16 @@ export default function Navbar() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.25 }}
-                      className="absolute right-0 mt-3 w-48 bg-[#F4ECE6] rounded-xl shadow-lg border border-[#3C2F2F]/10 overflow-hidden z-50"
+                      className="absolute right-0 mt-3 w-48 bg-[var(--popover)] text-[var(--popover-foreground)] rounded-xl shadow-lg border border-[var(--border)] overflow-hidden z-50"
                     >
-                      <a href="/profile" className="block px-4 py-2 text-sm text-[#3C2F2F] hover:bg-[#F15B3B]/20">
+                      <a href="/profile" className="block px-4 py-2 text-sm hover:bg-[var(--accent)]/40">
                         Profile
                       </a>
-                      <a href="/settings" className="block px-4 py-2 text-sm text-[#3C2F2F] hover:bg-[#F15B3B]/20">
+                      <a href="/settings" className="block px-4 py-2 text-sm hover:bg-[var(--accent)]/40">
                         Settings
                       </a>
                       <SignOutButton>
-                        <button className="w-full text-left px-4 py-2 text-sm text-[#F15B3B] hover:bg-[#F15B3B]/20 font-medium">
+                        <button className="w-full text-left px-4 py-2 text-sm text-[var(--primary)] hover:bg-[var(--accent)]/40 font-medium">
                           Sign Out
                         </button>
                       </SignOutButton>
@@ -170,20 +177,22 @@ export default function Navbar() {
               </div>
             ) : (
               <motion.button
-                whileHover={{ scale: 1.05, backgroundColor: "#F4ECE6", color: "#3C2F2F" }}
+                whileHover={{ scale: 1.05, backgroundColor: "var(--muted)", color: "var(--foreground)" }}
                 onClick={() => router.push("/sign-in")}
-                className="uppercase text-sm font-semibold border-2 border-[#F4ECE6] px-5 py-1.5 rounded-full bg-[#F15B3B] text-white transition"
+                className="uppercase text-sm font-semibold border-2 border-[var(--border)] px-5 py-1.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
                 Join Us
               </motion.button>
             )}
+            <ThemeToggle />
           </div>
 
           {/* Mobile Menu Toggle */}
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden text-[#F4ECE6]"
+            className="md:hidden text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
           >
             {menuOpen ? <X size={26} /> : <Menu size={26} />}
           </motion.button>
@@ -198,15 +207,15 @@ export default function Navbar() {
               animate={{ height: "auto", opacity: 1, y: 0, filter: "blur(0px)" }}
               exit={{ height: 0, opacity: 0, y: -20, filter: "blur(6px)" }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="md:hidden flex flex-col bg-gradient-to-b from-[#F4ECE6] to-[#FCEADF] border-t-4 border-[#F15B3B] overflow-hidden shadow-lg"
+              className="md:hidden flex flex-col bg-[var(--card)] border-t border-[var(--border)] overflow-hidden shadow-lg"
             >
               {navLinks.map((link) => (
                 <motion.a
                   key={link.href}
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  whileHover={{ backgroundColor: "#F15B3B", color: "#fff", x: 4 }}
-                  className="py-3 px-6 text-[#3C2F2F] font-semibold uppercase tracking-wide"
+                  whileHover={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)", x: 4 }}
+                  className="py-3 px-6 text-[var(--foreground)] font-semibold uppercase tracking-wide"
                 >
                   {link.name}
                 </motion.a>
@@ -215,18 +224,18 @@ export default function Navbar() {
               <div className="border-t border-[#F15B3B]/30 mt-2 pt-2 px-6 pb-4">
                 {isSignedIn ? (
                   <>
-                    <a href="/profile" className="block py-2 font-semibold text-[#3C2F2F] hover:text-[#F15B3B]">Profile</a>
+                    <a href="/profile" className="block py-2 font-semibold hover:text-[var(--primary)]">Profile</a>
                     <SignOutButton>
-                      <button className="w-full text-left py-2 font-semibold text-[#F15B3B] hover:text-[#F15B3B]/80">
+                      <button className="w-full text-left py-2 font-semibold text-[var(--primary)] hover:opacity-90">
                         Sign Out
                       </button>
                     </SignOutButton>
                   </>
                 ) : (
                   <motion.button
-                    whileHover={{ backgroundColor: "#3C2F2F", color: "#F4ECE6", scale: 1.05 }}
+                    whileHover={{ backgroundColor: "var(--muted)", color: "var(--foreground)", scale: 1.05 }}
                     onClick={() => { router.push("/sign-in"); setMenuOpen(false); }}
-                    className="w-full mt-2 uppercase text-sm font-semibold border-2 border-[#3C2F2F] px-5 py-1.5 rounded-full bg-[#F15B3B] text-white transition"
+                    className="w-full mt-2 uppercase text-sm font-semibold border-2 border-[var(--border)] px-5 py-1.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] transition"
                   >
                     Join Us
                   </motion.button>

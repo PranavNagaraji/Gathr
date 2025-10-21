@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { GoogleMap, Marker, useJsApiLoader, StandaloneSearchBox } from "@react-google-maps/api";
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 const containerStyle = {
   width: "300px",
@@ -109,12 +110,12 @@ const Checkout = () => {
 
   const handleCheckOut = async () =>{
     if (!selectedAddressId) {
-      alert("Please select a delivery address");
+      toast.error("Please select a delivery address");
       return;
     }
     
     if (!paymentMethod) {
-      alert("Please select a payment method");
+      toast.error("Please select a payment method");
       return;
     }
 
@@ -135,7 +136,7 @@ const Checkout = () => {
       });
       console.log(result.data);
       if(result.status === 200){
-        alert("Order Placed Successfully!");
+        toast.success("Order placed successfully");
         router.push("/customer/cart");
       }
     } else if (paymentMethod === "online") {
@@ -178,26 +179,27 @@ const Checkout = () => {
         
       } catch (error) {
         console.error("Stripe checkout error:", error);
-        alert("Failed to start online payment. Please try again.");
+        toast.error("Failed to start online payment. Please try again.");
       }
     }
   }
 
   return (
-    <div className="flex flex-col p-6 space-y-6">
-      <h1 className="text-3xl text-yellow-500 font-bold">Checkout</h1>
+    <div className="flex flex-col p-6 space-y-6 bg-[var(--background)] text-[var(--foreground)]">
+      <h1 className="text-3xl font-bold">Checkout</h1>
 
       <div>
         <h2 className="text-xl font-semibold mb-4">Select a Shipping Address</h2>
 
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid md:grid-cols-4 gap-4" role="list" aria-label="Saved addresses">
           {addresses.map((address,idx) => (
             <label
               key={idx}
+              role="listitem"
               className={`border rounded-2xl p-4 cursor-pointer transition-all ${
                 selectedAddressId === address.id
-                  ? "text-black border-yellow-500 bg-yellow-50"
-                  : "border-gray-300 hover:border-yellow-400"
+                  ? "border-[var(--primary)] bg-[color-mix(in_oklab,var(--primary),white_90%)]"
+                  : "border-[var(--border)] hover:border-[var(--ring)]/60"
               }`}
             >
               <div className="flex flex-col space-y-2">
@@ -208,22 +210,22 @@ const Checkout = () => {
                     value={address.id}
                     checked={selectedAddressId === address.id}
                     onChange={() => handleSelect(address.id)}
-                    className="mt-1 accent-yellow-500"
+                    className="mt-1 accent-[var(--primary)]"
                   />
                   <div className="w-full">
                     <div className="flex justify-between w-full">
                     <p className="font-semibold">{address.title} </p>
-                    <Trash2 className="text-red-500" onClick={() => handleDeleteAddress(address.id)}></Trash2>
+                    <Trash2 className="text-[var(--destructive)]" onClick={() => handleDeleteAddress(address.id)} aria-label="Delete address"></Trash2>
                     </div>
-                    <p className="text-gray-700">{address.address}</p>
-                    <p className="text-sm text-gray-500">{address.description}</p>
-                    <p className="text-sm text-gray-700">📞 {address.mobile_no}</p>
+                    <p className="">{address.address}</p>
+                    <p className="text-sm text-[var(--muted-foreground)]">{address.description}</p>
+                    <p className="text-sm">📞 {address.mobile_no}</p>
                   </div>
                 </div>
 
                 {/* Google Map */}
                 {mapLoaded && address.location?.lat && address.location?.long && (
-                  <div className="rounded-lg w-fit border">
+                  <div className="rounded-lg w-fit border border-[var(--border)]">
                     <GoogleMap
                       mapContainerStyle={containerStyle}
                       center={{
@@ -245,19 +247,22 @@ const Checkout = () => {
               </div>
             </label>
           ))}
-          <button className="border border-white rounded-lg flex items-center justify-center hover:bg-gray-600">
+          <button className="border border-[var(--border)] rounded-lg flex items-center justify-center hover:bg-[var(--muted)]/40"
+            aria-label="Add new address"
+          >
             <div className="text-6xl" onClick={()=>setAddressToggle(!addressToggle)}>
                 +
             </div>
           </button>
 
         {addressToggle && mapLoaded && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 w-full max-w-2xl relative space-y-4 h-3/4 overflow-y-scroll ">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+            <div className="bg-[var(--popover)] text-[var(--popover-foreground)] border border-[var(--border)] rounded-lg p-6 w-full max-w-2xl relative space-y-4 h-3/4 overflow-y-auto ">
             {/* Close button */}
             <button
                 onClick={() => setAddressToggle(false)}
-                className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-xl font-bold"
+                className="absolute top-3 right-3 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-xl font-bold"
+                aria-label="Close"
             >
                 ✕
             </button>
@@ -274,7 +279,7 @@ const Checkout = () => {
                 onChange={(e) =>
                     setAddAddress((prev) => ({ ...prev, title: e.target.value }))
                 }
-                className="border p-2 rounded w-full text-black"
+                className="border border-[var(--border)] p-2 rounded w-full bg-[var(--card)] text-[var(--card-foreground)]"
                 />
 
                 {/* Description */}
@@ -302,7 +307,7 @@ const Checkout = () => {
                 />
 
                 {/* Google Places Autocomplete */}
-                <label htmlFor="" className="text-black">address</label>        
+                <label htmlFor="" className="">address</label>        
                 
                 <StandaloneSearchBox
                 onLoad={(ref) => setSearchBox(ref)}
@@ -338,7 +343,7 @@ const Checkout = () => {
                     onChange={(e) =>
                     setAddAddress((prev) => ({ ...prev, address: e.target.value }))
                     }
-                    className="border p-2 rounded w-full text-black"
+                    className="border border-[var(--border)] p-2 rounded w-full bg-[var(--card)] text-[var(--card-foreground)]"
                 />
                 </StandaloneSearchBox>
 
@@ -382,10 +387,10 @@ const Checkout = () => {
 
                 {/* Submit button */}
                 <button
-                onClick={() => handleAddAddress(addAddress)}
-                className="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 transition mt-2"
+                  onClick={() => handleAddAddress(addAddress)}
+                  className="bg-[var(--primary)] text-[var(--primary-foreground)] p-2 rounded hover:opacity-90 transition mt-2"
                 >
-                Add Address
+                  Add Address
                 </button>
             </div>
             </div>

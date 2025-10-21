@@ -120,7 +120,12 @@ body {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-black text-white;
+    background: var(--background);
+    color: var(--foreground);
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
@@ -138,4 +143,13 @@ body {
 
 .click-bounce {
   animation: click-bounce 0.5s ease-in-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

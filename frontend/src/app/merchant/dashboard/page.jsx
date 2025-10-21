@@ -1,9 +1,10 @@
-'use client'
+"use client"
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Button } from '@mui/material';
+import { motion } from 'framer-motion';
 
 export default function Dashboard() {
     const router = useRouter();
@@ -113,25 +114,25 @@ export default function Dashboard() {
             });
     }, [items, selectedCategory, searchTerm]);
 
-    // ✨ NEW: Main container with a soft slate background
+    // UI-only adjustments: theme tokens and subtle motion
     return (
-        <div className="flex flex-col items-center w-full min-h-screen bg-slate-100 p-4 md:p-8">
+        <div className="flex flex-col items-center w-full min-h-screen bg-[var(--background)] text-[var(--foreground)] p-4 md:p-8">
             <div className="w-full max-w-7xl mx-auto">
-                <h1 className="text-4xl font-bold text-slate-800 mb-6 tracking-tight">Merchant Dashboard</h1>
+                <h1 className="text-4xl font-bold mb-6 tracking-tight">Merchant Dashboard</h1>
 
                 {/* ✨ NEW: Styled filter and search controls */}
-                <div className="w-full flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-lg shadow-sm">
+                <div className="w-full flex flex-col md:flex-row gap-4 mb-8 bg-[var(--card)] text-[var(--card-foreground)] p-4 rounded-lg shadow-sm border border-[var(--border)]">
                     <input
                         type="text"
                         placeholder="Search by name or description..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="flex-grow p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                        className="flex-grow p-2 border border-[var(--border)] rounded-md bg-[var(--popover)] text-[var(--popover-foreground)] focus:ring-2 focus:ring-[var(--ring)] focus:border-[var(--ring)] transition"
                     />
                     <select
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="p-2 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                        className="p-2 border border-[var(--border)] rounded-md bg-[var(--popover)] text-[var(--popover-foreground)] focus:ring-2 focus:ring-[var(--ring)] focus:border-[var(--ring)] transition"
                     >
                         {categories.map(cat => (
                             <option key={cat} value={cat}>{cat}</option>
@@ -140,10 +141,9 @@ export default function Dashboard() {
                 </div>
                 
                 {filteredItems.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
                         {filteredItems.map((item) => (
-                            // ✨ NEW: Restyled item card with hover effects
-                            <div key={item.id} className="bg-white rounded-lg shadow-md flex flex-col justify-between overflow-hidden border border-slate-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                            <motion.div key={item.id} whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className="bg-[var(--card)] text-[var(--card-foreground)] rounded-lg shadow-md flex flex-col justify-between overflow-hidden border border-[var(--border)]">
                                 <div>
                                     {item.images && item.images.length > 0 && (
                                         <div className="w-full h-48">
@@ -155,15 +155,15 @@ export default function Dashboard() {
                                         </div>
                                     )}
                                     <div className="p-4">
-                                        <h2 className="text-xl font-bold text-slate-900">{item.name}</h2>
-                                        <p className="text-slate-600 text-sm mt-1">{item.description}</p>
-                                        <p className="mt-4"><strong className="text-slate-800">Price:</strong> <span className="font-semibold text-indigo-600">${item.price}</span></p>
-                                        <p><strong className="text-slate-800">Quantity:</strong> {item.quantity}</p>
+                                        <h2 className="text-xl font-bold">{item.name}</h2>
+                                        <p className="text-sm mt-1 text-[var(--muted-foreground)]">{item.description}</p>
+                                        <p className="mt-4"><strong>Price:</strong> <span className="font-semibold text-[var(--primary)]">${item.price}</span></p>
+                                        <p><strong>Quantity:</strong> {item.quantity}</p>
                                         
                                         {/* ✨ NEW: Category tags */}
                                         <div className="mt-3 flex flex-wrap gap-2">
                                             {item.category.map(cat => (
-                                                <span key={cat} className="text-xs font-medium bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full">
+                                                <span key={cat} className="text-xs font-medium bg-[var(--muted)] text-[var(--muted-foreground)] px-2.5 py-1 rounded-full">
                                                     {cat}
                                                 </span>
                                             ))}
@@ -171,32 +171,34 @@ export default function Dashboard() {
                                     </div>
                                 </div>
 
-                                <div className="p-4 bg-slate-50 border-t border-slate-200 flex gap-3">
+                                <div className="p-4 bg-[var(--popover)] border-t border-[var(--border)] flex gap-3">
                                     <button
-                                        className="flex-1 bg-slate-200 text-slate-800 hover:bg-slate-300 font-semibold px-4 py-2 rounded-md transition-colors text-sm"
+                                        className="flex-1 bg-[var(--muted)] text-[var(--foreground)] hover:opacity-90 font-semibold px-4 py-2 rounded-md transition-colors text-sm"
                                         onClick={() => handleEdit(item.id)}
                                     >
                                         Edit
                                     </button>
                                     <button
-                                        className="flex-1 bg-red-100 text-red-700 hover:bg-red-200 font-semibold px-4 py-2 rounded-md transition-colors text-sm"
+                                        className="flex-1 bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)] hover:opacity-90 font-semibold px-4 py-2 rounded-md transition-colors text-sm"
                                         onClick={() => handleDelete(item.id)}
                                     >
                                         Delete
                                     </button>
                                 </div>
-                            </div>
+                            </motion.div>
                         ))}
-                    </div>
+                    </motion.div>
                 ) : (
-                    <div className="text-center py-16 bg-white rounded-lg shadow-sm">
-                        <p className="text-xl text-slate-500">No items match your filter criteria.</p>
+                    <div className="text-center py-16 bg-[var(--card)] text-[var(--card-foreground)] rounded-lg shadow-sm border border-[var(--border)]">
+                        <p className="text-xl text-[var(--muted-foreground)]">No items match your filter criteria.</p>
                     </div>
                 )}
 
 
                 <div className="mt-12 text-center">
-                    <Button variant="contained" size="large" onClick={() => router.push("/merchant/addItem")}>
+                    <Button variant="contained" size="large" onClick={() => router.push("/merchant/addItem")}
+                      style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}
+                    >
                         Add New Item
                     </Button>
                 </div>

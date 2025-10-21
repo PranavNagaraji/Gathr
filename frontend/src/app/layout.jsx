@@ -1,6 +1,7 @@
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import Navbar from "@/components/Navbar";
+import UIProviders from "@/components/ui/UIProviders";
 
 export const metadata = {
   title: "Gathr - Your Local ",
@@ -28,8 +29,10 @@ export default function RootLayout({ children }) {
             <link href="https://fonts.googleapis.com/css2?family=Yesteryear&display=swap" rel="stylesheet"/>
         </head>
         <body>
-          <Navbar />
-          {children}
+          <UIProviders>
+            <Navbar />
+            {children}
+          </UIProviders>
         </body>
       </html>
     </ClerkProvider>

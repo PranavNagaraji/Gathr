@@ -4,6 +4,8 @@ import { useUser, useAuth } from '@clerk/nextjs';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import DeliveryRouteMap from '../../../components/DeliveryRouteMap';
+import { toast } from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AssignedDeliveries() {
   const { user } = useUser();
@@ -78,38 +80,47 @@ export default function AssignedDeliveries() {
           'Content-Type': 'application/json'
         } }
         );
-        alert(res.data.message);
+        toast.success(res.data.message || 'Delivery completed');
         setOrders((prevOrders) => prevOrders.filter((order) => order.id !== orderId));
       } catch (error) {
         console.error("Error accepting order:", error);
+        toast.error('Failed to complete delivery');
       }
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 bg-[var(--background)] text-[var(--foreground)]">
       <h1 className="text-2xl font-bold mb-4">Assigned Deliveries</h1>
 
-      {orders.length === 0 && <p>No deliveries on the way.</p>}
+      {orders.length === 0 && <p className="text-[var(--muted-foreground)]">No deliveries on the way.</p>}
 
-      <div className="grid gap-4">
-        {orders.map((order) => (
-          <div
-            key={order.id}
-            className="border rounded-lg shadow p-3 cursor-pointer hover:bg-gray-50"
-            onClick={() => setSelectedOrder(order)}
-          >
-            <p>
-              <strong>Order ID:</strong> {order.id} | <strong>Status:</strong> {order.status}
-            </p>
-            <p>
-              <strong>Shop:</strong> {order.Shops.shop_name}
-            </p>
-            <p>
-              <strong>Delivery:</strong> {order.Addresses.title}
-            </p>
-          </div>
-        ))}
-      </div>
+      <motion.div className="grid gap-4" role="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <AnimatePresence>
+          {orders.map((order) => (
+            <motion.div
+              role="listitem"
+              key={order.id}
+              layout
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="border border-[var(--border)] rounded-lg shadow-sm p-3 cursor-pointer bg-[var(--card)] text-[var(--card-foreground)] hover:shadow-md transition-shadow"
+              onClick={() => setSelectedOrder(order)}
+            >
+              <p>
+                <strong>Order ID:</strong> {order.id} | <strong>Status:</strong> {order.status}
+              </p>
+              <p>
+                <strong>Shop:</strong> {order.Shops.shop_name}
+              </p>
+              <p>
+                <strong>Delivery:</strong> {order.Addresses.title}
+              </p>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </motion.div>
 
       {selectedOrder && carrierLocation && (
         <div className="mt-6">

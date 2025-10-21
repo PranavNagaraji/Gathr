@@ -74,7 +74,7 @@ const imageZoom = {
 /* ---------------------- 🏠 Hero Section ---------------------- */
 function HeroSection() {
   return (
-    <section className="relative flex items-center h-screen bg-[#F7F5F2] overflow-hidden">
+    <section className="relative flex items-center h-screen bg-[var(--background)] overflow-hidden">
       <div className="max-w-7xl mx-auto w-full px-4 lg:px-4 grid md:grid-cols-2 relative">
         {/* Left: Text */}
         <motion.div
@@ -86,15 +86,15 @@ function HeroSection() {
         >
           <h1
             style={{ fontFamily: "'Playfair Display', serif" }}
-            className="text-6xl lg:text-7xl font-bold text-[#1a1a1a] leading-[1.1]"
+            className="text-6xl lg:text-7xl font-bold text-[var(--foreground)] leading-[1.1]"
           >
             Empowering Local <br />
-            <span className="text-[#F15B3B]">Commerce</span>
+            <span className="text-[var(--primary)]">Commerce</span>
           </h1>
 
           <p
             style={{ fontFamily: "'Inter', sans-serif" }}
-            className="text-[#333] text-lg leading-relaxed max-w-md font-normal"
+            className="text-[var(--muted-foreground)] text-lg leading-relaxed max-w-md font-normal"
           >
             Gathr bridges customers, shopkeepers, and delivery heroes — creating a thriving local ecosystem built on
             trust, community, and genuine connection.
@@ -103,12 +103,12 @@ function HeroSection() {
           <motion.a
             whileHover={{
               scale: 1.07,
-              backgroundColor: '#111',
-              color: '#fff',
+              backgroundColor: 'var(--primary)',
+              color: 'var(--primary-foreground)',
               boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
             }}
             transition={{ type: 'spring', stiffness: 250 }}
-            className="inline-block px-10 py-4 rounded-full bg-[#F15B3B] text-white font-semibold text-lg tracking-wide transition-all duration-300"
+            className="inline-block px-10 py-4 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold text-lg tracking-wide transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
             href="#customers"
           >
             Get Started →
@@ -138,7 +138,7 @@ function HeroSection() {
 /* ---------------------- 👥 Customer Section ---------------------- */
 function CustomersSection() {
   return (
-    <section className="relative bg-[#faf6f2] py-28 overflow-hidden">
+    <section className="relative bg-[var(--card)] py-28 overflow-hidden text-[var(--card-foreground)]">
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 px-6 items-center">
         {/* ✨ UPDATED: Using the new 'imageZoom' variant */}
         <motion.div
@@ -162,21 +162,21 @@ function CustomersSection() {
           variants={fadeRise}
           className="space-y-6"
         >
-          <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-4xl md:text-5xl font-bold text-[#123626]">
+          <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-4xl md:text-5xl font-bold text-[var(--foreground)]">
             For Customers
           </h2>
-          <p className="text-[#444] text-lg leading-relaxed">
+          <p className="text-[var(--muted-foreground)] text-lg leading-relaxed">
             Discover nearby stores, artisans, and fresh local finds. Gathr connects you to what’s real — no algorithms,
             no mass production — just your community delivering what you love, faster and friendlier.
           </p>
           <motion.button
             whileHover={{
               scale: 1.07,
-              backgroundColor: COLORS.deepGreen,
-              color: '#fff',
+              backgroundColor: 'var(--primary)',
+              color: 'var(--primary-foreground)',
               boxShadow: '0 15px 30px rgba(18,54,38,0.25)',
             }}
-            className="px-6 py-3 border border-[#123626] rounded-full font-semibold text-[#123626] transition-all duration-300"
+            className="px-6 py-3 border border-[var(--border)] rounded-full font-semibold text-[var(--foreground)] transition-all duration-300"
           >
             Start Exploring
           </motion.button>
@@ -189,7 +189,7 @@ function CustomersSection() {
 /* ---------------------- 🏪 Shop Section ---------------------- */
 function ShopkeeperSection() {
   return (
-    <section className="relative py-28 overflow-hidden bg-[#123626] text-[#F4ECE6]">
+    <section className="relative py-28 overflow-hidden bg-[var(--foreground)] text-[var(--background)]">
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 px-6 items-center">
         <motion.div
           initial="hidden"
@@ -201,18 +201,18 @@ function ShopkeeperSection() {
           <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-4xl md:text-5xl font-bold">
             For Shopkeepers
           </h2>
-          <p className="text-lg leading-relaxed text-[#eae1dc]">
+          <p className="text-lg leading-relaxed opacity-80">
             Showcase your products and grow your store digitally while keeping your community close. From easy
             inventory management to real-time orders — Gathr helps local businesses thrive with style.
           </p>
           <motion.button
             whileHover={{
               scale: 1.07,
-              backgroundColor: COLORS.coral,
-              color: '#fff',
+              backgroundColor: 'var(--primary)',
+              color: 'var(--primary-foreground)',
               boxShadow: '0 10px 35px rgba(241,91,59,0.3)',
             }}
-            className="px-6 py-3 bg-[#fff] text-[#123626] rounded-full font-semibold transition-all duration-300"
+            className="px-6 py-3 bg-[var(--card)] text-[var(--card-foreground)] rounded-full font-semibold transition-all duration-300"
           >
             List Your Store
           </motion.button>
@@ -240,7 +240,7 @@ function ShopkeeperSection() {
 /* ---------------------- 🚴 Delivery Section ---------------------- */
 function DeliverySection() {
   return (
-    <section className="relative py-28 overflow-hidden bg-[#F4B89B]">
+    <section className="relative py-28 overflow-hidden bg-[var(--muted)]">
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 px-6 items-center">
         {/* ✨ UPDATED: Using the new 'imageZoom' variant */}
         <motion.div
@@ -264,21 +264,21 @@ function DeliverySection() {
           variants={fadeRise}
           className="space-y-6"
         >
-          <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-4xl md:text-5xl font-bold text-[#3C2F2F]">
+          <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-4xl md:text-5xl font-bold text-[var(--foreground)]">
             For Delivery Partners
           </h2>
-          <p className="text-lg leading-relaxed text-[#3C2F2F]">
+          <p className="text-lg leading-relaxed text-[var(--muted-foreground)]">
             Become the heartbeat of local commerce. With Gathr, you deliver more than products — you deliver community
             connection. Earn flexibly, move freely, and make every trip meaningful.
           </p>
           <motion.button
             whileHover={{
               scale: 1.07,
-              backgroundColor: '#fff',
-              color: COLORS.coral,
+              backgroundColor: 'var(--primary)',
+              color: 'var(--primary-foreground)',
               boxShadow: '0 12px 35px rgba(60,47,47,0.25)',
             }}
-            className="px-6 py-3 bg-[#3C2F2F] text-[#fff] rounded-full font-semibold transition-all duration-300"
+            className="px-6 py-3 bg-[var(--card)] text-[var(--card-foreground)] rounded-full font-semibold transition-all duration-300"
           >
             Join the Fleet
           </motion.button>
@@ -291,8 +291,8 @@ function DeliverySection() {
 /* ---------------------- ⚙️ Footer ---------------------- */
 function Footer() {
   return (
-    <footer className="py-10 bg-[#F4ECE6] text-center text-[#444] text-sm">
-      © {new Date().getFullYear()} Gathr — Empowering Local Commerce.
+    <footer className="py-10 bg-[var(--card)] text-center text-[var(--muted-foreground)] text-sm border-t border-[var(--border)]">
+      &copy; {new Date().getFullYear()} Gathr — Empowering Local Commerce.
     </footer>
   );
 }

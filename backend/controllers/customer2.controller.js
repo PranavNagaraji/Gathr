@@ -77,7 +77,7 @@ export const getComments = async (req, res) => {
 };
 
 export const deleteComment = async (req, res) => {
-  const { commentId, clerkId} = req.body;
+  const { commentId, clerkId } = req.body;
 
   const { data: user, error: userError } = await supabase
     .from('Users')
@@ -91,11 +91,11 @@ export const deleteComment = async (req, res) => {
   if (user.role !== 'customer') {
     return res.status(403).json({ message: "Unauthorized: Only logged in users can post comments" });
   }
-  const {data:commentUser, error:commentUserError} = await supabase.from("Comments").select("user_id").eq("id", commentId).single();
-  if(commentUserError)
-      return res.status(500).json({ message: "Failed to fetch the user of a comment", error: commentUserError.message });
+  const { data: commentUser, error: commentUserError } = await supabase.from("Comments").select("user_id").eq("id", commentId).single();
+  if (commentUserError)
+    return res.status(500).json({ message: "Failed to fetch the user of a comment", error: commentUserError.message });
   if (commentUser.user_id !== user.id) {
-    return res.status(403).json({commentUser:commentUser, userId:user.id, message: "Unauthorized: Only the user who posted the comment can delete it" });
+    return res.status(403).json({ commentUser: commentUser, userId: user.id, message: "Unauthorized: Only the user who posted the comment can delete it" });
   }
 
   const { error } = await supabase.from("Comments").delete().eq("id", commentId);
@@ -152,7 +152,7 @@ export const addAddress = async (req, res) => {
   if (user.role !== 'customer') {
     return res.status(403).json({ message: "Unauthorized: Only logged in users can get Addresses" });
   }
-  const { data, error } = await supabase.from("Addresses").insert({ user_id: user.id, address: address, title: title, description:desc, mobile_no: mobile, location:location }).select("*");
+  const { data, error } = await supabase.from("Addresses").insert({ user_id: user.id, address: address, title: title, description: desc, mobile_no: mobile, location: location }).select("*");
   if (error) {
     console.log("Error while adding address");
     return res.status(500).json({ message: "Failed to add address", error: error.message });
@@ -160,8 +160,8 @@ export const addAddress = async (req, res) => {
   return res.status(200).json({ address: data[0] });
 }
 
-export const deleteAddress=async (req, res)=>{
-  const {clerkId, addressId}=req.body;
+export const deleteAddress = async (req, res) => {
+  const { clerkId, addressId } = req.body;
   const { data: user, error: userError } = await supabase
     .from('Users')
     .select('id, role')
@@ -181,8 +181,8 @@ export const deleteAddress=async (req, res)=>{
   return res.status(200).json({ message: "Address deleted successfully" });
 }
 
-export const updateAddress=async (req, res)=>{
-  const {clerkId, addressId, address, title, desc, mobile, location}=req.body;
+export const updateAddress = async (req, res) => {
+  const { clerkId, addressId, address, title, desc, mobile, location } = req.body;
   const { data: user, error: userError } = await supabase
     .from('Users')
     .select('id, role')
@@ -194,7 +194,7 @@ export const updateAddress=async (req, res)=>{
   if (user.role !== 'customer') {
     return res.status(403).json({ message: "Unauthorized: Only logged in users can get Addresses" });
   }
-  const { error } = await supabase.from("Addresses").update({ user_id: user.id, address: address, title: title, description:desc, mobile_no: mobile, location:location}).eq("id", addressId);
+  const { error } = await supabase.from("Addresses").update({ user_id: user.id, address: address, title: title, description: desc, mobile_no: mobile, location: location }).eq("id", addressId);
   if (error) {
     console.log("Error while updating address");
     return res.status(500).json({ message: "Failed to update address", error: error.message });
@@ -202,10 +202,10 @@ export const updateAddress=async (req, res)=>{
   return res.status(200).json({ message: "Address updated successfully" });
 }
 
-export const getcarthistory = async (req,res) => {
+export const getcarthistory = async (req, res) => {
   const { clerkId } = req.params;
 
-  const {data: user, error: userError } = await supabase
+  const { data: user, error: userError } = await supabase
     .from('Users')
     .select('id, role')
     .eq('clerk_id', clerkId)
@@ -219,7 +219,7 @@ export const getcarthistory = async (req,res) => {
     return res.status(403).json({ message: "Unauthorized: Only logged in users can get cart history" });
   }
 
-  const { data: carts , error: cartsError } = await supabase.from('Orders ').select('*, Shops(*)').eq('customer_id', user.id).order('created_at', { ascending: false });
+  const { data: carts, error: cartsError } = await supabase.from('Orders ').select('*, Shops(*), Users:carrier_id(*)').eq('customer_id', user.id).order('created_at', { ascending: false });
 
   if (cartsError || !carts) {
     return res.status(404).json({ message: "Cart history not found" });
@@ -228,10 +228,10 @@ export const getcarthistory = async (req,res) => {
   return res.status(200).json({ carts });
 }
 
-export const getcartitems = async (req,res) => {
+export const getcartitems = async (req, res) => {
   const { clerkId, cartId } = req.body;
 
-  const {data: user, error: userError } = await supabase
+  const { data: user, error: userError } = await supabase
     .from('Users')
     .select('id, role')
     .eq('clerk_id', clerkId)
@@ -245,7 +245,7 @@ export const getcartitems = async (req,res) => {
     return res.status(403).json({ message: "Unauthorized: Only logged in users can get cart history" });
   }
 
-  const { data:items, error: itemsError } = await supabase.from('Cart_items').select('*, Items(*)').eq('cart_id', cartId);
+  const { data: items, error: itemsError } = await supabase.from('Cart_items').select('*, Items(*)').eq('cart_id', cartId);
 
   if (itemsError || !items) {
     return res.status(404).json({ message: "Cart history not found" });

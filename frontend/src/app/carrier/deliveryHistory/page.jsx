@@ -4,6 +4,7 @@ import { useUser, useAuth } from '@clerk/nextjs';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import OrderMapCard from '../../../components/OrdersMap';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Dashboard() {
   const { user } = useUser();
@@ -50,13 +51,13 @@ export default function Dashboard() {
 
 
   return (
-    <div className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Orders Dashboard</h1>
+    <div className="p-4 bg-[var(--background)] text-[var(--foreground)]">
+        <h1 className="text-2xl font-bold mb-4">Delivery History</h1>
 
-        <div className="grid gap-6">
+        <motion.div className="grid gap-6" role="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             {orders.length ? (
             orders.map((order) => (
-                <div key={order.id} className="border rounded-lg shadow p-3 flex flex-col md:flex-row gap-4">
+                <motion.div role="listitem" key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="border border-[var(--border)] rounded-lg shadow-sm p-3 bg-[var(--card)] text-[var(--card-foreground)] flex flex-col md:flex-row gap-4">
         {/* Left: Order & Details */}
         <div className="flex-1 space-y-1">
             <div className="flex justify-between items-center">
@@ -77,12 +78,12 @@ export default function Dashboard() {
             </div>
         </div>
 
-        </div>
+        </motion.div>
             ))
         ) : (
-            <p>No orders yet.</p>
+            <p className="text-[var(--muted-foreground)]">No orders yet.</p>
         )}
-        </div>
+        </motion.div>
     </div>
   );
 }

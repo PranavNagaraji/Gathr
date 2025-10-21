@@ -5,6 +5,7 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { Trash2, Plus, Minus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 const Cart = () => {
   const { user } = useUser();
@@ -79,10 +80,10 @@ const Cart = () => {
       const uniqueShopIds = [...new Set(shopIds.filter(Boolean))];
       setIsMixedShops(uniqueShopIds.length > 1);
 
-      alert("Item removed from cart");
+      toast.success("Item removed from cart");
     } catch (err) {
       console.error("Error deleting item:", err);
-      alert("Failed to delete item");
+      toast.error("Failed to delete item");
     } finally {
       setLoadingItem(null);
     }
@@ -122,10 +123,10 @@ const Cart = () => {
       const uniqueShopIds = [...new Set(shopIds.filter(Boolean))];
       setIsMixedShops(uniqueShopIds.length > 1);
 
-      alert("Quantity updated successfully");
+      toast.success("Quantity updated");
     } catch (err) {
       console.error("Error updating quantity:", err);
-      alert("Failed to update item");
+      toast.error("Failed to update item");
     } finally {
       setLoadingItem(null);
     }
@@ -134,111 +135,133 @@ const Cart = () => {
   const totalPrice = items.reduce((acc, item) => acc + item.Items?.price * item.quantity, 0);
 
   return (
-    <div className="px-6 md:px-16 py-10 max-w-5xl mx-auto bg-[#faf9f5] min-h-screen">
+    <div className="px-6 md:px-10 lg:px-12 py-10 max-w-6xl mx-auto bg-[var(--background)] text-[var(--foreground)] min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between mb-10">
-        <h1 className="text-5xl font-extrabold tracking-tight text-black">YOUR</h1>
-        <h1 className="text-5xl font-extrabold tracking-tight text-black">CART</h1>
+      <div className="flex items-baseline justify-between mb-8">
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Your Cart</h1>
+        <span className="text-sm text-[var(--muted-foreground)]">{items.length} items</span>
       </div>
 
-      <hr className="border-black/20 mb-10" />
-
       {items.length === 0 ? (
-        <p className="text-gray-600 text-lg">No items in your cart yet.</p>
+        <p className="text-[var(--muted-foreground)] text-lg">No items in your cart yet.</p>
       ) : (
-        <>
-          {isMixedShops && (
-            <div className="bg-red-50 text-red-700 font-semibold p-4 rounded-lg mb-6 border border-red-200">
-              ⚠️ Items must be from the same shop. Remove others to proceed.
-            </div>
-          )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          {/* Items list */}
+          <div className="lg:col-span-2">
+            {isMixedShops && (
+              <div className="bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)] font-semibold p-4 rounded-lg mb-6 border border-[var(--destructive)]/30">
+                Items must be from the same shop. Remove others to proceed.
+              </div>
+            )}
 
-          <ul className="space-y-6">
-            {items.map((item) => (
-              <li
-                key={item.item_id}
-                className="flex flex-col sm:flex-row justify-between items-center bg-white rounded-2xl p-5 shadow-md border border-gray-100 hover:shadow-lg transition"
-              >
-                {/* Left section */}
-                <div className="flex items-center gap-5 w-full sm:w-auto">
-                  <img
-                    src={item.Items?.images?.[0]?.url || "/placeholder.png"}
-                    alt={item.Items?.name}
-                    className="w-24 h-24 object-cover rounded-xl border"
-                  />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-lg text-gray-900">
-                        {item.Items?.name || "Unknown Item"}
-                      </h3>
-                      <div className="relative group inline-block">
-                        <span className="text-gray-400 text-sm cursor-pointer hover:text-gray-600">
-                          ℹ️
-                        </span>
-                        <div className="absolute left-1 -translate-x-1/2 w-max max-w-[150px] bg-gray-800 text-white text-xs rounded-md px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                          {`${item.Items?.description?.slice(0, 100)}...` || item.Items?.name}
+            <ul className="space-y-4" role="list" aria-label="Cart items">
+              {items.map((item) => (
+                <li
+                  key={item.item_id}
+                  role="listitem"
+                  className="flex flex-col sm:flex-row justify-between items-center bg-[var(--card)] rounded-xl p-4 shadow-sm border border-[var(--border)] hover:shadow-md transition-shadow"
+                >
+                  {/* Left section */}
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <img
+                      src={item.Items?.images?.[0]?.url || "/placeholder.png"}
+                      alt={item.Items?.name}
+                      className="w-20 h-20 object-cover rounded-lg border border-[var(--border)]"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-base">
+                          {item.Items?.name || "Unknown Item"}
+                        </h3>
+                        <div className="relative group inline-block">
+                          <span className="text-[var(--muted-foreground)] text-sm cursor-pointer">ℹ️</span>
+                          <div className="absolute left-1 -translate-x-1/2 w-max max-w-[200px] bg-[var(--popover)] text-[var(--popover-foreground)] text-xs rounded-md px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 border border-[var(--border)]">
+                            {`${item.Items?.description?.slice(0, 120)}...` || item.Items?.name}
+                          </div>
                         </div>
                       </div>
+                      <p className="text-sm text-[var(--muted-foreground)] mt-1">
+                        {item.Items?.priceType === "monthly"
+                          ? `$${item.Items?.price}/mo`
+                          : `$${item.Items?.price?.toLocaleString()}`}
+                      </p>
                     </div>
-                    <p className="text-gray-700 text-base mt-1">
-                      {item.Items?.priceType === "monthly"
-                        ? `$${item.Items?.price}/mo`
-                        : `$${item.Items?.price?.toLocaleString()}`}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Quantity and Actions */}
-                <div className="flex items-center gap-4 mt-4 sm:mt-0">
-                  <div className="flex items-center border rounded-xl overflow-hidden">
-                    <button
-                      onClick={() => handleQuantityChange(item.item_id, -1)}
-                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 transition"
-                    >
-                      <Minus size={16} className="text-gray-700" />
-                    </button>
-                    <span className="px-4 font-medium text-gray-800">{item.quantity}</span>
-                    <button
-                      onClick={() => handleQuantityChange(item.item_id, 1)}
-                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 transition"
-                    >
-                      <Plus size={16} className="text-gray-700" />
-                    </button>
                   </div>
 
-                  <button
-                    onClick={() => handleSubmitItem(item)}
-                    disabled={loadingItem === item.item_id}
-                    className="px-4 py-2 rounded-xl text-white bg-black hover:bg-gray-900 text-sm font-semibold transition"
-                  >
-                    {loadingItem === item.item_id ? "Updating..." : "Update"}
-                  </button>
+                  {/* Quantity and Actions */}
+                  <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                    <div className="flex items-center border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--muted)]/20">
+                      <button
+                        onClick={() => handleQuantityChange(item.item_id, -1)}
+                        className="px-3 py-2 hover:bg-[var(--muted)]/50 transition-colors"
+                        aria-label="Decrease quantity"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="px-4 font-medium">{item.quantity}</span>
+                      <button
+                        onClick={() => handleQuantityChange(item.item_id, 1)}
+                        className="px-3 py-2 hover:bg-[var(--muted)]/50 transition-colors"
+                        aria-label="Increase quantity"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
 
-                  <button
-                    onClick={() => handleDeleteItem(item.item_id)}
-                    disabled={loadingItem === item.item_id}
-                    className="text-gray-400 hover:text-red-600 transition"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                    <button
+                      onClick={() => handleSubmitItem(item)}
+                      disabled={loadingItem === item.item_id}
+                      className="px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] text-sm font-semibold transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                    >
+                      {loadingItem === item.item_id ? "Updating..." : "Update"}
+                    </button>
 
-          {/* Checkout Section */}
-          <div className="mt-12 border-t pt-6 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-2xl font-bold text-gray-900">
-              Total: ${totalPrice.toLocaleString()}
-            </p>
+                    <button
+                      onClick={() => handleDeleteItem(item.item_id)}
+                      disabled={loadingItem === item.item_id}
+                      className="text-[var(--muted-foreground)] hover:text-[var(--destructive)] transition-colors"
+                      aria-label="Remove item"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Summary sidebar */}
+          <aside className="lg:sticky lg:top-20 lg:h-fit bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+            <h2 className="text-lg font-semibold">Order Summary</h2>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-[var(--muted-foreground)]">Total</span>
+              <span className="text-xl font-bold">${totalPrice.toLocaleString()}</span>
+            </div>
             <button
               onClick={() => router.push("/customer/checkout")}
-              className="mt-4 md:mt-0 px-8 py-3 bg-black text-white rounded-2xl font-semibold hover:bg-gray-900 transition"
+              className="w-full mt-5 px-6 py-3 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg font-semibold hover:opacity-90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+              aria-label="Proceed to checkout"
             >
               Proceed to Checkout
             </button>
+          </aside>
+        </div>
+      )}
+
+      {/* Mobile bottom bar */}
+      {items.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 lg:hidden bg-[var(--card)]/95 backdrop-blur border-t border-[var(--border)] p-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-[var(--muted-foreground)]">Total</p>
+            <p className="text-lg font-bold">${totalPrice.toLocaleString()}</p>
           </div>
-        </>
+          <button
+            onClick={() => router.push("/customer/checkout")}
+            className="px-5 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold"
+          >
+            Checkout
+          </button>
+        </div>
       )}
     </div>
   );
