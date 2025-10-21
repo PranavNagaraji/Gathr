@@ -12,21 +12,21 @@ const COLORS = {
   deepGreen: '#123626',
 };
 
-// This component is not used to match the video but is kept for your reference.
 function CursorGlow() {
   const cursor = useRef(null);
-
   useEffect(() => {
     const move = (e) => {
       const { clientX, clientY } = e;
       if (cursor.current) {
-        cursor.current.animate({ left: `${clientX}px`, top: `${clientY}px` }, { duration: 600, fill: 'forwards' });
+        cursor.current.animate(
+          { left: `${clientX}px`, top: `${clientY}px` },
+          { duration: 600, fill: 'forwards' }
+        );
       }
     };
     window.addEventListener('mousemove', move);
     return () => window.removeEventListener('mousemove', move);
   }, []);
-
   return (
     <div
       ref={cursor}
@@ -36,57 +36,32 @@ function CursorGlow() {
   );
 }
 
-/* ---------------------- 🎞️ Scroll Animation Variants ---------------------- */
-// Variant for parent containers to stagger child animations
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.2,
-    },
-  },
-};
-
-// Variant for text elements to fade and rise into view
+/* ---------------------- ✨ Framer Variants ---------------------- */
 const fadeRise = {
   hidden: { opacity: 0, y: 60 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.9, ease: [0.25, 0.1, 0.25, 1] },
-  },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.9, ease: [0.25, 0.1, 0.25, 1] } },
 };
-
-// ✨ NEW: Variant for section images to fade in while zooming out slightly
 const imageZoom = {
-    hidden: { opacity: 0, scale: 1.1 },
-    visible: {
-        opacity: 1,
-        scale: 1,
-        transition: {
-            duration: 0.9,
-            ease: [0.25, 0.1, 0.25, 1]
-        }
-    }
-}
+  hidden: { opacity: 0, scale: 1.1 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.9, ease: [0.25, 0.1, 0.25, 1] } },
+};
 
 /* ---------------------- 🏠 Hero Section ---------------------- */
 function HeroSection() {
   return (
-    <section className="relative flex items-center h-screen bg-[var(--background)] overflow-hidden">
-      <div className="max-w-7xl mx-auto w-full px-4 lg:px-4 grid md:grid-cols-2 relative">
+    <section className="relative flex flex-col md:flex-row items-center h-auto md:h-screen bg-[var(--background)] overflow-hidden py-20 md:py-0">
+      <div className="max-w-7xl mx-auto w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-2 gap-10 md:gap-16 items-center">
         {/* Left: Text */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
           viewport={{ once: true }}
-          className="space-y-8"
+          className="space-y-6 text-center md:text-left"
         >
           <h1
             style={{ fontFamily: "'Playfair Display', serif" }}
-            className="text-6xl lg:text-7xl font-bold text-[var(--foreground)] leading-[1.1]"
+            className="text-4xl sm:text-5xl lg:text-7xl font-bold text-[var(--foreground)] leading-tight"
           >
             Empowering Local <br />
             <span className="text-[var(--primary)]">Commerce</span>
@@ -94,7 +69,7 @@ function HeroSection() {
 
           <p
             style={{ fontFamily: "'Inter', sans-serif" }}
-            className="text-[var(--muted-foreground)] text-lg leading-relaxed max-w-md font-normal"
+            className="text-[var(--muted-foreground)] text-base sm:text-lg leading-relaxed max-w-md mx-auto md:mx-0"
           >
             Gathr bridges customers, shopkeepers, and delivery heroes — creating a thriving local ecosystem built on
             trust, community, and genuine connection.
@@ -108,7 +83,7 @@ function HeroSection() {
               boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
             }}
             transition={{ type: 'spring', stiffness: 250 }}
-            className="inline-block px-10 py-4 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold text-lg tracking-wide transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            className="inline-block px-8 sm:px-10 py-3 sm:py-4 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold text-base sm:text-lg tracking-wide transition-all duration-300"
             href="#customers"
           >
             Get Started →
@@ -116,9 +91,8 @@ function HeroSection() {
         </motion.div>
 
         {/* Right: Image */}
-        {/* ✨ UPDATED: Animation is now directly on the image for the pan/zoom effect */}
-        <div className="flex justify-end">
-          <div className="relative w-[95%] md:w-[90%] lg:w-[85%] rounded-[2rem] overflow-hidden shadow-xl group">
+        <div className="flex justify-center md:justify-end">
+          <div className="relative w-full max-w-md md:max-w-lg lg:max-w-xl rounded-[2rem] overflow-hidden shadow-xl group">
             <motion.img
               initial={{ opacity: 0, scale: 1.2, y: -60 }}
               whileInView={{ opacity: 1, scale: 1, y: 0 }}
@@ -126,7 +100,7 @@ function HeroSection() {
               viewport={{ once: true }}
               src="/hero_image.jpeg"
               alt="local community market"
-              className="w-full h-[75vh] object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-out rounded-[2rem]"
+              className="w-full h-[50vh] sm:h-[65vh] md:h-[75vh] object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-out rounded-[2rem]"
             />
           </div>
         </div>
@@ -138,20 +112,19 @@ function HeroSection() {
 /* ---------------------- 👥 Customer Section ---------------------- */
 function CustomersSection() {
   return (
-    <section className="relative bg-[var(--card)] py-28 overflow-hidden text-[var(--card-foreground)]">
-      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 px-6 items-center">
-        {/* ✨ UPDATED: Using the new 'imageZoom' variant */}
+    <section className="relative bg-[var(--card)] py-20 sm:py-24 md:py-28 overflow-hidden text-[var(--card-foreground)]">
+      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 md:gap-16 px-6 sm:px-8 items-center">
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.4 }}
           variants={imageZoom}
-          className="rounded-3xl shadow-xl overflow-hidden group"
+          className="rounded-3xl shadow-xl overflow-hidden group order-1 md:order-none"
         >
           <img
             src="/customer.jpeg"
             alt="happy customers"
-            className="w-full h-[400px] object-cover transform group-hover:scale-105 transition-transform duration-700"
+            className="w-full h-[300px] sm:h-[400px] object-cover transform group-hover:scale-105 transition-transform duration-700"
           />
         </motion.div>
 
@@ -160,12 +133,12 @@ function CustomersSection() {
           whileInView="visible"
           viewport={{ once: true }}
           variants={fadeRise}
-          className="space-y-6"
+          className="space-y-5 text-center md:text-left"
         >
-          <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-4xl md:text-5xl font-bold text-[var(--foreground)]">
+          <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-3xl sm:text-4xl md:text-5xl font-bold">
             For Customers
           </h2>
-          <p className="text-[var(--muted-foreground)] text-lg leading-relaxed">
+          <p className="text-[var(--muted-foreground)] text-base sm:text-lg leading-relaxed">
             Discover nearby stores, artisans, and fresh local finds. Gathr connects you to what’s real — no algorithms,
             no mass production — just your community delivering what you love, faster and friendlier.
           </p>
@@ -176,7 +149,7 @@ function CustomersSection() {
               color: 'var(--primary-foreground)',
               boxShadow: '0 15px 30px rgba(18,54,38,0.25)',
             }}
-            className="px-6 py-3 border border-[var(--border)] rounded-full font-semibold text-[var(--foreground)] transition-all duration-300"
+            className="px-5 sm:px-6 py-2.5 sm:py-3 border border-[var(--border)] rounded-full font-semibold text-[var(--foreground)] transition-all duration-300"
           >
             Start Exploring
           </motion.button>
@@ -186,22 +159,22 @@ function CustomersSection() {
   );
 }
 
-/* ---------------------- 🏪 Shop Section ---------------------- */
+/* ---------------------- 🏪 Shopkeeper Section ---------------------- */
 function ShopkeeperSection() {
   return (
-    <section className="relative py-28 overflow-hidden bg-[var(--foreground)] text-[var(--background)]">
-      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 px-6 items-center">
+    <section className="relative py-20 sm:py-24 md:py-28 overflow-hidden bg-[var(--foreground)] text-[var(--background)]">
+      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 md:gap-16 px-6 sm:px-8 items-center">
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
           variants={fadeRise}
-          className="space-y-6"
+          className="space-y-5 text-center md:text-left"
         >
-          <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-4xl md:text-5xl font-bold">
+          <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-3xl sm:text-4xl md:text-5xl font-bold">
             For Shopkeepers
           </h2>
-          <p className="text-lg leading-relaxed opacity-80">
+          <p className="text-base sm:text-lg leading-relaxed opacity-80">
             Showcase your products and grow your store digitally while keeping your community close. From easy
             inventory management to real-time orders — Gathr helps local businesses thrive with style.
           </p>
@@ -212,13 +185,12 @@ function ShopkeeperSection() {
               color: 'var(--primary-foreground)',
               boxShadow: '0 10px 35px rgba(241,91,59,0.3)',
             }}
-            className="px-6 py-3 bg-[var(--card)] text-[var(--card-foreground)] rounded-full font-semibold transition-all duration-300"
+            className="px-5 sm:px-6 py-2.5 sm:py-3 bg-[var(--card)] text-[var(--card-foreground)] rounded-full font-semibold transition-all duration-300"
           >
             List Your Store
           </motion.button>
         </motion.div>
 
-        {/* ✨ UPDATED: Using the new 'imageZoom' variant */}
         <motion.div
           initial="hidden"
           whileInView="visible"
@@ -229,7 +201,7 @@ function ShopkeeperSection() {
           <img
             src="/item_image.jpeg"
             alt="local shop items"
-            className="w-full h-[400px] object-cover transform group-hover:scale-105 transition-transform duration-700"
+            className="w-full h-[300px] sm:h-[400px] object-cover transform group-hover:scale-105 transition-transform duration-700"
           />
         </motion.div>
       </div>
@@ -240,20 +212,19 @@ function ShopkeeperSection() {
 /* ---------------------- 🚴 Delivery Section ---------------------- */
 function DeliverySection() {
   return (
-    <section className="relative py-28 overflow-hidden bg-[var(--muted)]">
-      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 px-6 items-center">
-        {/* ✨ UPDATED: Using the new 'imageZoom' variant */}
+    <section className="relative py-20 sm:py-24 md:py-28 overflow-hidden bg-[var(--muted)]">
+      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 md:gap-16 px-6 sm:px-8 items-center">
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.4 }}
           variants={imageZoom}
-          className="rounded-3xl overflow-hidden shadow-2xl group"
+          className="rounded-3xl overflow-hidden shadow-2xl group order-1 md:order-none"
         >
           <img
             src="/delivery_guy.jpeg"
             alt="delivery partner"
-            className="w-full h-[400px] object-cover transform group-hover:scale-105 transition-transform duration-700"
+            className="w-full h-[300px] sm:h-[400px] object-cover transform group-hover:scale-105 transition-transform duration-700"
           />
         </motion.div>
 
@@ -262,12 +233,12 @@ function DeliverySection() {
           whileInView="visible"
           viewport={{ once: true }}
           variants={fadeRise}
-          className="space-y-6"
+          className="space-y-5 text-center md:text-left"
         >
-          <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-4xl md:text-5xl font-bold text-[var(--foreground)]">
+          <h2 style={{ fontFamily: "'Playfair Display', serif" }} className="text-3xl sm:text-4xl md:text-5xl font-bold text-[var(--foreground)]">
             For Delivery Partners
           </h2>
-          <p className="text-lg leading-relaxed text-[var(--muted-foreground)]">
+          <p className="text-base sm:text-lg leading-relaxed text-[var(--muted-foreground)]">
             Become the heartbeat of local commerce. With Gathr, you deliver more than products — you deliver community
             connection. Earn flexibly, move freely, and make every trip meaningful.
           </p>
@@ -278,7 +249,7 @@ function DeliverySection() {
               color: 'var(--primary-foreground)',
               boxShadow: '0 12px 35px rgba(60,47,47,0.25)',
             }}
-            className="px-6 py-3 bg-[var(--card)] text-[var(--card-foreground)] rounded-full font-semibold transition-all duration-300"
+            className="px-5 sm:px-6 py-2.5 sm:py-3 bg-[var(--card)] text-[var(--card-foreground)] rounded-full font-semibold transition-all duration-300"
           >
             Join the Fleet
           </motion.button>
@@ -291,13 +262,13 @@ function DeliverySection() {
 /* ---------------------- ⚙️ Footer ---------------------- */
 function Footer() {
   return (
-    <footer className="py-10 bg-[var(--card)] text-center text-[var(--muted-foreground)] text-sm border-t border-[var(--border)]">
+    <footer className="py-8 sm:py-10 bg-[var(--card)] text-center text-[var(--muted-foreground)] text-sm border-t border-[var(--border)]">
       &copy; {new Date().getFullYear()} Gathr — Empowering Local Commerce.
     </footer>
   );
 }
 
-/* ---------------------- 🚀 Export Page ---------------------- */
+/* ---------------------- 🚀 Export ---------------------- */
 export default function LandingPage() {
   return (
     <div className="min-h-screen antialiased relative" style={{ fontFamily: "'Inter', sans-serif" }}>
