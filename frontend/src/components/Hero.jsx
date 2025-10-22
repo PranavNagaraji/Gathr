@@ -49,7 +49,7 @@ const imageZoom = {
 /* ---------------------- 🏠 Hero Section ---------------------- */
 function HeroSection() {
   return (
-    <section className="relative flex flex-col md:flex-row items-center h-auto md:h-screen bg-[var(--background)] overflow-hidden py-20 md:py-0">
+    <section className="relative flex flex-col md:flex-row items-center md:items-start h-auto md:min-h-[85vh] bg-[var(--background)] overflow-hidden pt-14 md:pt-8 pb-12 md:pb-0">
       <div className="max-w-7xl mx-auto w-full px-6 sm:px-8 md:px-12 grid md:grid-cols-2 gap-10 md:gap-16 items-center">
         {/* Left: Text */}
         <motion.div
@@ -78,16 +78,27 @@ function HeroSection() {
           <motion.a
             whileHover={{
               scale: 1.07,
-              backgroundColor: 'var(--primary)',
-              color: 'var(--primary-foreground)',
               boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
             }}
             transition={{ type: 'spring', stiffness: 250 }}
-            className="inline-block px-8 sm:px-10 py-3 sm:py-4 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold text-base sm:text-lg tracking-wide transition-all duration-300"
+            className="group relative inline-block px-8 sm:px-10 py-3 sm:py-4 rounded-full 
+                      bg-[var(--primary)] text-[var(--primary-foreground)] 
+                      font-semibold text-base sm:text-lg tracking-wide 
+                      overflow-hidden transition-all duration-300"
             href="#customers"
           >
-            Get Started →
+            {/* Hover Overlay (Light & Dark Adaptive) */}
+            <span
+              className="absolute inset-0 -translate-x-full group-hover:translate-x-0 
+                        transition-transform duration-500 ease-out 
+                        bg-[#7A87A6]
+                        dark:from-gray-700/40 dark:to-gray-900/40
+                        backdrop-blur-[1px]"
+            ></span>
+
+            <span className="relative z-10">Get Started →</span>
           </motion.a>
+
         </motion.div>
 
         {/* Right: Image */}
@@ -100,7 +111,7 @@ function HeroSection() {
               viewport={{ once: true }}
               src="/hero_image.jpeg"
               alt="local community market"
-              className="w-full h-[50vh] sm:h-[65vh] md:h-[75vh] object-cover object-center transform group-hover:scale-105 transition-transform duration-700 ease-out rounded-[2rem]"
+              className="w-full h-[50vh] sm:h-[65vh] md:h-[75vh] object-cover object-center transform  transition-transform duration-700 ease-out rounded-[2rem]"
             />
           </div>
         </div>
@@ -124,7 +135,7 @@ function CustomersSection() {
           <img
             src="/customer.jpeg"
             alt="happy customers"
-            className="w-full h-[300px] sm:h-[400px] object-cover transform group-hover:scale-105 transition-transform duration-700"
+            className="w-full h-[300px] sm:h-[400px] object-cover transform  transition-transform duration-700"
           />
         </motion.div>
 
@@ -143,15 +154,11 @@ function CustomersSection() {
             no mass production — just your community delivering what you love, faster and friendlier.
           </p>
           <motion.button
-            whileHover={{
-              scale: 1.07,
-              backgroundColor: 'var(--primary)',
-              color: 'var(--primary-foreground)',
-              boxShadow: '0 15px 30px rgba(18,54,38,0.25)',
-            }}
-            className="px-5 sm:px-6 py-2.5 sm:py-3 border border-[var(--border)] rounded-full font-semibold text-[var(--foreground)] transition-all duration-300"
+            whileHover={{ scale: 1.07 }}
+            className="group relative px-5 sm:px-6 py-2.5 sm:py-3 border border-[var(--border)] rounded-full font-semibold text-[var(--foreground)] transition-all duration-300 overflow-hidden"
           >
-            Start Exploring
+            <span className="absolute inset-0 -translate-x-full group-hover:translate-x-0 bg-[var(--primary)] transition-transform duration-500 ease-out"></span>
+            <span className="relative z-10 group-hover:text-[var(--primary-foreground)] transition-colors">Start Exploring</span>
           </motion.button>
         </motion.div>
       </div>
@@ -179,15 +186,11 @@ function ShopkeeperSection() {
             inventory management to real-time orders — Gathr helps local businesses thrive with style.
           </p>
           <motion.button
-            whileHover={{
-              scale: 1.07,
-              backgroundColor: 'var(--primary)',
-              color: 'var(--primary-foreground)',
-              boxShadow: '0 10px 35px rgba(241,91,59,0.3)',
-            }}
-            className="px-5 sm:px-6 py-2.5 sm:py-3 bg-[var(--card)] text-[var(--card-foreground)] rounded-full font-semibold transition-all duration-300"
+            whileHover={{ scale: 1.07 }}
+            className="group relative px-5 sm:px-6 py-2.5 sm:py-3 bg-[var(--card)] text-[var(--card-foreground)] rounded-full font-semibold transition-all duration-300 overflow-hidden"
           >
-            List Your Store
+            <span className="absolute inset-0 -translate-x-full group-hover:translate-x-0 bg-[var(--primary)] transition-transform duration-500 ease-out"></span>
+            <span className="relative z-10 group-hover:text-[var(--primary-foreground)] transition-colors">List Your Store</span>
           </motion.button>
         </motion.div>
 
@@ -201,7 +204,7 @@ function ShopkeeperSection() {
           <img
             src="/item_image.jpeg"
             alt="local shop items"
-            className="w-full h-[300px] sm:h-[400px] object-cover transform group-hover:scale-105 transition-transform duration-700"
+            className="w-full h-[300px] sm:h-[400px] object-cover transform transition-transform duration-700"
           />
         </motion.div>
       </div>
@@ -224,7 +227,7 @@ function DeliverySection() {
           <img
             src="/delivery_guy.jpeg"
             alt="delivery partner"
-            className="w-full h-[300px] sm:h-[400px] object-cover transform group-hover:scale-105 transition-transform duration-700"
+            className="w-full h-[300px] sm:h-[400px] object-cover transform  transition-transform duration-700"
           />
         </motion.div>
 
@@ -243,15 +246,11 @@ function DeliverySection() {
             connection. Earn flexibly, move freely, and make every trip meaningful.
           </p>
           <motion.button
-            whileHover={{
-              scale: 1.07,
-              backgroundColor: 'var(--primary)',
-              color: 'var(--primary-foreground)',
-              boxShadow: '0 12px 35px rgba(60,47,47,0.25)',
-            }}
-            className="px-5 sm:px-6 py-2.5 sm:py-3 bg-[var(--card)] text-[var(--card-foreground)] rounded-full font-semibold transition-all duration-300"
+            whileHover={{ scale: 1.07 }}
+            className="group relative px-5 sm:px-6 py-2.5 sm:py-3 bg-[var(--card)] text-[var(--card-foreground)] rounded-full font-semibold transition-all duration-300 overflow-hidden"
           >
-            Join the Fleet
+            <span className="absolute inset-0 -translate-x-full group-hover:translate-x-0 bg-[var(--primary)] transition-transform duration-500 ease-out"></span>
+            <span className="relative z-10 group-hover:text-[var(--primary-foreground)] transition-colors">Join the Fleet</span>
           </motion.button>
         </motion.div>
       </div>

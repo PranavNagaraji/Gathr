@@ -135,7 +135,7 @@ export default function Navbar() {
           </div>
 
           {/* Right Side Profile / Join */}
-          <div className="hidden md:flex items-center" ref={menuRef}>
+          <div className="hidden md:flex items-center gap-3" ref={menuRef}>
             {isSignedIn ? (
               <div className="relative">
                 <motion.button
@@ -143,11 +143,13 @@ export default function Navbar() {
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   aria-haspopup="menu"
                   aria-expanded={isProfileOpen}
+                  title={user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || "Account"}
+                  className="pt-2"
                 >
                   <img
                     src={profileImage}
                     alt="User"
-                    className="w-9 h-9 rounded-full border-2 border-[color:var(--border)] hover:border-[color:var(--primary)] transition-all"
+                    className="w-9 h-9 rounded-full border-2 border-[color:var(--border)] hover:border-[color:var(--primary)] transition-all object-cover"
                   />
                 </motion.button>
 
@@ -158,17 +160,17 @@ export default function Navbar() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.25 }}
-                      className="absolute right-0 mt-3 w-48 bg-[var(--popover)] text-[var(--popover-foreground)] rounded-xl shadow-lg border border-[var(--border)] overflow-hidden z-50"
+                      className="absolute right-0 mt-3 w-56 bg-[var(--popover)] text-[var(--popover-foreground)] rounded-xl shadow-lg border border-[var(--border)] overflow-hidden z-50"
                     >
-                      <a href="/profile" className="block px-4 py-2 text-sm hover:bg-[var(--accent)]/40">
-                        Profile
-                      </a>
-                      <a href="/settings" className="block px-4 py-2 text-sm hover:bg-[var(--accent)]/40">
-                        Settings
-                      </a>
+                      <div className="px-4 py-3 border-b border-[var(--border)]">
+                        <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
+                        {user?.primaryEmailAddress?.emailAddress && (
+                          <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
+                        )}
+                      </div>
                       <SignOutButton>
-                        <button className="w-full text-left px-4 py-2 text-sm text-[var(--primary)] hover:bg-[var(--accent)]/40 font-medium">
-                          Sign Out
+                        <button className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--accent)]/40">
+                          Sign out
                         </button>
                       </SignOutButton>
                     </motion.div>

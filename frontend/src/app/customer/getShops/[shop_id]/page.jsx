@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import ChatbotWidget from "../../../../components/ChatbotWidget.jsx";
 
 export default function ShopItems() {
   const { user } = useUser();
@@ -63,23 +64,13 @@ export default function ShopItems() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAEDE7] text-[#0B132B] px-6 sm:px-10 lg:px-20 py-24 relative" style={{ paddingTop: 92 }}>
-      {/* Animated shapes */}
-      <motion.div className="absolute top-10 left-10 w-24 h-24 bg-[#ff3b3b] rounded-full mix-blend-multiply"
-        animate={{ y: [0, 40, 0], scale: [1, 1.05, 1] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div className="absolute bottom-10 right-16 w-28 h-28 bg-[#b4ff00] rounded-[2rem] mix-blend-multiply"
-        animate={{ x: [0, -30, 0], rotate: [0, 10, 0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-      />
-
+  <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20 relative">
       {/* Header */}
       <div className="max-w-5xl mx-auto text-center mb-10">
-        <h1 className="font-extrabold text-4xl sm:text-5xl md:text-6xl leading-tight tracking-tight text-[#0B132B]">
+        <h1 className="font-extrabold text-4xl sm:text-5xl md:text-6xl leading-tight tracking-tight text-[var(--foreground)]">
           Items in This Shop
         </h1>
-        <p className="mt-4 text-[#23323A] text-base sm:text-lg max-w-2xl mx-auto">
+        <p className="mt-4 text-[var(--muted-foreground)] text-base sm:text-lg max-w-2xl mx-auto">
           Browse and find the perfect items from this store.
         </p>
       </div>
@@ -95,7 +86,7 @@ export default function ShopItems() {
               placeholder="Search items..."
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              className="w-full px-5 py-3 bg-[#1C1C1C] text-white border border-[#EDE0D8] shadow-sm placeholder:text-[#9A8F89] focus:outline-none focus:ring-2 focus:ring-[#F85B57]/30 transition-transform duration-300"
+              className="w-full px-5 py-3 bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-sm placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/30 transition-transform duration-300 rounded-lg"
               style={{ transform: focused ? "scale(1.05)" : "scale(1)" }}
             />
           </div>
@@ -106,11 +97,11 @@ export default function ShopItems() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               onFocus={() => setFocused2(true)}
               onBlur={() => setFocused2(false)}
-              className="w-full px-4 py-3 bg-[#1C1C1C] text-white border border-[#EDE0D8] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#F85B57]/30 transition-transform duration-300"
+              className="w-full px-4 py-3 bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/30 transition-transform duration-300 rounded-lg"
               style={{ transform: focused2 ? "scale(1.05)" : "scale(1)" }}
             >
               {categories.map((cat, idx) => (
-                <option key={idx} value={cat} className="hover:bg-[#EDE0D8] hover:text-black">
+                <option key={idx} value={cat} className="hover:bg-[var(--muted)] hover:text-[var(--foreground)]">
                   {cat}
                 </option>
               ))}
@@ -125,39 +116,53 @@ export default function ShopItems() {
           <AnimatePresence>
             {filteredItems.length > 0 ? (
               filteredItems.map((item, idx) => (
-                <motion.div key={item.id} variants={cardVariants} initial="hidden" animate="show" whileHover="hover" className="relative bg-[#1C1C1C] text-white rounded-2xl shadow-md overflow-hidden border border-[#EDE0D8]/40">
+                <motion.div
+                  key={item.id}
+                  variants={cardVariants}
+                  initial="hidden"
+                  animate="show"
+                  whileHover="hover"
+                  delay={idx * 0.1}
+                  className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-xl shadow-md overflow-hidden border border-[var(--border)]"
+                >
                   <Link href={`/customer/getShops/${shop_id}/item/${item.id}`} className="block">
-                    <motion.div whileTap={{ scale: 0.99 }} className="rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition">
-                      {/* Item image */}
-                      <div className="h-44 md:h-48 bg-gradient-to-b from-[#F7F3F1] to-white overflow-hidden">
-                        <img src={item.images?.[0]?.url || "/placeholder.png"} alt={item.name} className="w-full h-full object-cover object-center transition-transform duration-600 ease-out hover:scale-105"/>
+                    <motion.div whileTap={{ scale: 0.99 }} className="overflow-hidden shadow-md hover:shadow-lg transition">
+                      <div className="h-44 md:h-48 bg-gradient-to-b from-[var(--muted)] to-[var(--card)] overflow-hidden">
+                        <img
+                          src={item.images?.[0]?.url || "/placeholder.png"}
+                          alt={item.name}
+                          className="w-full h-full object-cover object-center"
+                        />
                       </div>
 
-                      {/* Item info */}
-                      <div className="bg-[#1C1C1C] p-4 md:p-5 hover:bg-gray-700 transition-colors duration-500">
-                        <h3 className="text-white text-lg md:text-xl font-semibold truncate">{item.name}</h3>
-                        <p className="text-sm text-[#BDBDBD] mt-1 truncate">{item.description}</p>
+                      <div className="bg-[var(--card)] p-4 md:p-5 hover:bg-[var(--muted)]/30 transition-colors duration-500">
+                      <div className="flex justify-between mb-2">
+                        <h3 className="text-[var(--card-foreground)] text-lg md:text-xl font-semibold truncate">{item.name}</h3>
+                        <p className="text-md font-bold text-[var(--primary)] mt-1">₹{item.price}</p>
+                      </div>
+                        <p className="text-sm text-[var(--muted-foreground)] mt-1 truncate">{item.description}</p>
 
                         <div className="mt-4 flex flex-wrap gap-2">
                           {item.category?.map((cat, i) => (
-                            <span key={i} className={`text-xs font-semibold px-3 py-1 rounded-full bg-[#2B2B2B] text-[#E6E6E6]`}>{cat}</span>
+                            <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{cat}</span>
                           ))}
                         </div>
-
-                        <p className="mt-4 text-md font-bold text-[#00ADB5]">₹{item.price}</p>
                       </div>
                     </motion.div>
                   </Link>
                 </motion.div>
               ))
             ) : (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full text-center text-[#6B6B6B] mt-8">
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full text-center text-[var(--muted-foreground)] mt-8">
                 No items found.
               </motion.p>
             )}
           </AnimatePresence>
         </motion.div>
       </div>
+
+      {/* Chatbot Widget */}
+      <ChatbotWidget items={items} shopId={shop_id} />
     </div>
   );
 }

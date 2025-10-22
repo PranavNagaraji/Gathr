@@ -11,10 +11,11 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import AnimatedButton from "@/components/ui/AnimatedButton";
 
 const containerStyle = {
-  width: "300px",
-  height: "250px",
+  width: "100%",
+  height: "150px",
 };
 
 const Checkout = () => {
@@ -203,69 +204,82 @@ const Checkout = () => {
   }
 
   return (
-    <div className="flex flex-col p-6 space-y-6 bg-[var(--background)] text-[var(--foreground)]">
-      <h1 className="text-3xl font-bold">Checkout</h1>
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20 py-12">
+      <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-6">Checkout</h1>
 
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Select a Shipping Address</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left: Address + Payment */}
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] rounded-2xl p-6">
+            <h2 className="text-xl font-semibold mb-4">Select a Shipping Address</h2>
 
-        <div className="grid md:grid-cols-4 gap-4" role="list" aria-label="Saved addresses">
+            <div className="grid md:grid-cols-2 gap-4" role="list" aria-label="Saved addresses">
           {addresses.map((address,idx) => (
             <label
               key={idx}
               role="listitem"
-              className={`border rounded-2xl p-4 cursor-pointer transition-all ${
+              className={`border rounded-xl p-4 cursor-pointer transition-all ${
                 selectedAddressId === address.id
                   ? "border-[var(--primary)] bg-[color-mix(in_oklab,var(--primary),white_90%)]"
-                  : "border-[var(--border)] hover:border-[var(--ring)]/60"
+                  : "border-[var(--border)] hover:border-[var(--ring)]/60 bg-[var(--card)]"
               }`}
             >
-              <div className="flex flex-col space-y-2">
-                <div className="flex items-start space-x-3">
-                  <input
-                    type="radio"
-                    name="address"
-                    value={address.id}
-                    checked={selectedAddressId === address.id}
-                    onChange={() => handleSelect(address.id)}
-                    className="mt-1 accent-[var(--primary)]"
-                  />
-                  <div className="w-full">
-                    <div className="flex justify-between w-full">
-                    <p className="font-semibold">{address.title} </p>
-                    <Trash2 className="text-[var(--destructive)]" onClick={() => handleDeleteAddress(address.id)} aria-label="Delete address"></Trash2>
-                    </div>
-                    <p className="">{address.address}</p>
-                    <p className="text-sm text-[var(--muted-foreground)]">{address.description}</p>
-                    <p className="text-sm">📞 {address.mobile_no}</p>
+              <div className="flex items-start gap-3 mb-3">
+                <input
+                  type="radio"
+                  name="address"
+                  value={address.id}
+                  checked={selectedAddressId === address.id}
+                  onChange={() => handleSelect(address.id)}
+                  className="mt-1 accent-[var(--primary)]"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="font-semibold text-base">{address.title}</p>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleDeleteAddress(address.id);
+                      }}
+                      className="text-[var(--destructive)] hover:opacity-70 transition"
+                      aria-label="Delete address"
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
+                  <p className="text-sm text-[var(--muted-foreground)] mb-1">{address.address}</p>
+                  {address.description && (
+                    <p className="text-xs text-[var(--muted-foreground)] mb-1">{address.description}</p>
+                  )}
+                  <p className="text-sm flex items-center gap-1">📞 {address.mobile_no}</p>
                 </div>
-
-                {/* Map */}
-                {address.location?.lat && address.location?.long && (
-                  <div className="rounded-lg w-fit border border-[var(--border)]">
-                    <MiniLeafletMap
-                      style={containerStyle}
-                      center={[address.location.lat, address.location.long]}
-                      zoom={15}
-                      marker={{ position: [address.location.lat, address.location.long], draggable: false }}
-                    />
-                  </div>
-                )}
               </div>
+
+              {/* Map */}
+              {address.location?.lat && address.location?.long && (
+                <div className="rounded-lg overflow-hidden border border-[var(--border)] mt-3">
+                  <MiniLeafletMap
+                    style={containerStyle}
+                    center={[address.location.lat, address.location.long]}
+                    zoom={15}
+                    marker={{ position: [address.location.lat, address.location.long], draggable: false }}
+                  />
+                </div>
+              )}
             </label>
           ))}
-          <button className="border border-[var(--border)] rounded-lg flex items-center justify-center hover:bg-[var(--muted)]/40"
+          <button
+            onClick={()=>setAddressToggle(!addressToggle)}
+            className="min-h-[200px] border-2 border-dashed border-[var(--border)] rounded-xl flex flex-col items-center justify-center hover:bg-[var(--muted)]/40 hover:border-[var(--primary)]/50 transition-all group"
             aria-label="Add new address"
           >
-            <div className="text-6xl" onClick={()=>setAddressToggle(!addressToggle)}>
-                +
-            </div>
+            <div className="text-5xl text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors mb-2">+</div>
+            <span className="text-sm text-[var(--muted-foreground)] group-hover:text-[var(--foreground)] transition-colors">Add Address</span>
           </button>
 
         {addressToggle && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-            <div className="bg-[var(--popover)] text-[var(--popover-foreground)] border border-[var(--border)] rounded-lg p-6 w-full max-w-2xl relative space-y-4 h-3/4 overflow-y-auto ">
+            <div className="bg-[var(--popover)] text-[var(--popover-foreground)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl relative space-y-4 h-3/4 overflow-y-auto ">
             {/* Close button */}
             <button
                 onClick={() => setAddressToggle(false)}
@@ -275,11 +289,11 @@ const Checkout = () => {
                 ✕
             </button>
 
-            <p className="text-sm text-gray-600 mb-2">Create a new address</p>
+            <p className="text-sm text-[var(--muted-foreground)] mb-2">Create a new address</p>
 
             <div className="flex flex-col space-y-3">
                 {/* Title */}
-                <label htmlFor="" className="text-black">Title</label>
+                <label className="text-[var(--card-foreground)]">Title</label>
                 <input
                 type="text"
                 placeholder="Title (e.g., Home, Office)"
@@ -287,11 +301,11 @@ const Checkout = () => {
                 onChange={(e) =>
                     setAddAddress((prev) => ({ ...prev, title: e.target.value }))
                 }
-                className="border border-[var(--border)] p-2 rounded w-full bg-[var(--card)] text-[var(--card-foreground)]"
+                className="border border-[var(--border)] p-2 rounded-md w-full bg-[var(--card)] text-[var(--card-foreground)]"
                 />
 
                 {/* Description */}
-                <label htmlFor="" className="text-black">Description</label>
+                <label className="text-[var(--card-foreground)]">Description</label>
                 <input
                 type="text"
                 placeholder="Description"
@@ -299,11 +313,11 @@ const Checkout = () => {
                 onChange={(e) =>
                     setAddAddress((prev) => ({ ...prev, desc: e.target.value }))
                 }
-                className="border p-2 rounded w-full text-black"
+                className="border border-[var(--border)] p-2 rounded-md w-full bg-[var(--card)] text-[var(--card-foreground)]"
                 />
 
                 {/* Mobile */}
-                <label htmlFor="" className="text-black">Mobile</label>
+                <label className="text-[var(--card-foreground)]">Mobile</label>
                 <input
                 type="tel"
                 placeholder="Mobile Number"
@@ -311,11 +325,11 @@ const Checkout = () => {
                 onChange={(e) =>
                     setAddAddress((prev) => ({ ...prev, mobile: e.target.value }))
                 }
-                className="border p-2 rounded w-full text-black"
+                className="border border-[var(--border)] p-2 rounded-md w-full bg-[var(--card)] text-[var(--card-foreground)]"
                 />
 
                 {/* Google Places Autocomplete */}
-                <label htmlFor="" className="">address</label>        
+                <label className="text-[var(--card-foreground)]">Address</label>        
                 
                 <StandaloneSearchBox
                 onLoad={(ref) => setSearchBox(ref)}
@@ -347,7 +361,7 @@ const Checkout = () => {
                     onChange={(e) =>
                     setAddAddress((prev) => ({ ...prev, address: e.target.value }))
                     }
-                    className="border border-[var(--border)] p-2 rounded w-full bg-[var(--card)] text-[var(--card-foreground)]"
+                    className="border border-[var(--border)] p-2 rounded-md w-full bg-[var(--card)] text-[var(--card-foreground)]"
                 />
                 </StandaloneSearchBox>
 
@@ -370,59 +384,50 @@ const Checkout = () => {
                 />
 
                 {/* Submit button */}
-                <button
-                  onClick={() => handleAddAddress(addAddress)}
-                  className="bg-[var(--primary)] text-[var(--primary-foreground)] p-2 rounded hover:opacity-90 transition mt-2"
-                >
+                <AnimatedButton onClick={() => handleAddAddress(addAddress)} variant="primary" rounded="lg" className="mt-2">
                   Add Address
-                </button>
+                </AnimatedButton>
             </div>
             </div>
         </div>
         )}
 
+            </div>
+          </div>
+
+          <div className="bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] rounded-2xl p-6">
+            <h2 className="text-xl font-semibold mb-4">Payment Method</h2>
+            <div className="flex flex-col space-y-3">
+              <label className="flex items-center gap-3">
+                <input type="radio" name="payment" value="cod" checked={paymentMethod === "cod"} onChange={() => setPaymentMethod("cod")} className="accent-[var(--primary)]" />
+                <span>Cash on Delivery</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input type="radio" name="payment" value="online" checked={paymentMethod === "online"} onChange={() => setPaymentMethod("online")} className="accent-[var(--primary)]" />
+                <span>Online Payment</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Order Summary */}
+        <div className="lg:col-span-1">
+          <div className="bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] rounded-2xl p-6 sticky top-24">
+            <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span>Items</span><span>{checkOutDetails?.items?.length ?? checkOutDetails?.totalItems ?? 0}</span></div>
+              <div className="flex justify-between"><span>Subtotal</span><span>${checkOutDetails?.totalPrice ?? 0}</span></div>
+            </div>
+            <div className="mt-4 border-t border-[var(--border)] pt-4 flex justify-between font-semibold">
+              <span>Total</span>
+              <span>${checkOutDetails?.totalPrice ?? 0}</span>
+            </div>
+            <AnimatedButton onClick={handleCheckOut} size="lg" rounded="lg" variant="primary" className="w-full mt-6">
+              Checkout
+            </AnimatedButton>
+          </div>
         </div>
       </div>
-
-      {selectedAddressId && (
-        <div className="p-4 border-t mt-6">
-          <p className="text-sm text-gray-600">
-            Selected Address ID:{" "}
-            <span className="font-medium">{selectedAddressId}</span>
-          </p>
-        </div>
-      )}
-      <h1>Total : ${checkOutDetails.totalPrice}</h1>
-       {/* Payment Method */}
-      <div className="mt-6">
-        <h2 className="text-xl font-semibold mb-2">Select Payment Method</h2>
-        <div className="flex flex-col space-y-2">
-          <label className="flex items-center space-x-2">
-            <input
-              type="radio"
-              name="payment"
-              value="cod"
-              checked={paymentMethod === "cod"}
-              onChange={() => setPaymentMethod("cod")}
-              className="accent-yellow-500"
-            />
-            <span>Cash on Delivery</span>
-          </label>
-          <label className="flex items-center space-x-2">
-            <input
-              type="radio"
-              name="payment"
-              value="online"
-              checked={paymentMethod === "online"}
-              onChange={() => setPaymentMethod("online")}
-              className="accent-yellow-500"
-            />
-            <span>Online Payment</span>
-          </label>
-        </div>
-        <button className="bg-green-500 p-2 rounded-lg" onClick={()=>{handleCheckOut()}}>Checkout</button>
-      </div>
-
     </div>
 
   );

@@ -116,24 +116,9 @@ const cardVariants = {
 const buttonTap = { scale: 0.97 };
 
   return (
-    <div
-      className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20 py-24 relative"
-      style={{ paddingTop: 92 }} // keeps content below navbar
-    >
-      {/* Animated decorative shapes (GATHR-inspired) */}
-      {/* <motion.div
-        className="absolute top-10 left-10 w-24 h-24 bg-[#ff3b3b] rounded-full mix-blend-multiply"
-        animate={{ y: [0, 40, 0], scale: [1, 1.05, 1] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute bottom-10 right-16 w-28 h-28 bg-[#b4ff00] rounded-[2rem] mix-blend-multiply"
-        animate={{ x: [0, -30, 0], rotate: [0, 10, 0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-      /> */}
-
-      {/* Header */}
-      <div className="max-w-5xl mx-auto text-center mb-10">
+  <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20 relative">
+    {/* Header */}
+    <div className="max-w-5xl mx-auto text-center mb-10">
         <h1 className="font-extrabold text-4xl sm:text-5xl md:text-6xl leading-tight tracking-tight text-[var(--foreground)]">
           Explore Shops Near You
         </h1>

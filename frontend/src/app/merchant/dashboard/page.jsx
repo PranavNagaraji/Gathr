@@ -4,6 +4,7 @@ import { useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { Button } from '@mui/material';
+import AnimatedButton from "@/components/ui/AnimatedButton";
 import { motion } from 'framer-motion';
 
 export default function Dashboard() {
@@ -143,24 +144,16 @@ export default function Dashboard() {
                 {filteredItems.length > 0 ? (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
                         {filteredItems.map((item) => (
-                            <motion.div key={item.id} whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className="bg-[var(--card)] text-[var(--card-foreground)] rounded-lg shadow-md flex flex-col justify-between overflow-hidden border border-[var(--border)]">
-                                <div>
-                                    {item.images && item.images.length > 0 && (
-                                        <div className="w-full h-48">
-                                            <img
-                                                src={item.images[0].url}
-                                                alt={item.name}
-                                                className="object-cover w-full h-full"
-                                            />
-                                        </div>
-                                    )}
-                                    <div className="p-4">
-                                        <h2 className="text-xl font-bold">{item.name}</h2>
-                                        <p className="text-sm mt-1 text-[var(--muted-foreground)]">{item.description}</p>
-                                        <p className="mt-4"><strong>Price:</strong> <span className="font-semibold text-[var(--primary)]">${item.price}</span></p>
-                                        <p><strong>Quantity:</strong> {item.quantity}</p>
-                                        
-                                        {/* ✨ NEW: Category tags */}
+                            <motion.div key={item.id} whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className="bg-[var(--card)] text-[var(--card-foreground)] rounded-3xl border border-[var(--border)] shadow-sm hover:shadow-md overflow-hidden">
+                                <div className="p-4">
+                                    <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl bg-[var(--muted)]">
+                                        {item.images && item.images.length > 0 ? (
+                                            <img src={item.images[0].url} alt={item.name} className="object-cover w-full h-full" />
+                                        ) : null}
+                                    </div>
+                                    <div className="pt-4">
+                                        <h2 className="text-lg md:text-xl font-semibold truncate">{item.name}</h2>
+                                        <p className="text-sm mt-1 text-[var(--muted-foreground)] truncate">{item.description}</p>
                                         <div className="mt-3 flex flex-wrap gap-2">
                                             {item.category.map(cat => (
                                                 <span key={cat} className="text-xs font-medium bg-[var(--muted)] text-[var(--muted-foreground)] px-2.5 py-1 rounded-full">
@@ -168,22 +161,19 @@ export default function Dashboard() {
                                                 </span>
                                             ))}
                                         </div>
+                                        <div className="mt-4 flex items-center justify-between">
+                                            <span className="font-semibold text-[var(--primary)]">${item.price}</span>
+                                            <span className="text-xs text-[var(--muted-foreground)]">Qty: {item.quantity}</span>
+                                        </div>
                                     </div>
                                 </div>
-
-                                <div className="p-4 bg-[var(--popover)] border-t border-[var(--border)] flex gap-3">
-                                    <button
-                                        className="flex-1 bg-[var(--muted)] text-[var(--foreground)] hover:opacity-90 font-semibold px-4 py-2 rounded-md transition-colors text-sm"
-                                        onClick={() => handleEdit(item.id)}
-                                    >
+                                <div className="px-4 pb-4 flex gap-3">
+                                    <AnimatedButton onClick={() => handleEdit(item.id)} size="md" rounded="lg" variant="muted" className="flex-1">
                                         Edit
-                                    </button>
-                                    <button
-                                        className="flex-1 bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)] hover:opacity-90 font-semibold px-4 py-2 rounded-md transition-colors text-sm"
-                                        onClick={() => handleDelete(item.id)}
-                                    >
+                                    </AnimatedButton>
+                                    <AnimatedButton onClick={() => handleDelete(item.id)} size="md" rounded="lg" className="flex-1 bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)] border border-[var(--border)]">
                                         Delete
-                                    </button>
+                                    </AnimatedButton>
                                 </div>
                             </motion.div>
                         ))}
@@ -196,11 +186,9 @@ export default function Dashboard() {
 
 
                 <div className="mt-12 text-center">
-                    <Button variant="contained" size="large" onClick={() => router.push("/merchant/addItem")}
-                      style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}
-                    >
+                    <AnimatedButton as="button" onClick={() => router.push("/merchant/addItem")} size="lg" rounded="lg" variant="primary">
                         Add New Item
-                    </Button>
+                    </AnimatedButton>
                 </div>
             </div>
         </div>

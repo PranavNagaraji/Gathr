@@ -50,7 +50,7 @@ const ItemDetailsPage = () => {
         const [itemResult, commentsResult, userIdResult] = await Promise.all([
           axios.get(`${API_URL}/api/customer/getItem/${item_id}`),
           axios.get(`${API_URL}/api/customer/getComments/${item_id}`),
-          axios.get(`${API_URL}/api/customer/getUserId/${user.id}`, {
+          axios.get(`${API_URL}/api/customer/getUserId/${user?.id}`, {
             headers: { Authorization: `Bearer ${token}` },
           })
         ]);
@@ -167,54 +167,42 @@ const ItemDetailsPage = () => {
 
   if (isLoading || !isLoaded) {
     return (
-      <div className="min-h-screen bg-[#FAEDE7] flex justify-center items-center">
-        <p className="text-2xl font-bold text-[#0B132B]">Loading...</p>
+      <div className="min-h-screen bg-[var(--background)] flex justify-center items-center">
+        <p className="text-2xl font-bold text-[var(--foreground)]">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FAEDE7] text-[#0B132B] px-6 sm:px-10 lg:px-20 py-12 relative overflow-hidden">
-      {/* Animated Background Shapes */}
-      <motion.div
-        className="absolute top-10 left-10 w-24 h-24 bg-[#ff3b3b] rounded-full mix-blend-multiply filter blur-xl opacity-70"
-        animate={{ y: [0, 40, 0], scale: [1, 1.05, 1] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute bottom-10 right-16 w-28 h-28 bg-[#b4ff00] rounded-[2rem] mix-blend-multiply filter blur-xl opacity-70"
-        animate={{ x: [0, -30, 0], rotate: [0, 10, 0] }}
-        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-      />
-
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20 py-12 relative">
       <div className="max-w-6xl mx-auto z-10 relative space-y-16">
         {/* ITEM INFO */}
         <div className="grid lg:grid-cols-2 gap-12 items-start">
           {/* Image Carousel */}
-         <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                className="h-96 w-full" // Ensure parent has fixed height
-              >
-                {item.images?.length > 0 ? (
-                  <Slider {...sliderSettings}>
-                    {item.images.map((img, idx) => (
-                      <div key={idx} className="h-96 w-full relative">
-                        <img
-                          src={img.url}
-                          alt={`${item.name} image ${idx + 1}`}
-                          className="h-full w-full object-cover rounded-2xl shadow-2xl"
-                        />
-                      </div>
-                    ))}
-                  </Slider>
-                ) : (
-                  <div className="h-96 w-full bg-gray-200 rounded-2xl flex items-center justify-center">
-                    <p>No Image</p>
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="h-96 w-full"
+          >
+            {item.images?.length > 0 ? (
+              <Slider {...sliderSettings}>
+                {item.images.map((img, idx) => (
+                  <div key={idx} className="h-96 w-full relative">
+                    <img
+                      src={img.url}
+                      alt={`${item.name} image ${idx + 1}`}
+                      className="h-full w-full object-cover rounded-2xl shadow-xl"
+                    />
                   </div>
-                )}
-              </motion.div>
+                ))}
+              </Slider>
+            ) : (
+              <div className="h-96 w-full bg-[var(--muted)] text-[var(--muted-foreground)] rounded-2xl flex items-center justify-center">
+                <p>No Image</p>
+              </div>
+            )}
+          </motion.div>
 
 
           {/* Item Details */}
@@ -227,34 +215,48 @@ const ItemDetailsPage = () => {
             <h1 className="font-extrabold text-4xl sm:text-5xl tracking-tight">{item.name}</h1>
 
             <p className="flex items-center gap-2">
-              {item.rating ? renderStars(item.rating) : <span className="text-gray-500">Not rated yet</span>}
-              <span className="text-gray-600">({item.rating?.toFixed(1) || '0'})</span>
+              {item.rating ? renderStars(item.rating) : <span className="text-[var(--muted-foreground)]">Not rated yet</span>}
+              <span className="text-[var(--muted-foreground)]">({item.rating?.toFixed(1) || '0'})</span>
             </p>
 
-            <p className="text-[#23323A] text-lg leading-relaxed">{item.description}</p>
+            <p className="text-[var(--muted-foreground)] text-lg leading-relaxed">{item.description}</p>
 
             <div className="flex flex-wrap gap-2">
               {item.category?.map((cat, i) => (
-                <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full bg-[#0B132B] text-white">{cat}</span>
+                <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{cat}</span>
               ))}
             </div>
 
-            <p className="text-4xl font-bold text-[#00ADB5]">₹{item.price}</p>
+            <p className="text-4xl font-bold text-[var(--primary)]">₹{item.price}</p>
 
-            <div className="flex items-center gap-4 pt-4">
-              <input
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-24 text-center text-lg font-semibold bg-[#1C1C1C] text-white border-2 border-[#F85B57] rounded-full shadow-md focus:outline-none focus:ring-4 focus:ring-[#F85B57]/40 transition-all hover:scale-105"
-                placeholder="Quantity"
-                min={1}
-              />
+            <div className="flex items-center gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                aria-label="Decrease quantity"
+                className="h-9 w-9 rounded-lg bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] hover:bg-[var(--muted)]/60 grid place-items-center select-none transition-colors"
+              >
+                −
+              </button>
+              <div
+                className="min-w-12 px-3 h-9 rounded-lg bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] grid place-items-center text-base font-semibold"
+                aria-live="polite"
+              >
+                {quantity}
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => (item?.quantity ? Math.min(q + 1, item.quantity) : q + 1))}
+                aria-label="Increase quantity"
+                className="h-9 w-9 rounded-lg bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] hover:bg-[var(--muted)]/60 grid place-items-center select-none transition-colors"
+              >
+                +
+              </button>
               <motion.button
                 onClick={handleAddToCart}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex-1 bg-[#F85B57] text-white px-6 py-3 rounded-lg font-bold text-lg shadow-lg hover:opacity-90 transition-opacity"
+                className="ml-2 flex-1 bg-[var(--primary)] text-[var(--primary-foreground)] px-6 py-3 rounded-lg font-bold text-lg shadow-sm hover:opacity-90 transition-opacity"
               >
                 Add to Cart
               </motion.button>
@@ -265,24 +267,30 @@ const ItemDetailsPage = () => {
         {/* RATING & COMMENT */}
         <div className="grid md:grid-cols-2 gap-8">
           {/* Rating Form */}
-          <motion.div initial="hidden" animate="show" variants={itemVariants} className="bg-[#1C1C1C] text-white p-6 rounded-2xl shadow-lg">
+          <motion.div initial="hidden" animate="show" variants={itemVariants} className="bg-[var(--card)] text-[var(--card-foreground)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
             <h3 className="text-xl font-semibold mb-4">Rate this Product</h3>
             <form onSubmit={handleAddRating} className="flex items-center gap-4">
-              <input
-                type="number"
-                value={newRating}
-                onChange={(e) => setNewRating(e.target.value)}
-                className="border border-[#F85B57] rounded-md p-2 w-24 text-center focus:outline-none focus:ring-2 focus:ring-[#F85B57] bg-white text-[#1C1C1C]"
-                min={1} max={5} placeholder="1-5"
-              />
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" className="bg-[#F85B57] text-white px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
+              <div className="flex items-center gap-1">
+                {[1,2,3,4,5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setNewRating(n)}
+                    className={`text-2xl ${n <= newRating ? 'text-[var(--primary)]' : 'text-[var(--muted-foreground)]'} hover:scale-110 transition`}
+                    aria-label={`Rate ${n} star`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" className="bg-[var(--primary)] text-[var(--primary-foreground)] px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
                 Submit
               </motion.button>
             </form>
           </motion.div>
 
           {/* Comment Form */}
-          <motion.div initial="hidden" animate="show" variants={itemVariants} className="bg-[#1C1C1C] text-white p-6 rounded-2xl shadow-lg">
+          <motion.div initial="hidden" animate="show" variants={itemVariants} className="bg-[var(--card)] text-[var(--card-foreground)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
             <h3 className="text-xl font-semibold mb-4">Share your Thoughts</h3>
             <form onSubmit={handleAddComment} className="flex flex-col gap-4">
               <textarea
@@ -290,9 +298,9 @@ const ItemDetailsPage = () => {
                 onChange={(e) => setNewComment(e.target.value)}
                 rows={3}
                 placeholder="Write your review here..."
-                className="w-full border border-[#F85B57] rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-[#F85B57] bg-white text-[#1C1C1C]"
+                className="w-full border border-[var(--border)] rounded-md p-3 focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/40 bg-[var(--popover)] text-[var(--popover-foreground)]"
               />
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" className="bg-[#F85B57] text-white px-6 py-2 rounded-lg font-semibold self-start hover:opacity-90 transition">
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" className="bg-[var(--primary)] text-[var(--primary-foreground)] px-6 py-2 rounded-lg font-semibold self-start hover:opacity-90 transition">
                 Post Comment
               </motion.button>
             </form>
@@ -309,7 +317,7 @@ const ItemDetailsPage = () => {
                 key={c.id || idx}
                 variants={itemVariants}
                 exit={{ opacity: 0, x: -50 }}
-                className="bg-[#1C1C1C] text-white p-5 rounded-2xl shadow-lg relative"
+                className="bg-[var(--card)] text-[var(--card-foreground)] p-5 rounded-2xl shadow-sm border border-[var(--border)] relative"
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-4">
@@ -323,17 +331,17 @@ const ItemDetailsPage = () => {
                   {userId === c.user_id && (
                   <button
                       onClick={() => handleDeleteComment(c.id)}
-                      className="flex items-center gap-1 px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-lg shadow-md transition-all hover:scale-105"
+                      className="flex items-center gap-1 px-3 py-1 bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)] hover:opacity-90 font-semibold text-sm rounded-md shadow-sm transition-all"
                     >
                       <Trash2 size={16} />
                     </button>
                   )}
                 </div>
-                <p className="text-gray-300 pl-16">{c.comment}</p>
+                <p className="text-[var(--muted-foreground)] pl-16">{c.comment}</p>
               </motion.div>
                 )
               ) : (
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-gray-500 py-8">
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-[var(--muted-foreground)] py-8">
                   Be the first to share your thoughts on this item!
                 </motion.p>
               )}
