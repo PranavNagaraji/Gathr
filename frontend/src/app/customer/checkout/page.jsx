@@ -2,7 +2,12 @@
 import { useAuth, useUser } from "@clerk/nextjs";
 import axios from "axios";
 import { useEffect, useState, useRef } from "react";
-import { GoogleMap, Marker, useJsApiLoader, StandaloneSearchBox } from "@react-google-maps/api";
+import { useJsApiLoader, StandaloneSearchBox } from "@react-google-maps/api";
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -14,7 +19,7 @@ const containerStyle = {
 
 const Checkout = () => {
 
-  const mapRef = useRef(null);
+  const leafletMapRef = useRef(null);
   const [searchBox, setSearchBox] = useState(null);
   const router = useRouter();
   const { user } = useUser();
@@ -34,6 +39,19 @@ const Checkout = () => {
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     libraries: Libraries, // ← Important! Include "places"
     });
+
+  useEffect(() => {
+    const defaultIcon = L.icon({
+      iconUrl: markerIcon,
+      iconRetinaUrl: markerIcon2x,
+      shadowUrl: markerShadow,
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+    L.Marker.prototype.options.icon = defaultIcon;
+  }, []);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return;
@@ -223,25 +241,15 @@ const Checkout = () => {
                   </div>
                 </div>
 
-                {/* Google Map */}
-                {mapLoaded && address.location?.lat && address.location?.long && (
+                {/* Map */}
+                {address.location?.lat && address.location?.long && (
                   <div className="rounded-lg w-fit border border-[var(--border)]">
-                    <GoogleMap
-                      mapContainerStyle={containerStyle}
-                      center={{
-                        lat: address.location.lat,
-                        lng: address.location.long,
-                      }}
+                    <MiniLeafletMap
+                      style={containerStyle}
+                      center={[address.location.lat, address.location.long]}
                       zoom={15}
-                      options={{ disableDefaultUI: true }}
-                    >
-                      <Marker
-                        position={{
-                          lat: address.location.lat,
-                          lng: address.location.long,
-                        }}
-                      />
-                    </GoogleMap>
+                      marker={{ position: [address.location.lat, address.location.long], draggable: false }}
+                    />
                   </div>
                 )}
               </div>
@@ -255,7 +263,7 @@ const Checkout = () => {
             </div>
           </button>
 
-        {addressToggle && mapLoaded && (
+        {addressToggle && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
             <div className="bg-[var(--popover)] text-[var(--popover-foreground)] border border-[var(--border)] rounded-lg p-6 w-full max-w-2xl relative space-y-4 h-3/4 overflow-y-auto ">
             {/* Close button */}
@@ -327,12 +335,8 @@ const Checkout = () => {
                     }));
 
                     // Center map to selected place
-                    if (mapRef.current) {
-                    mapRef.current.panTo({
-                        lat: place.geometry.location.lat(),
-                        lng: place.geometry.location.lng(),
-                    });
-                    mapRef.current.setZoom(15);
+                    if (leafletMapRef.current) {
+                      leafletMapRef.current.setView([place.geometry.location.lat(), place.geometry.location.lng()], 15);
                     }
                 }}
                 >
@@ -347,43 +351,23 @@ const Checkout = () => {
                 />
                 </StandaloneSearchBox>
 
-                {/* Google Map */}
-               <GoogleMap
-                  mapContainerStyle={{ width: "100%", height: "250px" }}
+                {/* Map */}
+                <MiniLeafletMap
+                  style={{ width: "100%", height: "250px" }}
                   center={
                     addAddress.location?.latitude
-                      ? {
-                          lat: addAddress.location.latitude,
-                          lng: addAddress.location.longitude,
-                        }
-                      : { lat: 20, lng: 77 }
+                      ? [addAddress.location.latitude, addAddress.location.longitude]
+                      : [20, 77]
                   }
                   zoom={addAddress.location?.latitude ? 15 : 4}
-                  onClick={(e) =>
-                    setAddAddress((prev) => ({
-                      ...prev,
-                      location: { latitude: e.latLng.lat(), longitude: e.latLng.lng() },
-                    }))
-                  }
-                  onLoad={(map) => (mapRef.current = map)}
-                  options={{ disableDefaultUI: true }}
-                >
-                  {addAddress.location?.latitude && addAddress.location?.longitude && (
-                    <Marker
-                      position={{
-                        lat: addAddress.location.latitude,
-                        lng: addAddress.location.longitude,
-                      }}
-                      draggable={true} // Make marker draggable
-                      onDragEnd={(e) =>
-                        setAddAddress((prev) => ({
-                          ...prev,
-                          location: { latitude: e.latLng.lat(), longitude: e.latLng.lng() },
-                        }))
-                      }
-                    />
-                  )}
-                </GoogleMap>
+                  marker={addAddress.location?.latitude && addAddress.location?.longitude ? {
+                    position: [addAddress.location.latitude, addAddress.location.longitude],
+                    draggable: true,
+                    onDragEnd: (ll) => setAddAddress(prev => ({ ...prev, location: { latitude: ll.lat, longitude: ll.lng } }))
+                  } : null}
+                  onMapClick={(ll) => setAddAddress(prev => ({ ...prev, location: { latitude: ll.lat, longitude: ll.lng } }))}
+                  mapRefOut={leafletMapRef}
+                />
 
                 {/* Submit button */}
                 <button
@@ -445,3 +429,47 @@ const Checkout = () => {
 };
 
 export default Checkout;
+
+function MiniLeafletMap({ style, center, zoom = 13, marker, onMapClick, mapRefOut }) {
+  const divRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+
+  useEffect(() => {
+    if (!divRef.current) return;
+    if (!mapRef.current) {
+      const map = L.map(divRef.current, {
+        center,
+        zoom,
+        zoomControl: false,
+      });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+      if (onMapClick) {
+        map.on('click', (e) => onMapClick(e.latlng));
+      }
+      mapRef.current = map;
+      if (mapRefOut) mapRefOut.current = map;
+    } else {
+      mapRef.current.setView(center, zoom);
+    }
+
+    if (marker) {
+      const { position, draggable = false, onDragEnd } = marker;
+      if (!markerRef.current) {
+        const m = L.marker(position, { draggable }).addTo(mapRef.current);
+        if (draggable && onDragEnd) {
+          m.on('dragend', (e) => onDragEnd(e.target.getLatLng()));
+        }
+        markerRef.current = m;
+      } else {
+        markerRef.current.setLatLng(position);
+        markerRef.current.dragging && markerRef.current.dragging[draggable ? 'enable' : 'disable']?.();
+      }
+    } else if (markerRef.current) {
+      mapRef.current.removeLayer(markerRef.current);
+      markerRef.current = null;
+    }
+  }, [center?.[0], center?.[1], zoom, marker?.position?.[0], marker?.position?.[1], marker?.draggable]);
+
+  return <div style={style} ref={divRef} />;
+}

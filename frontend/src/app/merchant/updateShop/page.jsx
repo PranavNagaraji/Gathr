@@ -1,6 +1,11 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from "react";
-import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import { useJsApiLoader } from "@react-google-maps/api";
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { Button, Checkbox, FormControlLabel } from "@mui/material";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
@@ -36,6 +41,20 @@ const UpdateShop = () => {
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
         libraries: ["places"],
     });
+
+    // Leaflet default icon fix
+    useEffect(() => {
+        const defaultIcon = L.icon({
+            iconUrl: markerIcon,
+            iconRetinaUrl: markerIcon2x,
+            shadowUrl: markerShadow,
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41],
+        });
+        L.Marker.prototype.options.icon = defaultIcon;
+    }, []);
 
     // 🔹 Fetch existing shop data and populate the form
     useEffect(() => {
@@ -134,15 +153,6 @@ const UpdateShop = () => {
         }
     }, [mapLoaded, autocomplete]);
 
-    // 🔹 Handle map interactions
-    const handleMapClick = useCallback((e) => {
-        setFormData(prev => ({ ...prev, location: { latitude: e.latLng.lat(), longitude: e.latLng.lng() } }));
-    }, []);
-
-    const handleMarkerDragEnd = useCallback((e) => {
-        setFormData(prev => ({ ...prev, location: { latitude: e.latLng.lat(), longitude: e.latLng.lng() } }));
-    }, []);
-    
     // 🔹 Handle new image selection
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -157,6 +167,43 @@ const UpdateShop = () => {
             reader.readAsDataURL(file);
         }
     };
+
+    // Leaflet map refs
+    const mapDivRef = useRef(null);
+    const mapInstanceRef = useRef(null);
+    const markerRef = useRef(null);
+
+    useEffect(() => {
+        if (!mapDivRef.current || !formData.location) return;
+        const { latitude, longitude } = formData.location;
+        if (!mapInstanceRef.current) {
+            const map = L.map(mapDivRef.current, {
+                center: [latitude, longitude],
+                zoom: 15,
+                zoomControl: true,
+            });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+            map.on('click', (e) => {
+                const { lat, lng } = e.latlng;
+                setFormData(prev => ({ ...prev, location: { latitude: lat, longitude: lng } }));
+            });
+            mapInstanceRef.current = map;
+        } else {
+            mapInstanceRef.current.setView([latitude, longitude], 15);
+        }
+
+        const map = mapInstanceRef.current;
+        if (!markerRef.current) {
+            const m = L.marker([latitude, longitude], { draggable: true }).addTo(map);
+            m.on('dragend', (e) => {
+                const ll = e.target.getLatLng();
+                setFormData(prev => ({ ...prev, location: { latitude: ll.lat, longitude: ll.lng } }));
+            });
+            markerRef.current = m;
+        } else {
+            markerRef.current.setLatLng([latitude, longitude]);
+        }
+    }, [formData.location?.latitude, formData.location?.longitude]);
 
     // 🔹 Submit handler (placeholder for your logic)
     const handleSubmit = async (e) => {
@@ -240,21 +287,7 @@ const UpdateShop = () => {
                 </div>
 
                 <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-500">
-                    {mapLoaded && formData.location && (
-                        <GoogleMap
-                            mapContainerStyle={containerStyle}
-                            center={{ lat: formData.location.latitude, lng: formData.location.longitude }}
-                            zoom={15}
-                            onClick={handleMapClick}
-                            options={{ disableDefaultUI: true, zoomControl: true }}
-                        >
-                            <Marker
-                                position={{ lat: formData.location.latitude, lng: formData.location.longitude }}
-                                draggable
-                                onDragEnd={handleMarkerDragEnd}
-                            />
-                        </GoogleMap>
-                    )}
+                    <div style={containerStyle} ref={mapDivRef} />
                 </div>
 
                 <Button

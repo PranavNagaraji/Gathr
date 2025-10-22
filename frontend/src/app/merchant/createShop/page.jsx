@@ -1,6 +1,11 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from "react";
-import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import { useJsApiLoader } from "@react-google-maps/api";
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { Button, Checkbox, FormControlLabel } from "@mui/material";
 import { useUser, useAuth } from "@clerk/nextjs";
 
@@ -33,6 +38,20 @@ export default function createShop() {
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     libraries: ["places"],
   });
+
+  // Leaflet default icon fix
+  useEffect(() => {
+    const defaultIcon = L.icon({
+      iconUrl: markerIcon,
+      iconRetinaUrl: markerIcon2x,
+      shadowUrl: markerShadow,
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+    L.Marker.prototype.options.icon = defaultIcon;
+  }, []);
 
   // Text inputs
   const handleChange = (e) => {
@@ -72,20 +91,41 @@ export default function createShop() {
     }
   }, [mapLoaded, autocomplete]);
 
-  // Map click & marker drag
-  const handleMapClick = useCallback((e) => {
-    setFormData(prev => ({
-      ...prev,
-      location: { latitude: e.latLng.lat(), longitude: e.latLng.lng() }
-    }));
-  }, []);
+  // Leaflet map refs and handlers
+  const mapDivRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
 
-  const handleMarkerDragEnd = useCallback((e) => {
-    setFormData(prev => ({
-      ...prev,
-      location: { latitude: e.latLng.lat(), longitude: e.latLng.lng() }
-    }));
-  }, []);
+  useEffect(() => {
+    if (!mapDivRef.current) return;
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapDivRef.current, {
+        center: [formData.location.latitude, formData.location.longitude],
+        zoom: 15,
+        zoomControl: false,
+      });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+      map.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+        setFormData(prev => ({ ...prev, location: { latitude: lat, longitude: lng } }));
+      });
+      mapInstanceRef.current = map;
+    } else {
+      mapInstanceRef.current.setView([formData.location.latitude, formData.location.longitude]);
+    }
+
+    const map = mapInstanceRef.current;
+    if (!markerRef.current) {
+      const m = L.marker([formData.location.latitude, formData.location.longitude], { draggable: true }).addTo(map);
+      m.on('dragend', (e) => {
+        const ll = e.target.getLatLng();
+        setFormData(prev => ({ ...prev, location: { latitude: ll.lat, longitude: ll.lng } }));
+      });
+      markerRef.current = m;
+    } else {
+      markerRef.current.setLatLng([formData.location.latitude, formData.location.longitude]);
+    }
+  }, [formData.location.latitude, formData.location.longitude]);
   
   // Image upload
   const handleImageChange = (e) => {
@@ -188,23 +228,9 @@ export default function createShop() {
           </div>
         </div>
 
-        {/* Google Map */}
+        {/* Map */}
         <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-500">
-          {mapLoaded && (
-            <GoogleMap
-              mapContainerStyle={containerStyle}
-              center={{ lat: formData.location.latitude, lng: formData.location.longitude }}
-              zoom={15}
-              onClick={handleMapClick}
-              options={{ disableDefaultUI: true }}
-            >
-              <Marker
-                position={{ lat: formData.location.latitude, lng: formData.location.longitude }}
-                draggable
-                onDragEnd={handleMarkerDragEnd}
-              />
-            </GoogleMap>
-          )}
+          <div style={containerStyle} ref={mapDivRef} />
         </div>
 
         {/* Submit */}

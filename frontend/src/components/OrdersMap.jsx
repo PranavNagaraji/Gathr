@@ -1,6 +1,21 @@
 'use client';
-import { useState } from 'react';
-import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
+import { useEffect, useRef, useState } from 'react';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+const defaultIcon = L.icon({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+L.Marker.prototype.options.icon = defaultIcon;
 
 const containerStyle = {
   width: '100%',
@@ -10,66 +25,77 @@ const containerStyle = {
 
 export default function OrderMapCard({ shopLocation, deliveryLocation, carrierLocation }) {
   const [selectedMarker, setSelectedMarker] = useState(null);
-
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-  });
-
-  if (!isLoaded) return <p>Loading map...</p>;
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef({});
 
   const center = carrierLocation || shopLocation || deliveryLocation;
 
-  return (
-    <GoogleMap mapContainerStyle={containerStyle} center={center} zoom={13}>
-      {/* Shop Marker */}
-      {shopLocation && (
-        <Marker
-          position={{ lat: shopLocation.latitude, lng: shopLocation.longitude }}
-          onClick={() => setSelectedMarker({ type: 'shop' })}
-          label="S"
-          icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png' }}
-        />
-      )}
+  useEffect(() => {
+    if (!center || !mapRef.current) return;
+    const centerLat = center.latitude || center.lat;
+    const centerLng = center.longitude || center.long || center.lng;
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapRef.current, {
+        center: [centerLat, centerLng],
+        zoom: 13,
+        zoomControl: false,
+      });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(map);
+      mapInstanceRef.current = map;
+    } else {
+      mapInstanceRef.current.setView([centerLat, centerLng], 13);
+    }
 
-      {/* Delivery Marker */}
-      {deliveryLocation && (
-        <Marker
-          position={{ lat: deliveryLocation.lat, lng: deliveryLocation.long }}
-          onClick={() => setSelectedMarker({ type: 'delivery' })}
-          label="D"
-          icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png' }}
-        />
-      )}
+    const map = mapInstanceRef.current;
 
-      {/* Carrier Marker */}
-      {carrierLocation && (
-        <Marker
-          position={carrierLocation}
-          onClick={() => setSelectedMarker({ type: 'carrier' })}
-          label="C"
-          icon={{ url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' }}
-        />
-      )}
+    // Clear previous markers
+    Object.values(markersRef.current).forEach(m => map.removeLayer(m));
+    markersRef.current = {};
 
-      {/* InfoWindow */}
-      {selectedMarker && (
-        <InfoWindow
-          position={
-            selectedMarker.type === 'shop'
-              ? { lat: shopLocation.latitude, lng: shopLocation.longitude }
-              : selectedMarker.type === 'delivery'
-              ? { lat: deliveryLocation.lat, lng: deliveryLocation.long }
-              : carrierLocation
-          }
-          onCloseClick={() => setSelectedMarker(null)}
-        >
-          <div>
-            {selectedMarker.type === 'shop' && <p>Shop Location</p>}
-            {selectedMarker.type === 'delivery' && <p>Delivery Location</p>}
-            {selectedMarker.type === 'carrier' && <p>Your Location</p>}
-          </div>
-        </InfoWindow>
-      )}
-    </GoogleMap>
-  );
+    // Shop marker
+    if (shopLocation) {
+      const m = L.marker([shopLocation.latitude, shopLocation.longitude]).addTo(map);
+      m.on('click', () => setSelectedMarker({ type: 'shop' }));
+      markersRef.current.shop = m;
+    }
+    // Delivery marker
+    if (deliveryLocation) {
+      const m = L.marker([deliveryLocation.lat, deliveryLocation.long]).addTo(map);
+      m.on('click', () => setSelectedMarker({ type: 'delivery' }));
+      markersRef.current.delivery = m;
+    }
+    // Carrier marker
+    if (carrierLocation) {
+      const lat = carrierLocation.latitude || carrierLocation.lat;
+      const lng = carrierLocation.longitude || carrierLocation.long || carrierLocation.lng;
+      const m = L.marker([lat, lng]).addTo(map);
+      m.on('click', () => setSelectedMarker({ type: 'carrier' }));
+      markersRef.current.carrier = m;
+    }
+
+    return () => {
+      // do not destroy map instance between renders to keep performance
+    };
+  }, [center?.latitude, center?.lat, center?.longitude, center?.long, center?.lng, shopLocation?.latitude, shopLocation?.longitude, deliveryLocation?.lat, deliveryLocation?.long, carrierLocation?.latitude, carrierLocation?.lat, carrierLocation?.longitude, carrierLocation?.long, carrierLocation?.lng]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current || !selectedMarker) return;
+    const map = mapInstanceRef.current;
+    let latlng;
+    if (selectedMarker.type === 'shop' && shopLocation) latlng = L.latLng(shopLocation.latitude, shopLocation.longitude);
+    else if (selectedMarker.type === 'delivery' && deliveryLocation) latlng = L.latLng(deliveryLocation.lat, deliveryLocation.long);
+    else if (selectedMarker.type === 'carrier' && carrierLocation) latlng = L.latLng(carrierLocation.latitude || carrierLocation.lat, carrierLocation.longitude || carrierLocation.long || carrierLocation.lng);
+    if (latlng) {
+      L.popup().setLatLng(latlng).setContent(`<div>${selectedMarker.type === 'shop' ? 'Shop Location' : selectedMarker.type === 'delivery' ? 'Delivery Location' : 'Your Location'}</div>`).openOn(map);
+    }
+    return () => {
+      // close popup on unmount/change
+      map.closePopup();
+    };
+  }, [selectedMarker]);
+
+  return <div style={containerStyle} ref={mapRef} />;
 }
