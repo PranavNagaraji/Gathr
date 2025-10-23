@@ -1,8 +1,5 @@
 'use client'
 import { useEffect, useState } from "react"
-import { Select } from 'antd';
-import { DownOutlined } from '@ant-design/icons';
-import AnimatedButton from '@/components/ui/AnimatedButton';
 import { useParams, useRouter } from "next/navigation"
 import { useUser, useAuth } from "@clerk/nextjs"
 import axios from "axios"
@@ -18,8 +15,7 @@ export default function EditItemPage() {
     "Fruits", "Vegetables", "Dairy", "Bakery", "Beverages",
     "Snacks", "Frozen", "Meat", "Seafood", "Grains",
     "Spices", "Condiments", "Breakfast", "Coffee & Tea", "Juices",
-    "Personal Care", "Cleaning", "Pet Food", "Organic", "Health",
-    "Household Essentials", "Baby Care", "Pharmacy", "Stationery", "Beauty"
+    "Personal Care", "Cleaning", "Pet Food", "Organic", "Health"
   ]
 
   const [formData, setFormData] = useState({
@@ -33,7 +29,6 @@ export default function EditItemPage() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [otherCategory, setOtherCategory] = useState("")
 
   // 🔹 Fetch existing item details
   useEffect(() => {
@@ -170,9 +165,9 @@ export default function EditItemPage() {
   if (loading) return <div className="text-center mt-10 text-gray-400">Loading item details...</div>
 
   return (
-    <div className="max-w-2xl mx-auto mt-8 p-6 bg-gray-900 rounded-lg">
+    <div className="max-w-2xl mx-auto mt-8 p-6 bg-gray-900 rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold text-white mb-4">Edit Item</h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* Item images */}
         {/* Item images */}
 <div>
@@ -213,7 +208,7 @@ export default function EditItemPage() {
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="w-full rounded-lg px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="w-full rounded-md p-2 bg-gray-800 text-white"
             placeholder="Enter item name"
           />
         </div>
@@ -226,7 +221,7 @@ export default function EditItemPage() {
             value={formData.description}
             onChange={handleChange}
             rows={3}
-            className="w-full rounded-lg px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="w-full rounded-md p-2 bg-gray-800 text-white"
             placeholder="Enter description"
           />
         </div>
@@ -239,7 +234,7 @@ export default function EditItemPage() {
             name="quantity"
             value={formData.quantity}
             onChange={handleChange}
-            className="w-full rounded-lg px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="w-full rounded-md p-2 bg-gray-800 text-white"
             placeholder="Enter quantity"
           />
         </div>
@@ -253,7 +248,7 @@ export default function EditItemPage() {
             min={1}
             value={formData.price}
             onChange={handleChange}
-            className="w-full rounded-lg px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="w-full rounded-md p-2 bg-gray-800 text-white"
             placeholder="Enter price"
           />
         </div>
@@ -261,49 +256,33 @@ export default function EditItemPage() {
         {/* Categories */}
         <div>
           <label className="text-gray-300 mb-1 block">Categories</label>
-          <Select
-            mode="multiple"
-            value={formData.category}
-            onChange={(values)=>setFormData(prev=>({...prev, category: values}))}
-            style={{ width: '100%' }}
-            placeholder="Select categories"
-            maxTagCount="responsive"
-            suffixIcon={
-              <span className="flex items-center gap-1 text-xs text-gray-400">
-                <span>{formData.category?.length || 0}</span>
-                <DownOutlined />
-              </span>
-            }
-            options={[...categoryOptions.map(c=>({value:c,label:c})), {value:'Other', label:'Other'}]}
-          />
-          {formData.category?.includes('Other') && (
-            <div className="mt-3">
-              <label className="text-gray-300 mb-1 block">Enter custom category</label>
-              <input
-                type="text"
-                value={otherCategory}
-                onChange={(e)=>setOtherCategory(e.target.value)}
-                onBlur={()=>{
-                  if(otherCategory.trim()){
-                    setFormData(prev=>({
-                      ...prev,
-                      category: prev.category.filter(c=>c!== 'Other').concat(otherCategory.trim())
-                    }));
-                    setOtherCategory("");
-                  }
-                }}
-                className="w-full mt-1 rounded-lg px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                placeholder="Type new category"
-              />
-              <p className="text-xs text-gray-500 mt-1">Blur the input to add it and replace "Other".</p>
-            </div>
-          )}
+          <div className="max-h-48 overflow-y-auto border border-gray-700 rounded-md p-2 flex flex-wrap gap-2">
+            {categoryOptions.map((cat) => (
+              <label
+                key={cat}
+                className="flex items-center gap-1 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  value={cat}
+                  checked={formData.category.includes(cat)}
+                  onChange={handleCategoryChange}
+                  className="w-4 h-4"
+                />
+                <span className="text-white text-sm">{cat}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* Submit */}
-        <AnimatedButton type="submit" size="md" rounded="full" variant="primary" disabled={saving}>
+        <button
+          type="submit"
+          disabled={saving}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md"
+        >
           {saving ? "Updating..." : "Update Item"}
-        </AnimatedButton>
+        </button>
       </form>
     </div>
   )

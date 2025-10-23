@@ -156,7 +156,8 @@ export default function Navbar() {
                   color: { duration: 0.25, ease: "easeInOut" },
                   scale: { type: "spring", stiffness: 260, damping: 15 },
                 }}
-                className={`uppercase px-3 py-1 text-[0.9rem] font-semibold tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-colors duration-200 relative ${pathname === link.href ? "text-[var(--primary)]" : "text-[var(--foreground)]"
+                className={`uppercase px-3 py-1 text-[0.9rem] font-semibold tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-colors duration-200 relative ${
+                  pathname === link.href ? "text-[var(--primary)]" : "text-[var(--foreground)]"
                   }`}
               >
                 {link.name}

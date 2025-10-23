@@ -7,17 +7,12 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { Button, Checkbox, FormControlLabel } from "@mui/material";
-import { Select } from 'antd';
-import { DownOutlined } from '@ant-design/icons';
 import { useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 
 const containerStyle = { width: "100%", height: "300px" };
-const categoriesOptions = [
-    "Grocery", "Electronics", "Clothing", "Food", "Books", "Other",
-    "Pharmacy", "Home & Kitchen", "Beauty", "Stationery", "Toys"
-];
+const categoriesOptions = ["Grocery", "Electronics", "Clothing", "Food", "Books", "Other"];
 
 const UpdateShop = () => {
     const router = useRouter();
@@ -38,7 +33,6 @@ const UpdateShop = () => {
         location: { latitude: 20.5937, longitude: 78.9629 }, // Default center
     });
     const [imagePreview, setImagePreview] = useState(null); // For displaying current or new image
-    const [otherCategory, setOtherCategory] = useState("");
     const [autocomplete, setAutocomplete] = useState(null);
     const addressRef = useRef();
 
@@ -234,12 +228,12 @@ const UpdateShop = () => {
 
     return (
         <div className="min-h-screen bg-gray-900 flex items-center justify-center p-6">
-            <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-2xl w-full max-w-2xl space-y-4 border border-gray-700">
+            <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-2xl shadow-lg w-full max-w-2xl space-y-4">
                 <h2 className="text-3xl font-semibold text-white mb-4 text-center">Update Shop Details</h2>
 
                 <div>
                     <label className="text-gray-300 mb-1 block">Shop Image</label>
-                    <input type="file" accept="image/*" onChange={handleImageChange} className="text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-700 file:text-gray-200 hover:file:bg-gray-600"/>
+                    <input type="file" accept="image/*" onChange={handleImageChange} className="text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
                     {imagePreview && (
                         <img src={imagePreview} alt="Shop Preview" className="mt-4 w-48 h-48 object-cover rounded-lg border-2 border-gray-500" />
                     )}
@@ -253,10 +247,9 @@ const UpdateShop = () => {
                             name={field}
                             value={formData[field]}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="w-full p-2 rounded-lg bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                             required
                         />
-
                     </div>
                 ))}
 
@@ -269,53 +262,31 @@ const UpdateShop = () => {
                         defaultValue={formData.address} // Use defaultValue for uncontrolled updates from autocomplete
                         onChange={handleChange}
                         placeholder="Start typing your address..."
-                        className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        className="w-full p-2 rounded-lg bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                     />
                 </div>
 
                 <div>
                     <label className="text-gray-300 mb-1 block">Categories</label>
-                    <Select
-                        mode="multiple"
-                        value={formData.category}
-                        onChange={(values)=>setFormData(prev=>({...prev, category: values}))}
-                        style={{ width: '100%' }}
-                        placeholder="Select categories"
-                        maxTagCount="responsive"
-                        suffixIcon={
-                            <span className="flex items-center gap-1 text-xs text-gray-400">
-                                <span>{formData.category?.length || 0}</span>
-                                <DownOutlined />
-                            </span>
-                        }
-                        options={[...new Set([...categoriesOptions, 'Other'])].map(v => ({ value: v, label: v }))}
-                    />
-                    {formData.category?.includes('Other') && (
-                        <div className="mt-3">
-                            <label className="text-gray-300 mb-1 block">Enter custom category</label>
-                            <input
-                                type="text"
-                                value={otherCategory}
-                                onChange={(e)=>setOtherCategory(e.target.value)}
-                                onBlur={()=>{
-                                    if(otherCategory.trim()){
-                                        setFormData(prev=>({
-                                            ...prev,
-                                            category: prev.category.filter(c=>c!== 'Other').concat(otherCategory.trim())
-                                        }));
-                                        setOtherCategory("");
-                                    }
-                                }}
-                                className="w-full mt-1 rounded-lg px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                placeholder="Type new category"
+                    <div className="flex flex-wrap gap-2">
+                        {categoriesOptions.map(cat => (
+                            <FormControlLabel
+                                key={cat}
+                                control={
+                                    <Checkbox
+                                        checked={formData.category.includes(cat)}
+                                        onChange={() => handleCategoryToggle(cat)}
+                                        sx={{ color: "white", '&.Mui-checked': { color: '#3b82f6' } }}
+                                    />
+                                }
+                                label={<span className="text-white">{cat}</span>}
                             />
-                            <p className="text-xs text-gray-500 mt-1">Blur the input to add it and replace "Other".</p>
-                        </div>
-                    )}
+                        ))}
+                    </div>
                 </div>
 
-                <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-700">
+                <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-500">
                     <div style={containerStyle} ref={mapDivRef} />
                 </div>
 
@@ -323,7 +294,7 @@ const UpdateShop = () => {
                     type="submit"
                     variant="contained"
                     fullWidth
-                    sx={{ py: 1.5, bgcolor: '#16a34a', '&:hover': { bgcolor: '#15803d' } }}
+                    sx={{ py: 1.5, bgcolor: '#2563eb', '&:hover': { bgcolor: '#1d4ed8' } }}
                 >
                     Update Shop
                 </Button>
