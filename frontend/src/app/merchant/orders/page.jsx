@@ -75,7 +75,7 @@ export default function Orders() {
           {orders.map((order) => (
             <div
               key={order.id}
-              className="border rounded-2xl shadow-sm bg-white p-4 transition-all duration-200"
+              className="border border-[var(--border)] rounded-2xl shadow-sm bg-[var(--card)] text-[var(--card-foreground)] p-4 transition-all duration-200"
             >
               {/* Header */}
               <div
@@ -83,16 +83,18 @@ export default function Orders() {
                 onClick={() => toggleExpand(order.id)}
               >
                 <div>
-                  <p className="font-semibold text-lg">
+                  <p className="font-semibold text-lg text-[var(--card-foreground)]">
                     Order #{order.id}
                   </p>
-                  <p className="text-sm text-gray-600">
-                    Payment: {order.payment_status} | Amount: ₹
-                    {order.amount_paid}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Placed on:{" "}
-                    {new Date(order.created_at).toLocaleString("en-IN")}
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                    <span className="px-2 py-0.5 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)] border border-[var(--border)]">{order.payment_method}</span>
+                    <span className={`px-2 py-0.5 rounded-full border ${order.payment_status === 'paid' ? 'bg-[color-mix(in_oklab,var(--success),white_85%)] text-[var(--success)] border-[var(--border)]' : 'bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)] border-[var(--border)]'}`}>
+                      Payment: {order.payment_status}
+                    </span>
+                    <span className="ml-1 text-[var(--muted-foreground)]">Amount: ₹{order.amount_paid}</span>
+                  </div>
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    Placed on {new Date(order.created_at).toLocaleString("en-IN")}
                   </p>
                 </div>
 
@@ -105,10 +107,10 @@ export default function Orders() {
 
               {/* Expanded Details */}
               {expandedOrder === order.id && (
-                <div className="mt-4 border-t pt-3 space-y-4">
+                <div className="mt-4 border-t border-[var(--border)] pt-3 space-y-4">
                   {/* Cart Items */}
                   <div>
-                    <h3 className="font-medium text-gray-800 mb-3">
+                    <h3 className="font-medium text-[var(--card-foreground)] mb-3">
                       Cart Items:
                     </h3>
                     {order.Cart?.Cart_items?.length > 0 ? (
@@ -118,7 +120,7 @@ export default function Orders() {
                           return (
                             <li
                               key={item.id}
-                              className="flex gap-4 bg-gray-50 p-3 rounded-xl shadow-sm"
+                              className="flex gap-4 bg-[var(--muted)]/30 p-3 rounded-xl shadow-sm border border-[var(--border)]"
                             >
                               <img
                                 src={product.images?.[0]?.url}
@@ -126,17 +128,17 @@ export default function Orders() {
                                 className="w-20 h-20 object-cover rounded-lg"
                               />
                               <div className="flex-1">
-                                <p className="font-semibold text-gray-800">
+                                <p className="font-semibold text-[var(--card-foreground)]">
                                   {product.name}
                                 </p>
-                                <p className="text-sm text-gray-600 line-clamp-2">
+                                <p className="text-sm text-[var(--muted-foreground)] line-clamp-2">
                                   {product.description.slice(0, 100)}...
                                 </p>
                                 <div className="flex justify-between items-center mt-2">
-                                  <p className="text-sm text-gray-700">
+                                  <p className="text-sm text-[var(--card-foreground)]/90">
                                     ₹{product.price} × {item.quantity}
                                   </p>
-                                  <p className="text-sm font-medium text-gray-900">
+                                  <p className="text-sm font-medium text-[var(--card-foreground)]">
                                     ₹{product.price * item.quantity}
                                   </p>
                                 </div>
@@ -146,7 +148,7 @@ export default function Orders() {
                         })}
                       </ul>
                     ) : (
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-[var(--muted-foreground)]">
                         No items found in this cart.
                       </p>
                     )}
@@ -155,10 +157,10 @@ export default function Orders() {
                   {/* Address Section */}
                   {order.Addresses && (
                     <div>
-                      <h3 className="font-medium text-gray-800 mb-2">
+                      <h3 className="font-medium text-[var(--card-foreground)] mb-2">
                         Delivery Address:
                       </h3>
-                      <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-700">
+                      <div className="rounded-xl p-3 text-sm bg-[var(--muted)]/30 text-[var(--card-foreground)] border border-[var(--border)]">
                         <p className="font-medium">{order.Addresses.title}</p>
                         <p>{order.Addresses.address}</p>
                         <p>📍 {order.Addresses.mobile_no}</p>
@@ -166,17 +168,19 @@ export default function Orders() {
                     </div>
                   )}
 
+                  
+
                   {/* Action Buttons */}
                   <div className="flex gap-3 justify-end mt-3">
                     <button
                       onClick={() => handleAccept(order.id,'rejected')}
-                      className="px-4 py-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all"
+                      className="px-4 py-2 bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)] rounded-xl hover:opacity-90 transition-all border border-[var(--border)]"
                     >
                       Reject
                     </button>
                     <button
                       onClick={() => handleAccept(order.id , 'accepted')}
-                      className="px-4 py-2 bg-green-100 text-green-600 rounded-xl hover:bg-green-200 transition-all"
+                      className="px-4 py-2 bg-[color-mix(in_oklab,var(--success),white_85%)] text-[var(--success)] rounded-xl hover:opacity-90 transition-all border border-[var(--border)]"
                     >
                       Confirm
                     </button>

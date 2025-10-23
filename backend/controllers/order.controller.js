@@ -5,34 +5,62 @@ import dotenv from "dotenv";
 dotenv.config();
 const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 
-export const getCheckoutDetails= async(req, res)=>{
-    const {clerkId} = req.params;
+export const getCheckoutDetails = async (req, res) => {
+    console.log(0);
+    try {
+    console.log(1);
+    const { clerkId } = req.params;
+    console.log(2);
     const { data: user, error: userError } = await supabase
-        .from('Users')
-        .select('id, role')
-        .eq('clerk_id', clerkId)
-        .single();
+      .from('Users')
+      .select('id, role')
+      .eq('clerk_id', clerkId)
+      .maybeSingle(); // ✅ use maybeSingle() to avoid throwing
 
     if (userError || !user) {
-        return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
+
     if (user.role !== 'customer') {
-        return res.status(403).json({ message: "Unauthorized: Only logged in users can post comments" });
+      return res.status(403).json({ message: "Unauthorized: Only logged-in users can access checkout" });
     }
-    const {data:cart, error:cartError}=await supabase.from("Cart").select("*").eq("user_id", user.id).eq("status", "active").single(); 
+
+    const { data: cart, error: cartError } = await supabase
+      .from("Cart")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .maybeSingle(); // ✅ same fix
+    
     if (cartError || !cart) {
-        return res.status(404).json({ message: "Cart not found" });
+      return res.status(404).json({ message: "Cart not found" });
     }
-    const {data:cartItems, error:cartItemError}= await supabase.from("Cart_items").select("quantity, Items(*)").eq("cart_id", cart.id);
-    if (cartItemError) {
-        return res.status(404).json({ message: "Cart Items not found" });
+
+    const { data: cartItems, error: cartItemError } = await supabase
+      .from("Cart_items")
+      .select("quantity, Items(*)")
+      .eq("cart_id", cart.id);
+
+    if (cartItemError || !cartItems?.length) {
+      return res.status(404).json({ message: "Cart Items not found" });
     }
-    let totalPrice=0;
-    for(let i=0;i<cartItems.length;i++){
-        totalPrice+=(cartItems[i].Items.price*cartItems[i].quantity);
+
+    let totalPrice = 0;
+    for (let item of cartItems) {
+      totalPrice += item.Items.price * item.quantity;
     }
-    return res.status(200).json({ totalPrice, shop_id:cartItems[0].Items.shop_id, cart_id:cart.id, cartItems });
-}
+
+    return res.status(200).json({
+      totalPrice,
+      shop_id: cartItems[0].Items.shop_id,
+      cart_id: cart.id,
+      cartItems,
+    });
+  } catch (err) {
+    console.error("Server error in getCheckoutDetails:", err);
+    return res.status(500).json({ message: "Internal server error", error: err.message });
+  }
+};
 
 export const placeOrder=async (req, res)=>{
     const {address_id, cart_id, shop_id, payment_method, amount, clerkId, payment_status} = req.body;
@@ -82,11 +110,13 @@ export const placeOrder=async (req, res)=>{
                 .eq("id", item_id)
         )
     );
+    console.log("Cart updated");
     const {data:cart, error:cartError}=await supabase.from("Cart").update({status:"inactive"}).eq("id", cart_id).single();
     if(cartError) 
         return res.status(404).json({ message: "Cart not found" });
     if(cartItemsError) 
         return res.status(404).json({ message: "Cart Items not found" });
     return res.status(200).json({ message: "Order placed successfully" });
+    console.log("Cart updated2");
 }
 

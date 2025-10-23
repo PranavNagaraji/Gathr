@@ -201,20 +201,31 @@ export const getCurrentCart = async (req, res) => {
 
     const userId = user.id;
 
-    const { data: cart, error: cartError } = await supabase
+    const { data: carts, error: cartsError } = await supabase
       .from("Cart")
       .select("*")
       .eq("user_id", userId)
-      .eq("status", "active")
-      .single();
+      .eq("status", "active");
 
-    let currentCart = cart;
 
-    if (cartError || !cart) {
+   let currentCart;
+
+    if (!carts || carts.length === 0) {
       currentCart = await createCart(userId);
-      if (!currentCart)
-        return res.status(500).json({ message: "Failed to create cart" });
+    } else {
+      currentCart = carts[0];
+
+      if (carts.length > 1) {
+        // Archive duplicates
+        for (let i = 1; i < carts.length; i++) {
+          await supabase
+            .from("Cart")
+            .update({ status: "archived" })
+            .eq("id", carts[i].id);
+        }
+      }
     }
+
 
     const { data: cartItems, error: cartItemsError } = await supabase
       .from("Cart_items")
@@ -262,7 +273,7 @@ export const addToCart = async (req, res) => {
       .select("*")
       .eq("user_id", user.id)
       .eq("status", "active")
-      .single();
+      .maybeSingle();
 
     let cart = cartData;
 

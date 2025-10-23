@@ -116,7 +116,7 @@ export const get_all_carts = async (req,res)=>{
 
     const { data: carts, error } = await supabase
         .from("Orders")
-        .select("*, Cart(* , Cart_items(* , Items(*))), Addresses(*)")
+        .select("*, Cart(* , Cart_items(* , Items(*))), Addresses(*), Users:carrier_id(*)")
         .eq("shop_id", shop.id)
         .order("created_at", { ascending: false });
     if (error) {

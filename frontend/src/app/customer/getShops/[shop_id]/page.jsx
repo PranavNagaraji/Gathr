@@ -17,8 +17,7 @@ export default function ShopItems() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [categories, setCategories] = useState([]);
-  const [focused, setFocused] = useState(false);
-  const [focused2, setFocused2] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
 
   // --- Fetch items ---
   useEffect(() => {
@@ -60,7 +59,7 @@ export default function ShopItems() {
   const cardVariants = {
     hidden: { opacity: 0, y: 50 },
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 80, damping: 12 } },
-    hover: { scale: 1.05, transition: { duration: 0.3 } },
+    hover: { scale: 1.02, transition: { duration: 0.2, ease: "easeOut" } },
   };
 
   return (
@@ -84,28 +83,36 @@ export default function ShopItems() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search items..."
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              className="w-full px-5 py-3 bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-sm placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/30 transition-transform duration-300 rounded-lg"
-              style={{ transform: focused ? "scale(1.05)" : "scale(1)" }}
+              className="w-full px-5 py-3 bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-sm placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/30 rounded-lg"
             />
           </div>
 
-          <div className="w-full sm:w-64">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              onFocus={() => setFocused2(true)}
-              onBlur={() => setFocused2(false)}
-              className="w-full px-4 py-3 bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/30 transition-transform duration-300 rounded-lg"
-              style={{ transform: focused2 ? "scale(1.05)" : "scale(1)" }}
+          <div className="w-full sm:w-64 relative">
+            <button
+              type="button"
+              onClick={() => setCatOpen((o) => !o)}
+              className="w-full px-4 py-3 bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-sm rounded-lg flex items-center justify-between"
+              aria-haspopup="listbox"
+              aria-expanded={catOpen}
             >
-              {categories.map((cat, idx) => (
-                <option key={idx} value={cat} className="hover:bg-[var(--muted)] hover:text-[var(--foreground)]">
-                  {cat}
-                </option>
-              ))}
-            </select>
+              <span className="truncate">{selectedCategory}</span>
+              <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : "rotate-0"}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd"/></svg>
+            </button>
+            {catOpen && (
+              <ul role="listbox" className="absolute z-30 mt-2 w-full max-h-60 overflow-auto bg-[var(--popover)] text-[var(--popover-foreground)] border border-[var(--border)] rounded-lg shadow-lg">
+                {categories.map((cat, idx) => (
+                  <li
+                    key={idx}
+                    role="option"
+                    aria-selected={selectedCategory === cat}
+                    onClick={() => { setSelectedCategory(cat); setCatOpen(false); }}
+                    className={`px-4 py-2 cursor-pointer hover:bg-[var(--accent)]/40 ${selectedCategory === cat ? "bg-[var(--accent)]/30" : ""}`}
+                  >
+                    {cat}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </div>
@@ -123,10 +130,10 @@ export default function ShopItems() {
                   animate="show"
                   whileHover="hover"
                   delay={idx * 0.1}
-                  className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-xl shadow-md overflow-hidden border border-[var(--border)]"
+                  className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-xl shadow-md overflow-hidden border border-[var(--border)] hover:bg-[var(--muted)]/40 dark:hover:bg-[var(--muted)]/20 transition-colors duration-200"
                 >
                   <Link href={`/customer/getShops/${shop_id}/item/${item.id}`} className="block">
-                    <motion.div whileTap={{ scale: 0.99 }} className="overflow-hidden shadow-md hover:shadow-lg transition">
+                    <motion.div whileTap={{ scale: 0.99 }} className="overflow-hidden shadow-md transition">
                       <div className="h-44 md:h-48 bg-gradient-to-b from-[var(--muted)] to-[var(--card)] overflow-hidden">
                         <img
                           src={item.images?.[0]?.url || "/placeholder.png"}
@@ -135,7 +142,7 @@ export default function ShopItems() {
                         />
                       </div>
 
-                      <div className="bg-[var(--card)] p-4 md:p-5 hover:bg-[var(--muted)]/30 transition-colors duration-500">
+                      <div className="bg-[var(--card)] p-4 md:p-5">
                       <div className="flex justify-between mb-2">
                         <h3 className="text-[var(--card-foreground)] text-lg md:text-xl font-semibold truncate">{item.name}</h3>
                         <p className="text-md font-bold text-[var(--primary)] mt-1">₹{item.price}</p>

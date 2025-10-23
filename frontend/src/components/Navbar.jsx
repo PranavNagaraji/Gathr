@@ -1,11 +1,12 @@
 'use client';
-import { SignOutButton, useUser } from "@clerk/nextjs";
+import { SignOutButton, useUser, useAuth } from "@clerk/nextjs";
 import React, { useState, useRef, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, useScroll, useSpring, AnimatePresence } from "framer-motion";
 import { Home, ShoppingCart, } from "lucide-react";
 import ThemeToggle from "@/components/theme/ThemeToggle";
+import axios from "axios";
 
 // --- Link configurations for different user roles ---
 const merchantLinks = [
@@ -39,6 +40,7 @@ const links = [
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [cartItemCount, setCartItemCount] = useState(0);
   const menuRef = useRef(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -51,6 +53,7 @@ export default function Navbar() {
   });
 
   const { isSignedIn, user } = useUser();
+  const { getToken } = useAuth();
   const profileImage = user?.imageUrl;
   const role = user?.publicMetadata?.role;
 
@@ -72,6 +75,33 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Fetch cart item count
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      if (!isSignedIn || !user || role !== "customer") {
+        setCartItemCount(0);
+        return;
+      }
+
+      try {
+        const token = await getToken();
+        const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const res = await axios.post(
+          `${API_URL}/api/customer/getCart`,
+          { clerkId: user.id },
+          { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
+        );
+        const itemCount = res.data.cartItems?.length || 0;
+        setCartItemCount(itemCount);
+      } catch (err) {
+        console.error("Error fetching cart count:", err);
+        setCartItemCount(0);
+      }
+    };
+
+    fetchCartCount();
+  }, [isSignedIn, user, role, pathname]);
 
   return (
     <>
@@ -126,10 +156,16 @@ export default function Navbar() {
                   color: { duration: 0.25, ease: "easeInOut" },
                   scale: { type: "spring", stiffness: 260, damping: 15 },
                 }}
-                className={`uppercase px-3 py-1 text-[0.9rem] font-semibold tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-colors duration-200 ${pathname === link.href ? "text-[var(--primary)]" : "text-[var(--foreground)]"
+                className={`uppercase px-3 py-1 text-[0.9rem] font-semibold tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-colors duration-200 relative ${
+                  pathname === link.href ? "text-[var(--primary)]" : "text-[var(--foreground)]"
                   }`}
               >
                 {link.name}
+                {link.name === "Cart" && cartItemCount > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
               </motion.a>
             ))}
           </div>
@@ -217,9 +253,14 @@ export default function Navbar() {
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
                   whileHover={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)", x: 4 }}
-                  className="py-3 px-6 text-[var(--foreground)] font-semibold uppercase tracking-wide"
+                  className="py-3 px-6 text-[var(--foreground)] font-semibold uppercase tracking-wide relative flex items-center justify-between"
                 >
-                  {link.name}
+                  <span>{link.name}</span>
+                  {link.name === "Cart" && cartItemCount > 0 && (
+                    <span className="bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {cartItemCount}
+                    </span>
+                  )}
                 </motion.a>
               ))}
 

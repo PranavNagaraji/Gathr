@@ -4,7 +4,7 @@ import axios from "axios";
 import { useEffect, useState, useRef } from "react";
 import { useJsApiLoader, StandaloneSearchBox } from "@react-google-maps/api";
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+// Leaflet must be loaded only on the client to avoid SSR 'window is not defined'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -42,16 +42,26 @@ const Checkout = () => {
     });
 
   useEffect(() => {
-    const defaultIcon = L.icon({
-      iconUrl: markerIcon,
-      iconRetinaUrl: markerIcon2x,
-      shadowUrl: markerShadow,
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
-    });
-    L.Marker.prototype.options.icon = defaultIcon;
+    let isMounted = true;
+    if (typeof window === 'undefined') return;
+    (async () => {
+      try {
+        const L = (await import('leaflet')).default;
+        const defaultIcon = L.icon({
+          iconUrl: markerIcon,
+          iconRetinaUrl: markerIcon2x,
+          shadowUrl: markerShadow,
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41],
+        });
+        if (isMounted) {
+          L.Marker.prototype.options.icon = defaultIcon;
+        }
+      } catch {}
+    })();
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {
@@ -60,6 +70,7 @@ const Checkout = () => {
     const getAddresses = async () => {
       try {
         const token = await getToken();
+        console.log(token);
         const res = await axios.get(
           `${API_URL}/api/customer/getAddressesByUser/${user.id}`,
           {
@@ -78,13 +89,19 @@ const Checkout = () => {
     };
     getAddresses();
     const getCheckOutDetails = async () => {
+      console.log(user.id); 
         try{
             const token = await getToken();
+            console.log(token);
             const res = await axios.get(`${API_URL}/api/order/getCheckout/${user.id}`,{
                 headers: { Authorization: `Bearer ${token}` },
             });
+            console.log("Checkout details:", res.data);
+            console.log(res.data);
+
             setCheckOutDetails(res.data);
         }catch(error){
+            console.log('hi');
             console.error("Error fetching checkout details:", error);
         }
     }
@@ -138,29 +155,49 @@ const Checkout = () => {
       return;
     }
 
-    const token = await getToken();
+    try {
+      const token = await getToken();
 
-    if (paymentMethod === "cod") {
-      // Handle Cash on Delivery
-      const result = await axios.post(`${API_URL}/api/order/placeOrder`,{
-        clerkId: user.id,
-        shop_id: checkOutDetails.shop_id,
-        cart_id: checkOutDetails.cart_id,
-        payment_method: paymentMethod,
-        amount: checkOutDetails.totalPrice,
-        address_id: selectedAddressId,
-        payment_status: "pending"
-      },{
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log(result.data);
-      if(result.status === 200){
-        toast.success("Order placed successfully");
-        router.push("/customer/cart");
+     if (paymentMethod == "cod") {
+        try {
+          const token = await getToken();
+          console.log(token);
+          const payload = {
+            clerkId: user.id,
+            shop_id: checkOutDetails.shop_id || checkOutDetails.shopId,
+            cart_id: checkOutDetails.cart_id || checkOutDetails.cartId,
+            payment_method: "cod",
+            amount: Number(checkOutDetails.totalPrice || 0),
+            address_id: selectedAddressId,
+            payment_status: "pending",
+          };
+
+          console.log("COD payload:", payload);
+
+          const response = await axios.post(`${API_URL}/api/order/placeOrder`, payload, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          console.log("COD Order result:", response.data);
+
+          if (response.status === 200 || response.data.message === "Order placed successfully") {
+            toast.success("Order placed successfully");
+            router.push("/customer/cart");
+          } else {
+            throw new Error("Unexpected response: " + JSON.stringify(response.data));
+          }
+        } catch (error) {
+          console.error("COD Checkout Error:", error.response?.data || error.message);
+          toast.error(
+            error.response?.data?.message || "Failed to place COD order. Please try again."
+          );
+        }
       }
-    } else if (paymentMethod === "online") {
-      // Handle Stripe Online Payment
-      try {
+    else if (paymentMethod === "online") {
+        // Handle Stripe Online Payment
         // Step 1: Create order from cart with selected address
         const orderResponse = await axios.post(
           `${API_URL}/stripe/create-order-from-cart`,
@@ -195,11 +232,10 @@ const Checkout = () => {
         
         // Step 3: Redirect to Stripe Checkout
         window.location.href = checkoutResponse.data.url;
-        
-      } catch (error) {
-        console.error("Stripe checkout error:", error);
-        toast.error("Failed to start online payment. Please try again.");
       }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      toast.error("Failed to place order. Please try again.");
     }
   }
 
@@ -220,7 +256,7 @@ const Checkout = () => {
               role="listitem"
               className={`border rounded-xl p-4 cursor-pointer transition-all ${
                 selectedAddressId === address.id
-                  ? "border-[var(--primary)] bg-[color-mix(in_oklab,var(--primary),white_90%)]"
+                  ? "border-[var(--primary)] bg-[color-mix(in_oklab,var(--primary),white_88%)] text-[var(--foreground)] shadow-sm dark:bg-[color-mix(in_oklab,var(--primary),black_75%)] dark:text-white"
                   : "border-[var(--border)] hover:border-[var(--ring)]/60 bg-[var(--card)]"
               }`}
             >
@@ -257,7 +293,7 @@ const Checkout = () => {
 
               {/* Map */}
               {address.location?.lat && address.location?.long && (
-                <div className="rounded-lg overflow-hidden border border-[var(--border)] mt-3">
+                <div className="rounded-lg overflow-hidden border border-[var(--border)] mt-3 relative z-0">
                   <MiniLeafletMap
                     style={containerStyle}
                     center={[address.location.lat, address.location.long]}
@@ -278,7 +314,7 @@ const Checkout = () => {
           </button>
 
         {addressToggle && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+        <div className="fixed inset-0 z-[9999] bg-black/40 flex items-center justify-center">
             <div className="bg-[var(--popover)] text-[var(--popover-foreground)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-2xl relative space-y-4 h-3/4 overflow-y-auto ">
             {/* Close button */}
             <button
@@ -384,9 +420,11 @@ const Checkout = () => {
                 />
 
                 {/* Submit button */}
-                <AnimatedButton onClick={() => handleAddAddress(addAddress)} variant="primary" rounded="lg" className="mt-2">
+                <div className="mt-4">
+                <AnimatedButton onClick={() => handleAddAddress(addAddress)} variant="primary" rounded="lg" >
                   Add Address
                 </AnimatedButton>
+                </div>
             </div>
             </div>
         </div>
@@ -415,16 +453,18 @@ const Checkout = () => {
           <div className="bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] rounded-2xl p-6 sticky top-24">
             <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span>Items</span><span>{checkOutDetails?.items?.length ?? checkOutDetails?.totalItems ?? 0}</span></div>
-              <div className="flex justify-between"><span>Subtotal</span><span>${checkOutDetails?.totalPrice ?? 0}</span></div>
+              <div className="flex justify-between"><span>Items</span><span>{checkOutDetails?.cartItems?.length ?? 0}</span></div>
+              <div className="flex justify-between"><span>Subtotal</span><span>${checkOutDetails?.totalPrice?.toFixed(2) ?? "0.00"}</span></div>
             </div>
             <div className="mt-4 border-t border-[var(--border)] pt-4 flex justify-between font-semibold">
               <span>Total</span>
-              <span>${checkOutDetails?.totalPrice ?? 0}</span>
+              <span>${checkOutDetails?.totalPrice?.toFixed(2) ?? "0.00"}</span>
             </div>
-            <AnimatedButton onClick={handleCheckOut} size="lg" rounded="lg" variant="primary" className="w-full mt-6">
+            <div className="mt-4">
+            <AnimatedButton onClick={handleCheckOut} className="" size="lg" rounded="lg" variant="primary" >
               Checkout
             </AnimatedButton>
+            </div>
           </div>
         </div>
       </div>
@@ -441,40 +481,53 @@ function MiniLeafletMap({ style, center, zoom = 13, marker, onMapClick, mapRefOu
   const markerRef = useRef(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     if (!divRef.current) return;
-    if (!mapRef.current) {
-      const map = L.map(divRef.current, {
-        center,
-        zoom,
-        zoomControl: false,
-      });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-      if (onMapClick) {
-        map.on('click', (e) => onMapClick(e.latlng));
-      }
-      mapRef.current = map;
-      if (mapRefOut) mapRefOut.current = map;
-    } else {
-      mapRef.current.setView(center, zoom);
-    }
 
-    if (marker) {
-      const { position, draggable = false, onDragEnd } = marker;
-      if (!markerRef.current) {
-        const m = L.marker(position, { draggable }).addTo(mapRef.current);
-        if (draggable && onDragEnd) {
-          m.on('dragend', (e) => onDragEnd(e.target.getLatLng()));
+    let leaflet;
+    (async () => {
+      try {
+        leaflet = (await import('leaflet')).default;
+
+        if (!mapRef.current) {
+          const map = leaflet.map(divRef.current, {
+            center,
+            zoom,
+            zoomControl: false,
+          });
+          leaflet
+            .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '&copy; OpenStreetMap contributors',
+            })
+            .addTo(map);
+          if (onMapClick) {
+            map.on('click', (e) => onMapClick(e.latlng));
+          }
+          mapRef.current = map;
+          if (mapRefOut) mapRefOut.current = map;
+        } else {
+          mapRef.current.setView(center, zoom);
         }
-        markerRef.current = m;
-      } else {
-        markerRef.current.setLatLng(position);
-        markerRef.current.dragging && markerRef.current.dragging[draggable ? 'enable' : 'disable']?.();
-      }
-    } else if (markerRef.current) {
-      mapRef.current.removeLayer(markerRef.current);
-      markerRef.current = null;
-    }
-  }, [center?.[0], center?.[1], zoom, marker?.position?.[0], marker?.position?.[1], marker?.draggable]);
+
+        if (marker) {
+          const { position, draggable = false, onDragEnd } = marker;
+          if (!markerRef.current) {
+            const m = leaflet.marker(position, { draggable }).addTo(mapRef.current);
+            if (draggable && onDragEnd) {
+              m.on('dragend', (e) => onDragEnd(e.target.getLatLng()));
+            }
+            markerRef.current = m;
+          } else {
+            markerRef.current.setLatLng(position);
+            markerRef.current.dragging && markerRef.current.dragging[draggable ? 'enable' : 'disable']?.();
+          }
+        } else if (markerRef.current) {
+          mapRef.current.removeLayer(markerRef.current);
+          markerRef.current = null;
+        }
+      } catch {}
+    })();
+  }, [center?.[0], center?.[1], zoom, marker?.position?.[0], marker?.position?.[1], marker?.draggable, onMapClick]);
 
   return <div style={style} ref={divRef} />;
 }

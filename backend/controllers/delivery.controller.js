@@ -232,7 +232,7 @@ export const completeDelivery = async (req, res) => {
                 .json({ message: "Unauthorized: Only carriers can accept deliveries" });
         }
         console.log(3);
-        await supabase.from("Orders").update({ status: "delivered" }).eq("id", orderId);
+        await supabase.from("Orders").update({ status: "delivered" , payment_status: "paid" }).eq("id", orderId);
         return res.status(200).json({ message: "Delivery accepted successfully" });
     } catch (err) {
         console.error("Unexpected error:", err);
