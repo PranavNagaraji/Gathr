@@ -1,4 +1,5 @@
 import "./globals.css";
+import "antd/dist/reset.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import Navbar from "@/components/Navbar";
 import UIProviders from "@/components/ui/UIProviders";
