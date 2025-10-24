@@ -139,16 +139,18 @@ export const getRating = async (req, res) => {
     if (user.role !== 'customer') {
       return res.status(403).json({ message: "Unauthorized: Only logged in users can get Addresses" });
     }
-    const { itemId } = req.params;
     const { data: rating, error: ratingErr } = await supabase
       .from('itemRating')
       .select('rating')
       .eq('item_id', itemId)
-      .single();
+      .eq('user_id', user.id)
+      .maybeSingle();
 
     if (ratingErr) throw ratingErr;
-
-    return res.status(200).json({ rating });
+    if (!rating) {
+      return res.status(404).json({ message: "Rating not found" });
+    }
+    return res.status(200).json(rating);
   } catch (err) {
     console.error('Error in getRating:', err);
     return res.status(500).json({ message: 'Internal server error', error: err.message });
