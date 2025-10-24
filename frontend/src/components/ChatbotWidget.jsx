@@ -25,15 +25,35 @@ export default function ChatbotWidget({ items, shopId }) {
   }, []);
 
   const searchable = useMemo(() => {
-    return (items || []).map((it) => ({
-      id: it.id,
-      name: it.name || "",
-      description: it.description || "",
-      categories: it.category || [],
-      category: (it.category || []).join(" "),
-      price: it.price,
-      image: it.images?.[0]?.url || "/placeholder.png",
-    }));
+    const parsePrice = (p) => {
+      if (p == null) return Number.POSITIVE_INFINITY;
+      if (typeof p === 'number') return p;
+      if (typeof p === 'string') {
+        const m = p.replace(/,/g, '').match(/\d+(?:\.\d+)?/);
+        return m ? Number(m[0]) : Number.POSITIVE_INFINITY;
+      }
+      return Number.POSITIVE_INFINITY;
+    };
+    const normalizeCats = (c) => {
+      if (!c) return [];
+      if (Array.isArray(c)) return c.map((x) => String(x).trim()).filter(Boolean);
+      if (typeof c === 'string') return c.split(/,|\//).map((x) => x.trim()).filter(Boolean);
+      return [];
+    };
+    return (items || []).map((it) => {
+      const cats = normalizeCats(it.category);
+      const priceNum = parsePrice(it.price);
+      return {
+        id: it.id,
+        name: it.name || "",
+        description: it.description || "",
+        categories: cats,
+        category: cats.join(" "),
+        price: it.price,
+        priceNum,
+        image: it.images?.[0]?.url || "/placeholder.png",
+      };
+    });
   }, [items]);
 
   const categories = useMemo(() => {
@@ -66,20 +86,46 @@ export default function ChatbotWidget({ items, shopId }) {
     const query = q.trim().toLowerCase();
     const terms = query.split(/\s+/).filter(Boolean);
     const intent = simpleIntent(query);
+
+    // Exclude numeric and price-keyword-only terms from scoring
+    const stop = new Set(['under', 'below', 'less', 'than', 'inr', 'rs', '₹']);
+    const termsForScoring = terms.filter((t) => !/^\d+$/.test(t) && !stop.has(t));
+
     const filtered = searchable.filter((it) => {
-      const priceOk = intent.maxPrice ? Number(it.price) <= intent.maxPrice : true;
-      const catOk = intent.category ? it.categories.includes(intent.category) : true;
+      const priceOk = intent.maxPrice ? it.priceNum <= intent.maxPrice : true;
+      const catOk = intent.category ? it.categories.map((c)=>String(c).toLowerCase()).includes(String(intent.category).toLowerCase()) : true;
       return priceOk && catOk;
     });
+
     const scored = filtered.map((it) => {
       const blob = `${it.name} ${it.description} ${it.category}`;
-      return { item: it, score: fuzzyScore(blob, terms) };
+      const score = termsForScoring.length ? fuzzyScore(blob, termsForScoring) : 1; // allow price-only queries
+      return { item: it, score };
     });
-    return scored
-      .filter((s) => s.score > 0)
-      .sort((a, b) => b.score - a.score || (a.item.name || "").localeCompare(b.item.name || ""))
+
+    let list = (termsForScoring.length
+      ? scored.filter((s) => s.score > 0)
+      : scored // don't filter out for price-only queries
+    )
+      .sort((a, b) => {
+        // Prefer higher score; for ties, lower price then name
+        if (b.score !== a.score) return b.score - a.score;
+        const ap = Number(a.item.priceNum ?? Infinity);
+        const bp = Number(b.item.priceNum ?? Infinity);
+        if (ap !== bp) return ap - bp;
+        return (a.item.name || '').localeCompare(b.item.name || '');
+      })
       .slice(0, 6)
       .map((s) => s.item);
+
+    // Fallback: if no results after scoring (e.g., very narrow terms), show cheapest filtered items
+    if (!list.length && filtered.length) {
+      list = [...filtered]
+        .sort((a, b) => (a.priceNum ?? Infinity) - (b.priceNum ?? Infinity))
+        .slice(0, 6);
+    }
+
+    return list;
   };
 
   const sendToBackend = async (q) => {
@@ -157,18 +203,12 @@ export default function ChatbotWidget({ items, shopId }) {
         className="
           pointer-events-auto 
           rounded-full 
-    bg-gradient-to-br from-[#0B132B] via-[#1C2541] to-[#3A506B] 
-    hover:from-[#1C2541] hover:to-[#3A506B] 
-          text-white 
+          bg-[var(--primary)] text-[var(--primary-foreground)]
           w-14 h-14 
           flex items-center justify-center 
-          shadow-lg 
-          hover:scale-110 
-          active:scale-95 
-          transition 
-          transform 
-          duration-200 
-          ease-in-out
+          shadow-lg hover:shadow-xl
+          hover:scale-110 active:scale-95 
+          transition transform duration-200 ease-in-out
         "
         aria-label={open ? "Close shop assistant" : "Open shop assistant"}
       >
@@ -179,32 +219,32 @@ export default function ChatbotWidget({ items, shopId }) {
         )}
       </button>
       {open && (
-        <div className="pointer-events-auto mt-3 w-80 sm:w-96 max-h-[70vh] bg-white border border-gray-200 shadow-2xl rounded-xl flex flex-col overflow-hidden">
-          <div className="px-4 py-3 bg-[#0B132B] text-white font-semibold">Shop Assistant</div>
-          <div className="px-3 pt-3 flex flex-wrap gap-2 bg-[#FAF7F5] border-b border-gray-200">
+        <div className="pointer-events-auto mt-3 w-80 sm:w-96 max-h-[70vh] bg-[var(--card)] border border-[var(--border)] shadow-2xl rounded-xl flex flex-col overflow-hidden text-[var(--card-foreground)]">
+          <div className="px-4 py-3 bg-[var(--muted)] text-[var(--muted-foreground)] font-semibold">Shop Assistant</div>
+          <div className="px-3 pt-3 flex flex-wrap gap-2 bg-[var(--card)] border-b border-[var(--border)]">
             {quickPrompts.map((p, i) => (
-              <button key={i} onClick={() => setInput(p)} className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1 hover:bg-gray-50">{p}</button>
+              <button key={i} onClick={() => setInput(p)} className="text-xs rounded-full px-3 py-1 bg-[var(--muted)] text-[var(--muted-foreground)] hover:opacity-90 transition border border-[var(--border)]">{p}</button>
             ))}
           </div>
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-[#FAF7F5]">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-[var(--card)]">
             {messages.map((m, idx) => (
-              <div key={idx} className={`max-w-[85%] ${m.role === "user" ? "ml-auto" : "mr-auto"}`}>
-                <div className={`${m.role === "user" ? "bg-[#0B132B] text-white" : "bg-white text-[#0B132B]"} rounded-2xl px-3 py-2 shadow-sm border border-gray-200`}>{m.text}</div>
+              <div key={idx} className={`max-w-[85%] ${m.role === "user" ? "ml-auto" : "mr-auto"} transition-transform duration-200`}>
+                <div className={`${m.role === "user" ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-[var(--muted)] text-[var(--muted-foreground)]"} rounded-2xl px-3 py-2 shadow-sm border border-[var(--border)]`}>{m.text}</div>
                 {m.suggestions && (
                   <div className="mt-2 grid grid-cols-1 gap-2">
                     {m.suggestions.map((s) => (
                       <button
                         key={s.id}
                         onClick={() => goToItem(s.id)}
-                        className="flex items-center gap-3 text-left bg-white border border-gray-200 rounded-lg p-2 hover:bg-gray-50"
+                        className="flex items-center gap-3 text-left bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] rounded-lg p-2 hover:opacity-90 transition"
                       >
                         <img src={s.image} alt={s.name} className="w-10 h-10 rounded object-cover" />
                         <div className="min-w-0">
                           <div className="font-medium truncate">{s.name}</div>
                           {s.description && (
-                            <div className="text-xs text-gray-500 truncate" title={s.description}>{s.description}</div>
+                            <div className="text-xs text-[var(--muted-foreground)] truncate" title={s.description}>{s.description}</div>
                           )}
-                          <div className="text-xs text-gray-600 truncate">₹{s.price}</div>
+                          <div className="text-xs text-[var(--muted-foreground)] truncate">₹{s.price}</div>
                         </div>
                       </button>
                     ))}
@@ -212,17 +252,17 @@ export default function ChatbotWidget({ items, shopId }) {
                 )}
               </div>
             ))}
-            {loading && (<div className="text-xs text-gray-500">Thinking…</div>)}
+            {loading && (<div className="text-xs text-[var(--muted-foreground)] animate-pulse">Thinking…</div>)}
           </div>
-          <div className="p-3 bg-white border-t border-gray-200 flex gap-2">
+          <div className="p-3 bg-[var(--card)] border-t border-[var(--border)] flex gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Ask: 'chips', 'dairy', 'under 200'"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F85B57]/30"
+              className="flex-1 px-3 py-2 rounded-lg bg-transparent border border-[var(--border)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             />
-            <button onClick={handleSend} className="px-4 py-2 bg-[#F85B57] text-white rounded-lg hover:opacity-90 disabled:opacity-50" disabled={loading}>Send</button>
+            <button onClick={handleSend} className="px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 disabled:opacity-50" disabled={loading}>Send</button>
           </div>
         </div>
       )}

@@ -250,11 +250,10 @@ export const getCurrentCart = async (req, res) => {
 export const addToCart = async (req, res) => {
   let { itemId, clerkId, quantity } = req.body;
   quantity = Number(quantity);
-
+  console.log(quantity);
   if (quantity <= 0)
     return res.status(400).json({ message: "Quantity must be greater than 0" });
 
-  // 1️⃣ Get user
   const { data: user, error: userError } = await supabase
     .from("Users")
     .select("id, role")
@@ -267,7 +266,6 @@ export const addToCart = async (req, res) => {
   if (user.role !== "customer")
     return res.status(403).json({ message: "Unauthorized: Only customers can add to cart" });
 
-  // 2️⃣ Get active cart
     const { data: cartData, error: cartError } = await supabase
       .from("Cart")
       .select("*")
@@ -276,7 +274,7 @@ export const addToCart = async (req, res) => {
       .maybeSingle();
 
     let cart = cartData;
-
+    console.log(cart);
     if (cartError || !cartData) {
       cart = await createCart(user.id);
       if (!cart) {
@@ -288,7 +286,6 @@ export const addToCart = async (req, res) => {
     const cartId = cart.id;
 
 
-  // 3️⃣ Get item and check stock
   const { data: item, error: itemError } = await supabase
     .from("Items")
     .select("*")
@@ -302,7 +299,6 @@ export const addToCart = async (req, res) => {
   if (item.quantity < quantity)
     return res.status(400).json({ message: "Not enough stock available" }, { stock: item.quantity });
 
-  // 4️⃣ Check if item already exists in cart
   const { data: existingItem } = await supabase
     .from("Cart_items")
     .select("*")
@@ -344,7 +340,6 @@ export const addToCart = async (req, res) => {
     cartItem = insertedItem[0];
   }
 
-  // 5️⃣ Reduce stock
   const { error: stockError } = await supabase
     .from("Items")
     .update({ quantity: item.quantity - quantity })

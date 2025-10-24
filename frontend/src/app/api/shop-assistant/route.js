@@ -13,6 +13,17 @@ function normalizeText(s = "") {
   return String(s).toLowerCase();
 }
 
+// Parse a numeric price from various formats like "₹1,299", "Rs 75", 199
+function parsePriceNumber(p) {
+  if (p == null) return Number.POSITIVE_INFINITY;
+  if (typeof p === 'number') return p;
+  if (typeof p === 'string') {
+    const m = p.replace(/,/g, '').match(/\d+(?:\.\d+)?/);
+    return m ? Number(m[0]) : Number.POSITIVE_INFINITY;
+  }
+  return Number.POSITIVE_INFINITY;
+}
+
 // Try to read a numeric rating from common fields (kept defensive)
 function getItemRating(it) {
   const cand = [
@@ -367,8 +378,10 @@ export async function POST(req) {
     const maxPrice = aiIntent.maxPrice || null;
     const desiredCategory = aiIntent.category || null;
     let filtered = items.filter(it => {
-      const inPrice = maxPrice ? Number(it.price) <= Number(maxPrice) : true;
-      const inCat = desiredCategory ? (Array.isArray(it.category) && it.category.includes(desiredCategory)) : true;
+      const inPrice = maxPrice ? parsePriceNumber(it.price) <= Number(maxPrice) : true;
+      const inCat = desiredCategory
+        ? (Array.isArray(it.category) && it.category.map(c=>String(c).toLowerCase()).includes(String(desiredCategory).toLowerCase()))
+        : true;
       return inPrice && inCat;
     });
 
@@ -377,14 +390,14 @@ export async function POST(req) {
       // try relaxing category first
       if (desiredCategory) {
         filtered = items.filter(it => {
-          const inPrice = maxPrice ? Number(it.price) <= Number(maxPrice) : true;
+          const inPrice = maxPrice ? parsePriceNumber(it.price) <= Number(maxPrice) : true;
           return inPrice;
         });
       }
       // if still nothing and maxPrice existed, relax price
       if (filtered.length === 0 && maxPrice) {
         filtered = items.filter(it => {
-          const inCat = desiredCategory ? Array.isArray(it.category) && it.category.includes(desiredCategory) : true;
+          const inCat = desiredCategory ? (Array.isArray(it.category) && it.category.map(c=>String(c).toLowerCase()).includes(String(desiredCategory).toLowerCase())) : true;
           return inCat;
         });
       }
@@ -418,7 +431,14 @@ export async function POST(req) {
           const ar = getItemRating(a.item);
           if (br !== ar) return br - ar; // primary: rating desc
         }
-        return b.score - a.score; // secondary: score desc
+        // prefer higher score, then lower price if user specified a price cap
+        if (b.score !== a.score) return b.score - a.score;
+        if (maxPrice) {
+          const ap = parsePriceNumber(a.item.price);
+          const bp = parsePriceNumber(b.item.price);
+          if (ap !== bp) return ap - bp;
+        }
+        return 0;
       })
       .slice(0, 12)
       .map(s => s.item);
@@ -443,6 +463,15 @@ export async function POST(req) {
         .filter(it => getItemRating(it) > 0)
         .slice(0, 6);
       finalRanked = topByRating;
+    }
+
+    // If still empty but a maxPrice was requested, suggest cheapest under that price
+    if (!finalRanked.length && maxPrice) {
+      finalRanked = items
+        .filter(it => parsePriceNumber(it.price) <= Number(maxPrice))
+        .slice()
+        .sort((a,b) => parsePriceNumber(a.price) - parsePriceNumber(b.price))
+        .slice(0, 6);
     }
 
     // Prepare suggestions
