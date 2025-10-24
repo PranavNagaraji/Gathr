@@ -5,6 +5,7 @@ import { useUser, useAuth } from "@clerk/nextjs"
 import axios from "axios"
 // 🔹 Import AntD components
 import { Select, Input, ConfigProvider, theme, Spin } from "antd"
+import { useTheme } from "@/components/theme/ThemeProvider"
 
 export default function EditItemPage() {
   const router = useRouter()
@@ -12,6 +13,7 @@ export default function EditItemPage() {
   const { user } = useUser()
   const { getToken, isLoaded, isSignedIn } = useAuth()
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL
+  const { theme: currentTheme } = useTheme()
 
   const categoryOptions = [
     "Fruits", "Vegetables", "Dairy", "Bakery", "Beverages",
@@ -33,6 +35,8 @@ export default function EditItemPage() {
   const [saving, setSaving] = useState(false)
   // 🔹 State for the "Other" category input
   const [otherCategory, setOtherCategory] = useState("")
+  // 🔹 Carousel state
+  const [activeIndex, setActiveIndex] = useState(0)
 
   // ... (useEffect and fetchItem logic is unchanged) ...
   useEffect(() => {
@@ -143,6 +147,7 @@ export default function EditItemPage() {
         ...prev,
         images: [...prev.images, ...base64Images],
       }))
+      setActiveIndex((prev) => (prev === 0 && formData.images.length === 0 ? 0 : prev))
     })
   }
   const handleRemoveImage = (index) => {
@@ -150,7 +155,21 @@ export default function EditItemPage() {
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
     }));
+    setActiveIndex((prev) => {
+      if (index === prev) {
+        return Math.max(0, prev - 1)
+      }
+      if (index < prev) return prev - 1
+      return prev
+    })
   };
+
+  const goPrev = () => {
+    setActiveIndex((prev) => (formData.images.length ? (prev - 1 + formData.images.length) % formData.images.length : 0))
+  }
+  const goNext = () => {
+    setActiveIndex((prev) => (formData.images.length ? (prev + 1) % formData.images.length : 0))
+  }
 
   // ... (handleSubmit logic is unchanged) ...
   const handleSubmit = async (e) => {
@@ -187,40 +206,40 @@ export default function EditItemPage() {
 
   // 🔹 Cleaner loading state with Spin
   if (loading) return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] text-[var(--foreground)]">
       <Spin size="large" />
     </div>
   )
 
   return (
-    // 🔹 Wrap with AntD provider for dark theme
+    // 🔹 Wrap with AntD provider synced to app theme
     <ConfigProvider
       theme={{
-        algorithm: theme.darkAlgorithm,
+        algorithm: currentTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-          colorPrimary: '#3b82f6', // blue-500
-          colorBgBase: '#111827', // bg-gray-900
-          colorBgContainer: '#1f2937', // bg-gray-800
-          colorBorder: '#374151', // border-gray-700
-          colorText: 'white',
+          colorPrimary: 'var(--primary)',
+          colorBgBase: 'var(--background)',
+          colorBgContainer: 'var(--card)',
+          colorBorder: 'var(--border)',
+          colorText: 'var(--foreground)',
         },
         components: {
           Select: {
             colorBgContainer: 'transparent',
-            colorBorder: '#374151', // border-gray-700
+            colorBorder: 'var(--border)',
             controlHeight: 48, // Taller select
           },
           Input: {
             colorBgContainer: 'transparent',
-            colorBorder: '#374151', // border-gray-700
+            colorBorder: 'var(--border)',
             controlHeight: 48, // Taller input
           },
         }
       }}
     >
-      <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
+      <div className="min-h-screen p-4 md:p-8 bg-[var(--background)] text-[var(--foreground)]">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold text-white mb-8">Edit Item</h1>
+          <h1 className="text-4xl font-bold mb-8 text-[var(--foreground)]">Edit Item</h1>
 
           {/* 🔹 Responsive 60/40 Grid Layout
             - 1 column on mobile (default)
@@ -234,31 +253,55 @@ export default function EditItemPage() {
               - Pushed to the right and made sticky on desktop
             */}
             <div className="md:col-span-2 md:order-last md:sticky md:top-8 h-fit">
-              <label className="text-sm font-medium text-gray-400 mb-2 block">Item Images</label>
+              <label className="text-sm font-medium mb-2 block text-[var(--muted-foreground)]">Item Images</label>
 
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                {formData.images?.map((img, i) => (
-                  <div key={i} className="relative aspect-square">
+              <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+                <div className="relative aspect-square w-full">
+                  {formData.images && formData.images.length > 0 ? (
                     <img
-                      src={img.url || img}
-                      alt={`preview-${i}`}
-                      className="w-full h-full object-cover rounded-lg border-2 border-gray-700"
+                      src={formData.images[activeIndex]?.url || formData.images[activeIndex]}
+                      alt={`image-${activeIndex}`}
+                      className="w-full h-full object-cover"
                     />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(i)}
-                      className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700 transition-colors"
-                      aria-label="Remove image"
-                    >
-                      ✕
-                    </button>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-sm text-[var(--muted-foreground)]">No images</div>
+                  )}
+                  {formData.images && formData.images.length > 1 && (
+                    <>
+                      <button type="button" onClick={goPrev} className="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-[var(--popover)]/80 text-[var(--popover-foreground)] border border-[var(--border)] hover:bg-[var(--accent)]/50 transition">‹</button>
+                      <button type="button" onClick={goNext} className="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-[var(--popover)]/80 text-[var(--popover-foreground)] border border-[var(--border)] hover:bg-[var(--accent)]/50 transition">›</button>
+                    </>
+                  )}
+                </div>
+
+                {formData.images && formData.images.length > 0 && (
+                  <div className="grid grid-cols-5 gap-2 p-3 bg-[var(--card)] border-t border-[var(--border)]">
+                    {formData.images.map((img, i) => (
+                      <button
+                        type="button"
+                        key={i}
+                        onClick={() => setActiveIndex(i)}
+                        className={`relative aspect-square rounded-md overflow-hidden border ${i === activeIndex ? 'border-[var(--primary)]' : 'border-[var(--border)]'}`}
+                        aria-label={`Select image ${i + 1}`}
+                      >
+                        <img src={img.url || img} alt={`thumb-${i}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleRemoveImage(i) }}
+                          className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                          aria-label={`Remove image ${i + 1}`}
+                        >
+                          ✕
+                        </button>
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
 
               <label
                 htmlFor="file-upload"
-                className="block w-full text-center py-3 px-4 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium cursor-pointer transition-colors"
+                className="mt-4 block w-full text-center py-3 px-4 rounded-lg bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] font-medium cursor-pointer transition-colors"
               >
                 Upload More Images
               </label>
@@ -272,7 +315,6 @@ export default function EditItemPage() {
               />
             </div>
 
-
             {/* 🔹 LEFT COLUMN (Details)
               - Appears SECOND in JSX
               - Spans 3/5 of the width on desktop
@@ -281,26 +323,26 @@ export default function EditItemPage() {
 
               {/* Name */}
               <div>
-                <label className="text-sm font-medium text-gray-400">Item Name</label>
+                <label className="text-sm font-medium text-[var(--muted-foreground)]">Item Name</label>
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full bg-transparent border-b-2 border-gray-700 text-white text-lg p-2 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors"
+                  className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
                   placeholder="Enter item name"
                 />
               </div>
 
               {/* Description */}
               <div>
-                <label className="text-sm font-medium text-gray-400">Description</label>
+                <label className="text-sm font-medium text-[var(--muted-foreground)]">Description</label>
                 <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
                   rows={4}
-                  className="w-full bg-transparent border-b-2 border-gray-700 text-white text-lg p-2 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors"
+                  className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
                   placeholder="Enter description"
                 />
               </div>
@@ -309,27 +351,27 @@ export default function EditItemPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Quantity */}
                 <div>
-                  <label className="text-sm font-medium text-gray-400">Quantity</label>
+                  <label className="text-sm font-medium text-[var(--muted-foreground)]">Quantity</label>
                   <input
                     type="number"
                     name="quantity"
                     value={formData.quantity}
                     onChange={handleChange}
-                    className="w-full bg-transparent border-b-2 border-gray-700 text-white text-lg p-2 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors"
+                    className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
                     placeholder="Enter quantity"
                   />
                 </div>
 
                 {/* Price */}
                 <div>
-                  <label className="text-sm font-medium text-gray-400">Price</label>
+                  <label className="text-sm font-medium text-[var(--muted-foreground)]">Price</label>
                   <input
                     type="number"
                     name="price"
                     min={1}
                     value={formData.price}
                     onChange={handleChange}
-                    className="w-full bg-transparent border-b-2 border-gray-700 text-white text-lg p-2 focus:outline-none focus:ring-0 focus:border-blue-500 transition-colors"
+                    className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
                     placeholder="Enter price"
                   />
                 </div>
@@ -337,7 +379,7 @@ export default function EditItemPage() {
 
               {/* 🔹 NEW: Categories Select */}
               <div>
-                <label className="text-sm font-medium text-gray-400 mb-2 block">Categories</label>
+                <label className="text-sm font-medium text-[var(--muted-foreground)] mb-2 block">Categories</label>
                 <Select
                   mode="multiple"
                   allowClear
@@ -347,20 +389,20 @@ export default function EditItemPage() {
                   onChange={handleCategorySelectChange}
                   options={allCategoryOptions}
                   size="large" // Makes it taller
-                  className="bg-transparent"
+                  className="bg-transparent text-[var(--foreground)]"
                 />
 
                 {/* 🔹 NEW: Conditional "Other" Input */}
                 {formData.category.includes('Other') && (
                   <div className="mt-4">
-                    <label className="text-sm font-medium text-gray-400">New Category Name</label>
+                    <label className="text-sm font-medium text-[var(--muted-foreground)]">New Category Name</label>
                     <Input
                       type="text"
                       value={otherCategory}
                       onChange={(e) => setOtherCategory(e.target.value)}
                       onBlur={handleAddNewCategory}
                       onKeyDown={handleAddNewCategory}
-                      className="w-full mt-2 bg-transparent !border-gray-700 text-white !text-lg p-2 focus:border-blue-500"
+                      className="w-full mt-2 bg-transparent !border-[var(--border)] text-[var(--foreground)] !text-lg p-2 focus:!border-[var(--primary)]"
                       placeholder="Type new category and press Enter"
                       size="large"
                     />
@@ -372,7 +414,7 @@ export default function EditItemPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-lg mt-4"
+                className="w-full bg-[var(--primary)] hover:opacity-90 text-[var(--primary-foreground)] font-semibold py-3 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-lg mt-4"
               >
                 {saving ? "Updating..." : "Update Item"}
               </button>

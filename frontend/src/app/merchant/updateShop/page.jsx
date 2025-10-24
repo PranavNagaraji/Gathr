@@ -4,11 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
 import "leaflet/dist/leaflet.css";
 import { Button } from "@mui/material";
-import { Select } from "antd";
+import { Select, ConfigProvider, theme } from "antd";
 import { DownOutlined } from "@ant-design/icons";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 // ✅ Dynamically import leaflet safely
 const L = typeof window !== "undefined" ? require("leaflet") : null;
@@ -23,6 +24,7 @@ const UpdateShop = () => {
     const { user } = useUser();
     const { getToken, isLoaded, isSignedIn } = useAuth();
     const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const { theme: currentTheme } = useTheme();
 
     const [formData, setFormData] = useState({
         shop_name: "",
@@ -200,18 +202,36 @@ const UpdateShop = () => {
 
     // ✅ Final UI
     return (
-        <div className="min-h-screen flex flex-col md:flex-row bg-gray-950 text-white">
+        <ConfigProvider
+            theme={{
+                algorithm: currentTheme === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                token: {
+                    colorPrimary: 'var(--primary)',
+                    colorBgBase: 'var(--background)',
+                    colorBgContainer: 'var(--card)',
+                    colorBorder: 'var(--border)',
+                    colorText: 'var(--foreground)'
+                },
+                components: {
+                    Select: {
+                        colorBgContainer: 'transparent',
+                        colorBorder: 'var(--border)'
+                    }
+                }
+            }}
+        >
+        <div className="min-h-screen flex flex-col md:flex-row bg-[var(--background)] text-[var(--foreground)]">
             {/* LEFT SIDE */}
             <div className="flex-1 p-10 flex flex-col justify-center space-y-6">
-                <h1 className="text-4xl font-bold text-green-400 mb-2">Update Shop</h1>
-                <p className="text-gray-400 text-sm mb-6">
+                <h1 className="text-4xl font-bold text-[var(--primary)] mb-2">Update Shop</h1>
+                <p className="text-[var(--muted-foreground)] text-sm mb-6">
                     Modify your shop details and pinpoint your location on the map.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-2xl">
                     {["shop_name", "contact", "account_no", "mobile_no", "upi_id"].map((field) => (
                         <div key={field}>
-                            <label className="block text-gray-400 mb-1 capitalize">
+                            <label className="block text-[var(--muted-foreground)] mb-1 capitalize">
                                 {field.replace("_", " ")}
                             </label>
                             <input
@@ -219,14 +239,14 @@ const UpdateShop = () => {
                                 name={field}
                                 value={formData[field]}
                                 onChange={handleChange}
-                                className="w-full rounded-lg bg-gray-800 text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                className="w-full rounded-lg bg-[var(--card)] text-[var(--foreground)] px-3 py-2 border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                             />
                         </div>
                     ))}
                 </div>
 
                 <div className="max-w-2xl">
-                    <label className="block text-gray-400 mb-1">Address</label>
+                    <label className="block text-[var(--muted-foreground)] mb-1">Address</label>
                     <input
                         type="text"
                         name="address"
@@ -234,12 +254,12 @@ const UpdateShop = () => {
                         value={formData.address}
                         onChange={handleChange}
                         placeholder="Start typing your address..."
-                        className="w-full rounded-lg bg-gray-800 text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full rounded-lg bg-[var(--card)] text-[var(--foreground)] px-3 py-2 border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                     />
                 </div>
 
                 <div className="max-w-2xl">
-                    <label className="block text-gray-400 mb-1">Categories</label>
+                    <label className="block text-[var(--muted-foreground)] mb-1">Categories</label>
                     <Select
                         mode="multiple"
                         value={formData.category}
@@ -248,7 +268,7 @@ const UpdateShop = () => {
                         placeholder="Select categories"
                         maxTagCount="responsive"
                         suffixIcon={
-                            <span className="flex items-center gap-1 text-xs text-gray-400">
+                            <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                                 <span>{formData.category?.length || 0}</span>
                                 <DownOutlined />
                             </span>
@@ -276,25 +296,25 @@ const UpdateShop = () => {
                                     }
                                 }}
                                 placeholder="Type custom category"
-                                className="w-full rounded-lg bg-gray-800 text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                className="w-full rounded-lg bg-[var(--card)] text-[var(--foreground)] px-3 py-2 border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
                             />
                         </div>
                     )}
                 </div>
 
                 <div className="max-w-2xl">
-                    <label className="block text-gray-400 mb-1">Shop Image</label>
+                    <label className="block text-[var(--muted-foreground)] mb-1">Shop Image</label>
                     <input
                         type="file"
                         accept="image/*"
                         onChange={handleImageChange}
-                        className="text-gray-400"
+                        className="text-[var(--muted-foreground)]"
                     />
                     {imagePreview && (
                         <img
                             src={imagePreview}
                             alt="Preview"
-                            className="mt-3 w-48 h-48 object-cover rounded-lg"
+                            className="mt-3 w-48 h-48 object-cover rounded-lg border border-[var(--border)]"
                         />
                     )}
                 </div>
@@ -321,6 +341,7 @@ const UpdateShop = () => {
                 <div ref={mapDivRef} className="w-full h-full" />
             </div>
         </div>
+        </ConfigProvider>
     );
 };
 
