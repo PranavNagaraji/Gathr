@@ -28,6 +28,7 @@ export default function addItemPage() {
         images: [],
     });
     const [activeIndex, setActiveIndex] = useState(0)
+    const [otherCategory, setOtherCategory] = useState("")
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -194,10 +195,45 @@ export default function addItemPage() {
                                     placeholder="Select categories"
                                     value={formData.category}
                                     onChange={(values) => setFormData(prev => ({ ...prev, category: values }))}
-                                    options={categoryOptions.map(cat => ({ label: cat, value: cat }))}
+                                    options={[...new Set([...categoryOptions, 'Other'])].map(cat => ({ label: cat, value: cat }))}
                                     size="large"
                                     className="bg-transparent text-[var(--foreground)]"
                                 />
+                                {formData.category.includes('Other') && (
+                                    <div className="mt-4">
+                                        <label className="text-sm font-medium text-[var(--muted-foreground)]">New Category Name</label>
+                                        <input
+                                            type="text"
+                                            value={otherCategory}
+                                            onChange={(e) => setOtherCategory(e.target.value)}
+                                            onBlur={() => {
+                                                const newCat = otherCategory.trim();
+                                                if (newCat) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        category: [...new Set(prev.category.filter(c => c !== 'Other').concat(newCat))]
+                                                    }));
+                                                    setOtherCategory("");
+                                                }
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    const newCat = otherCategory.trim();
+                                                    if (newCat) {
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            category: [...new Set(prev.category.filter(c => c !== 'Other').concat(newCat))]
+                                                        }));
+                                                        setOtherCategory("");
+                                                    }
+                                                }
+                                            }}
+                                            className="w-full mt-2 bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:border-[var(--primary)]"
+                                            placeholder="Type new category and press Enter"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <button

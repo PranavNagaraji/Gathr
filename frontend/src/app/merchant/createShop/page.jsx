@@ -7,9 +7,12 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { Button, Checkbox, FormControlLabel } from "@mui/material";
-import { Select } from 'antd';
+import { Select, ConfigProvider, theme } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
 import { useUser, useAuth } from "@clerk/nextjs";
+import { useTheme } from '@/components/theme/ThemeProvider';
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
 
 const containerStyle = { width: "100%", height: "300px" };
 
@@ -17,6 +20,8 @@ export default function createShop() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const { theme: currentTheme } = useTheme();
+  const router = useRouter();
 
   const [formData, setFormData] = useState({
     owner_id: "",
@@ -45,6 +50,27 @@ export default function createShop() {
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     libraries: ["places"],
   });
+
+  // Redirect if shop already exists for this owner
+  useEffect(() => {
+    const checkExistingShop = async () => {
+      try {
+        if (!user) return;
+        const token = await getToken();
+        const res = await axios.post(
+          `${API_URL}/api/merchant/get_shop`,
+          { owner_id: user.id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res?.data?.shop) {
+          router.push('/merchant/dashboard');
+        }
+      } catch (e) {
+        // ignore errors; user likely has no shop yet
+      }
+    };
+    checkExistingShop();
+  }, [user, getToken, API_URL, router]);
 
   // Leaflet default icon fix
   useEffect(() => {
@@ -147,6 +173,10 @@ export default function createShop() {
   if (file) reader.readAsDataURL(file);
 };
 
+  const clearImage = () => {
+    setFormData(prev => ({ ...prev, image: null }));
+  }
+
   // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -172,105 +202,131 @@ export default function createShop() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-6">
-      <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-2xl w-full max-w-2xl space-y-4 border border-gray-700">
-        <h2 className="text-3xl font-semibold text-white mb-4 text-center">Shop Registration</h2>
+    <ConfigProvider
+      theme={{
+        algorithm: currentTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        token: {
+          colorPrimary: 'var(--primary)',
+          colorBgBase: 'var(--background)',
+          colorBgContainer: 'var(--card)',
+          colorBorder: 'var(--border)',
+          colorText: 'var(--foreground)'
+        }
+      }}
+    >
+      <div className="min-h-screen p-4 md:p-8 bg-[var(--background)] text-[var(--foreground)]">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold mb-6">Shop Registration</h2>
 
-        {/* Shop Image */}
-        <div>
-          <label className="text-gray-300 mb-1 block">Shop Image</label>
-          <input type="file" accept="image/*" onChange={handleImageChange} className="text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-700 file:text-gray-200 hover:file:bg-gray-600"/>
-          {imagePreview && (
-            <img src={imagePreview} alt="Preview" className="mt-2 w-48 h-48 object-cover rounded-lg border border-gray-500" />
-          )}
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
+            {/* LEFT: Details */}
+            <form onSubmit={handleSubmit} className="md:col-span-3 flex flex-col gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {['shop_name','contact','account_no','mobile_no'].map(field => (
+                  <div key={field}>
+                    <label className="text-sm font-medium text-[var(--muted-foreground)]">{field.replace('_',' ').toUpperCase()}</label>
+                    <input
+                      type="text"
+                      name={field}
+                      value={formData[field]}
+                      onChange={handleChange}
+                      className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
+                      required
+                    />
+                  </div>
+                ))}
+              </div>
 
-        {/* Shop Info Inputs */}
-        {["shop_name", "contact", "account_no", "mobile_no", "upi_id"].map(field => (
-          <div key={field}>
-            <label className="text-gray-300 mb-1 block">{field.replace("_", " ").toUpperCase()}</label>
-            <input
-              type="text"
-              name={field}
-              value={formData[field]}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              required
-            />
-          </div>
-        ))}
+              <div>
+                <label className="text-sm font-medium text-[var(--muted-foreground)]">Address</label>
+                <input
+                  type="text"
+                  name="address"
+                  ref={addressRef}
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Start typing your address..."
+                  className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
+                  required
+                />
+              </div>
 
-        {/* Address */}
-        <div>
-          <label className="text-gray-300 mb-1 block">Address</label>
-          <input
-            type="text"
-            name="address"
-            ref={addressRef}
-            value={formData.address}
-            onChange={handleChange}
-            placeholder="Start typing your address..."
-            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-            required
-          />
-        </div>
-
-        {/* Categories - Antd Select */}
-        <div>
-          <label className="text-gray-300 mb-1 block">Categories</label>
-          <Select
-            mode="multiple"
-            value={formData.category}
-            onChange={(values)=>setFormData(prev=>({...prev, category: values}))}
-            style={{ width: '100%' }}
-            placeholder="Select categories"
-            maxTagCount="responsive"
-            suffixIcon={
-              <span className="flex items-center gap-1 text-xs text-gray-400">
-                <span>{formData.category.length}</span>
-                <DownOutlined />
-              </span>
-            }
-            options={[...new Set([...categoriesOptions, 'Other'])].map(v => ({ value: v, label: v }))}
-          />
-          {formData.category.includes('Other') && (
-            <div className="mt-3">
-              <label className="text-gray-300 mb-1 block">Enter custom category</label>
-              <input
-                type="text"
-                value={otherCategory}
-                onChange={(e)=>setOtherCategory(e.target.value)}
-                onBlur={()=>{
-                  if(otherCategory.trim()){
-                    setFormData(prev=>({
-                      ...prev,
-                      category: prev.category.filter(c=>c!== 'Other').concat(otherCategory.trim())
-                    }));
-                    setOtherCategory("");
+              <div>
+                <label className="text-sm font-medium text-[var(--muted-foreground)] mb-2 block">Categories</label>
+                <Select
+                  mode="multiple"
+                  value={formData.category}
+                  onChange={(values)=>setFormData(prev=>({...prev, category: values}))}
+                  style={{ width: '100%' }}
+                  placeholder="Select categories"
+                  maxTagCount="responsive"
+                  suffixIcon={
+                    <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
+                      <span>{formData.category.length}</span>
+                      <DownOutlined />
+                    </span>
                   }
-                }}
-                className="w-full mt-1 rounded-lg px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                placeholder="Type new category"
-              />
-              <p className="text-xs text-gray-500 mt-1">Blur the input to add it and replace "Other".</p>
+                  options={[...new Set([...categoriesOptions, 'Other'])].map(v => ({ value: v, label: v }))}
+                />
+                {formData.category.includes('Other') && (
+                  <div className="mt-3">
+                    <label className="text-sm font-medium text-[var(--muted-foreground)]">Enter custom category</label>
+                    <input
+                      type="text"
+                      value={otherCategory}
+                      onChange={(e)=>setOtherCategory(e.target.value)}
+                      onBlur={()=>{
+                        if(otherCategory.trim()){
+                          setFormData(prev=>({
+                            ...prev,
+                            category: prev.category.filter(c=>c!== 'Other').concat(otherCategory.trim())
+                          }));
+                          setOtherCategory("");
+                        }
+                      }}
+                      className="w-full mt-2 bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] p-2 focus:outline-none focus:border-[var(--primary)]"
+                      placeholder="Type new category"
+                    />
+                    <p className="text-xs text-[var(--muted-foreground)] mt-1">Blur the input to add it and replace "Other".</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="w-full h-64 rounded-xl overflow-hidden border border-[var(--border)]">
+                <div style={containerStyle} ref={mapDivRef} />
+              </div>
+
+              <Button
+                type="submit"
+                variant="contained"
+                sx={{ mt: 1, width: 'fit-content', px: 5, py: 1.5, bgcolor: '#16a34a', '&:hover': { bgcolor: '#15803d' } }}
+              >
+                Save Shop
+              </Button>
+            </form>
+
+            {/* RIGHT: Image */}
+            <div className="md:col-span-2 md:order-last md:sticky md:top-8 h-fit">
+              <label className="text-sm font-medium mb-2 block text-[var(--muted-foreground)]">Shop Image</label>
+              <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+                <div className="relative aspect-square w-full">
+                  {formData.image ? (
+                    <img src={formData.image} alt="Shop" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-sm text-[var(--muted-foreground)]">No image</div>
+                  )}
+                  {formData.image && (
+                    <button type="button" onClick={clearImage} className="absolute top-2 right-2 h-8 px-3 rounded-full bg-red-600 text-white text-sm">Delete</button>
+                  )}
+                </div>
+              </div>
+
+              <label htmlFor="shop-image-upload" className="mt-4 block w-full text-center py-3 px-4 rounded-lg bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] font-medium cursor-pointer transition-colors">Upload Image</label>
+              <input id="shop-image-upload" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
             </div>
-          )}
+          </div>
         </div>
-
-        {/* Map */}
-        <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-700">
-          <div style={containerStyle} ref={mapDivRef} />
-        </div>
-
-        {/* Submit */}
-        <Button
-          type="submit"
-          variant="contained"
-          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg"
-        >
-          Save Shop
-        </Button>
-      </form>
-    </div>
+      </div>
+    </ConfigProvider>
   );
 }
