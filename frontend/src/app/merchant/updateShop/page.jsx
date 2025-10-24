@@ -1,19 +1,18 @@
-'use client'
-import { useState, useEffect, useRef, useCallback } from "react";
+"use client";
+import dynamic from "next/dynamic";
+import { useState, useEffect, useRef } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { Button, Checkbox, FormControlLabel } from "@mui/material";
-import { Select } from 'antd';
-import { DownOutlined } from '@ant-design/icons';
+import "leaflet/dist/leaflet.css";
+import { Button } from "@mui/material";
+import { Select } from "antd";
+import { DownOutlined } from "@ant-design/icons";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 
-const containerStyle = { width: "100%", height: "300px" };
+// ✅ Dynamically import leaflet safely
+const L = typeof window !== "undefined" ? require("leaflet") : null;
+
 const categoriesOptions = [
     "Grocery", "Electronics", "Clothing", "Food", "Books", "Other",
     "Pharmacy", "Home & Kitchen", "Beauty", "Stationery", "Toys"
@@ -25,7 +24,6 @@ const UpdateShop = () => {
     const { getToken, isLoaded, isSignedIn } = useAuth();
     const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-    // 🔹 State to hold form data, initialized with empty values
     const [formData, setFormData] = useState({
         shop_name: "",
         address: "",
@@ -34,35 +32,36 @@ const UpdateShop = () => {
         mobile_no: "",
         upi_id: "",
         category: [],
-        image: null, // Will hold the new base64 image if changed
-        location: { latitude: 20.5937, longitude: 78.9629 }, // Default center
+        image: null,
+        location: { latitude: 20.5937, longitude: 78.9629 },
     });
-    const [imagePreview, setImagePreview] = useState(null); // For displaying current or new image
+
+    const [imagePreview, setImagePreview] = useState(null);
     const [otherCategory, setOtherCategory] = useState("");
     const [autocomplete, setAutocomplete] = useState(null);
     const addressRef = useRef();
+    const mapDivRef = useRef(null);
+    const mapInstanceRef = useRef(null);
+    const markerRef = useRef(null);
 
-    // 🔹 Hook for loading Google Maps API
+    // ✅ Google Maps API loader
     const { isLoaded: mapLoaded } = useJsApiLoader({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
         libraries: ["places"],
     });
 
-    // Leaflet default icon fix
+    // ✅ Setup Leaflet icons
     useEffect(() => {
-        const defaultIcon = L.icon({
-            iconUrl: markerIcon,
-            iconRetinaUrl: markerIcon2x,
-            shadowUrl: markerShadow,
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41],
+        if (typeof window === "undefined" || !L) return;
+        delete L.Icon.Default.prototype._getIconUrl;
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
+            iconUrl: require("leaflet/dist/images/marker-icon.png"),
+            shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
         });
-        L.Marker.prototype.options.icon = defaultIcon;
     }, []);
 
-    // 🔹 Fetch existing shop data and populate the form
+    // ✅ Fetch shop data
     useEffect(() => {
         if (!isLoaded || !isSignedIn || !user) return;
 
@@ -76,8 +75,7 @@ const UpdateShop = () => {
                     reader.onerror = reject;
                     reader.readAsDataURL(blob);
                 });
-            } catch (error) {
-                console.error("Error converting URL to Base64:", error);
+            } catch {
                 return null;
             }
         };
@@ -85,19 +83,19 @@ const UpdateShop = () => {
         const getShop = async () => {
             const token = await getToken();
             try {
-                const res = await axios.post(`${API_URL}/api/merchant/get_shop`, { owner_id: user.id }, {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`
-                    }
-                });
-                
+                const res = await axios.post(
+                    `${API_URL}/api/merchant/get_shop`,
+                    { owner_id: user.id },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+
                 const shopData = res.data.shop;
                 let base64Image = null;
-                if (shopData.image) {
-                        base64Image = await urlToBase64(shopData.image.url);
-                        setImagePreview(base64Image); 
-                    }
+                if (shopData?.image?.url) {
+                    base64Image = await urlToBase64(shopData.image.url);
+                    setImagePreview(base64Image);
+                }
+
                 if (shopData) {
                     setFormData({
                         shop_name: shopData.shop_name || "",
@@ -109,49 +107,49 @@ const UpdateShop = () => {
                         category: shopData.category || [],
                         location: shopData.location || { latitude: 20.5937, longitude: 78.9629 },
                         owner_id: user.id,
-                        image: base64Image, // Reset image field, will be set only on new upload
+                        image: base64Image,
                     });
-                    // Set the preview to the existing image URL
-                    
                 }
             } catch (err) {
-                console.error("Error getting shop:", err);
+                console.error("Error fetching shop:", err);
             }
         };
         getShop();
     }, [user, isSignedIn, isLoaded, getToken, API_URL]);
 
-    // 🔹 Handle text input changes
+    // ✅ Handle inputs
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    // 🔹 Handle category checkbox toggles
-    const handleCategoryToggle = (cat) => {
-        setFormData(prev => ({
-            ...prev,
-            category: prev.category.includes(cat)
-                ? prev.category.filter(c => c !== cat)
-                : [...prev.category, cat]
-        }));
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setFormData((prev) => ({ ...prev, image: reader.result }));
+            setImagePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
     };
 
-    // 🔹 Initialize Google Places Autocomplete
+    // ✅ Google Autocomplete
     useEffect(() => {
         if (mapLoaded && addressRef.current && !autocomplete) {
-            const options = { types: ["geocode"] };
-            const auto = new window.google.maps.places.Autocomplete(addressRef.current, options);
+            const auto = new window.google.maps.places.Autocomplete(addressRef.current, {
+                types: ["geocode"],
+            });
             auto.addListener("place_changed", () => {
                 const place = auto.getPlace();
                 if (place.geometry) {
-                    setFormData(prev => ({
+                    setFormData((prev) => ({
                         ...prev,
                         address: place.formatted_address || "",
                         location: {
                             latitude: place.geometry.location.lat(),
-                            longitude: place.geometry.location.lng()
-                        }
+                            longitude: place.geometry.location.lng(),
+                        },
                     }));
                 }
             });
@@ -159,128 +157,94 @@ const UpdateShop = () => {
         }
     }, [mapLoaded, autocomplete]);
 
-    // 🔹 Handle new image selection
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                // Store new image as base64 string
-                setFormData(prev => ({ ...prev, image: reader.result }));
-                // Update preview to show the new image
-                setImagePreview(reader.result);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    // Leaflet map refs
-    const mapDivRef = useRef(null);
-    const mapInstanceRef = useRef(null);
-    const markerRef = useRef(null);
-
+    // ✅ Render Leaflet map
     useEffect(() => {
-        if (!mapDivRef.current || !formData.location) return;
+        if (typeof window === "undefined" || !L || !mapDivRef.current) return;
         const { latitude, longitude } = formData.location;
+
         if (!mapInstanceRef.current) {
-            const map = L.map(mapDivRef.current, {
-                center: [latitude, longitude],
-                zoom: 15,
-                zoomControl: true,
+            const map = L.map(mapDivRef.current).setView([latitude, longitude], 15);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "&copy; OpenStreetMap contributors",
+            }).addTo(map);
+
+            const marker = L.marker([latitude, longitude], { draggable: true }).addTo(map);
+            marker.on("dragend", (e) => {
+                const { lat, lng } = e.target.getLatLng();
+                setFormData((prev) => ({ ...prev, location: { latitude: lat, longitude: lng } }));
             });
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
-            map.on('click', (e) => {
-                const { lat, lng } = e.latlng;
-                setFormData(prev => ({ ...prev, location: { latitude: lat, longitude: lng } }));
-            });
+            markerRef.current = marker;
             mapInstanceRef.current = map;
         } else {
-            mapInstanceRef.current.setView([latitude, longitude], 15);
-        }
-
-        const map = mapInstanceRef.current;
-        if (!markerRef.current) {
-            const m = L.marker([latitude, longitude], { draggable: true }).addTo(map);
-            m.on('dragend', (e) => {
-                const ll = e.target.getLatLng();
-                setFormData(prev => ({ ...prev, location: { latitude: ll.lat, longitude: ll.lng } }));
-            });
-            markerRef.current = m;
-        } else {
+            mapInstanceRef.current.setView([latitude, longitude]);
             markerRef.current.setLatLng([latitude, longitude]);
         }
-    }, [formData.location?.latitude, formData.location?.longitude]);
+    }, [formData.location.latitude, formData.location.longitude]);
 
-    // 🔹 Submit handler (placeholder for your logic)
+    // ✅ Submit form
     const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Form data to be updated:", formData);
         const token = await getToken();
-
-        const result = await axios.put(`${API_URL}/api/merchant/update_shop`, formData, {
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`
+        try {
+            const result = await axios.put(`${API_URL}/api/merchant/update_shop`, formData, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (result.status === 200) {
+                alert("Shop updated successfully!");
+                router.push("/merchant/dashboard");
             }
-        });
-
-        if (result.status === 200) {
-            alert("Shop details updated successfully!");
-            router.push("/merchant/dashboard");
-        } else {
-            alert(result.data.message || "Error updating shop details");
+        } catch {
+            alert("Error updating shop");
         }
     };
 
+    // ✅ Final UI
     return (
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-6">
-            <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-2xl w-full max-w-2xl space-y-4 border border-gray-700">
-                <h2 className="text-3xl font-semibold text-white mb-4 text-center">Update Shop Details</h2>
+        <div className="min-h-screen flex flex-col md:flex-row bg-gray-950 text-white">
+            {/* LEFT SIDE */}
+            <div className="flex-1 p-10 flex flex-col justify-center space-y-6">
+                <h1 className="text-4xl font-bold text-green-400 mb-2">Update Shop</h1>
+                <p className="text-gray-400 text-sm mb-6">
+                    Modify your shop details and pinpoint your location on the map.
+                </p>
 
-                <div>
-                    <label className="text-gray-300 mb-1 block">Shop Image</label>
-                    <input type="file" accept="image/*" onChange={handleImageChange} className="text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-gray-700 file:text-gray-200 hover:file:bg-gray-600"/>
-                    {imagePreview && (
-                        <img src={imagePreview} alt="Shop Preview" className="mt-4 w-48 h-48 object-cover rounded-lg border-2 border-gray-500" />
-                    )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-2xl">
+                    {["shop_name", "contact", "account_no", "mobile_no", "upi_id"].map((field) => (
+                        <div key={field}>
+                            <label className="block text-gray-400 mb-1 capitalize">
+                                {field.replace("_", " ")}
+                            </label>
+                            <input
+                                type="text"
+                                name={field}
+                                value={formData[field]}
+                                onChange={handleChange}
+                                className="w-full rounded-lg bg-gray-800 text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                            />
+                        </div>
+                    ))}
                 </div>
 
-                {["shop_name", "contact", "account_no", "mobile_no", "upi_id"].map(field => (
-                    <div key={field}>
-                        <label className="text-gray-300 mb-1 block capitalize">{field.replace("_", " ")}</label>
-                        <input
-                            type="text"
-                            name={field}
-                            value={formData[field]}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                            required
-                        />
-
-                    </div>
-                ))}
-
-                <div>
-                    <label className="text-gray-300 mb-1 block">Address</label>
+                <div className="max-w-2xl">
+                    <label className="block text-gray-400 mb-1">Address</label>
                     <input
                         type="text"
                         name="address"
                         ref={addressRef}
-                        defaultValue={formData.address} // Use defaultValue for uncontrolled updates from autocomplete
+                        value={formData.address}
                         onChange={handleChange}
                         placeholder="Start typing your address..."
-                        className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        required
+                        className="w-full rounded-lg bg-gray-800 text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
                 </div>
 
-                <div>
-                    <label className="text-gray-300 mb-1 block">Categories</label>
+                <div className="max-w-2xl">
+                    <label className="block text-gray-400 mb-1">Categories</label>
                     <Select
                         mode="multiple"
                         value={formData.category}
-                        onChange={(values)=>setFormData(prev=>({...prev, category: values}))}
-                        style={{ width: '100%' }}
+                        onChange={(values) => setFormData((p) => ({ ...p, category: values }))}
+                        style={{ width: "100%" }}
                         placeholder="Select categories"
                         maxTagCount="responsive"
                         suffixIcon={
@@ -289,47 +253,75 @@ const UpdateShop = () => {
                                 <DownOutlined />
                             </span>
                         }
-                        options={[...new Set([...categoriesOptions, 'Other'])].map(v => ({ value: v, label: v }))}
+                        options={[...new Set([...categoriesOptions, "Other"])].map((v) => ({
+                            value: v,
+                            label: v,
+                        }))}
                     />
-                    {formData.category?.includes('Other') && (
+                    {formData.category?.includes("Other") && (
                         <div className="mt-3">
-                            <label className="text-gray-300 mb-1 block">Enter custom category</label>
                             <input
                                 type="text"
                                 value={otherCategory}
-                                onChange={(e)=>setOtherCategory(e.target.value)}
-                                onBlur={()=>{
-                                    if(otherCategory.trim()){
-                                        setFormData(prev=>({
-                                            ...prev,
-                                            category: prev.category.filter(c=>c!== 'Other').concat(otherCategory.trim())
+                                onChange={(e) => setOtherCategory(e.target.value)}
+                                onBlur={() => {
+                                    if (otherCategory.trim()) {
+                                        setFormData((p) => ({
+                                            ...p,
+                                            category: p.category
+                                                .filter((c) => c !== "Other")
+                                                .concat(otherCategory.trim()),
                                         }));
                                         setOtherCategory("");
                                     }
                                 }}
-                                className="w-full mt-1 rounded-lg px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                placeholder="Type new category"
+                                placeholder="Type custom category"
+                                className="w-full rounded-lg bg-gray-800 text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                             />
-                            <p className="text-xs text-gray-500 mt-1">Blur the input to add it and replace "Other".</p>
                         </div>
                     )}
                 </div>
 
-                <div className="w-full h-64 rounded-lg overflow-hidden border border-gray-700">
-                    <div style={containerStyle} ref={mapDivRef} />
+                <div className="max-w-2xl">
+                    <label className="block text-gray-400 mb-1">Shop Image</label>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="text-gray-400"
+                    />
+                    {imagePreview && (
+                        <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="mt-3 w-48 h-48 object-cover rounded-lg"
+                        />
+                    )}
                 </div>
 
                 <Button
                     type="submit"
+                    onClick={handleSubmit}
                     variant="contained"
-                    fullWidth
-                    sx={{ py: 1.5, bgcolor: '#16a34a', '&:hover': { bgcolor: '#15803d' } }}
+                    sx={{
+                        mt: 2,
+                        width: "fit-content",
+                        px: 5,
+                        py: 1.5,
+                        bgcolor: "#16a34a",
+                        "&:hover": { bgcolor: "#15803d" },
+                    }}
                 >
-                    Update Shop
+                    Save Changes
                 </Button>
-            </form>
+            </div>
+
+            {/* RIGHT SIDE MAP */}
+            <div className="md:w-1/2 w-full h-[50vh] md:h-auto">
+                <div ref={mapDivRef} className="w-full h-full" />
+            </div>
         </div>
     );
 };
 
-export default UpdateShop;
+export default dynamic(() => Promise.resolve(UpdateShop), { ssr: false });
