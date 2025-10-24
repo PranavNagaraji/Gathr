@@ -454,11 +454,11 @@ const Checkout = () => {
             <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span>Items</span><span>{checkOutDetails?.cartItems?.length ?? 0}</span></div>
-              <div className="flex justify-between"><span>Subtotal</span><span>${checkOutDetails?.totalPrice?.toFixed(2) ?? "0.00"}</span></div>
+              <div className="flex justify-between"><span>Subtotal</span><span>₹{checkOutDetails?.totalPrice?.toFixed(2) ?? "0.00"}</span></div>
             </div>
             <div className="mt-4 border-t border-[var(--border)] pt-4 flex justify-between font-semibold">
               <span>Total</span>
-              <span>${checkOutDetails?.totalPrice?.toFixed(2) ?? "0.00"}</span>
+              <span>₹{checkOutDetails?.totalPrice?.toFixed(2) ?? "0.00"}</span>
             </div>
             <div className="mt-4">
             <AnimatedButton onClick={handleCheckOut} className="" size="lg" rounded="lg" variant="primary" >

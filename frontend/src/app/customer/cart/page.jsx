@@ -182,8 +182,8 @@ const Cart = () => {
                       </div>
                       <p className="text-sm text-[var(--muted-foreground)] mt-1">
                         {item.Items?.priceType === "monthly"
-                          ? `$${item.Items?.price}/mo`
-                          : `$${item.Items?.price?.toLocaleString()}`}
+                          ? `₹${item.Items?.price}/mo`
+                          : `₹${item.Items?.price?.toLocaleString()}`}
                       </p>
                     </div>
                   </div>
@@ -235,7 +235,7 @@ const Cart = () => {
             <h2 className="text-lg font-semibold">Order Summary</h2>
             <div className="mt-4 flex items-center justify-between">
               <span className="text-[var(--muted-foreground)]">Total</span>
-              <span className="text-xl font-bold">${totalPrice.toLocaleString()}</span>
+              <span className="text-xl font-bold">₹{totalPrice.toLocaleString()}</span>
             </div>
             <button
               onClick={() => router.push("/customer/checkout")}
@@ -253,7 +253,7 @@ const Cart = () => {
         <div className="fixed inset-x-0 bottom-0 lg:hidden bg-[var(--card)]/95 backdrop-blur border-t border-[var(--border)] p-4 flex items-center justify-between">
           <div>
             <p className="text-xs text-[var(--muted-foreground)]">Total</p>
-            <p className="text-lg font-bold">${totalPrice.toLocaleString()}</p>
+            <p className="text-lg font-bold">₹{totalPrice.toLocaleString()}</p>
           </div>
           <button
             onClick={() => router.push("/customer/checkout")}
