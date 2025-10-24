@@ -35,6 +35,46 @@ export default function DeliveryRouteMap({
   const routeLineRef = useRef(null);
   const LRef = useRef(null); // Leaflet module once loaded
 
+  // OTP input helpers (UI-only, no logic changes)
+  const inputsRef = useRef([]);
+  const otpDigits = Array.from({ length: 6 }, (_, i) => otp[i] || '');
+
+  const handleOtpChange = (index) => (e) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 1);
+    const chars = otp.split('');
+    chars[index] = val;
+    const nextOtp = chars.join('').slice(0, 6);
+    setOtp(nextOtp);
+    if (val && index < 5) {
+      inputsRef.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index) => (e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      inputsRef.current[index - 1]?.focus();
+    }
+    if (e.key === 'ArrowLeft' && index > 0) {
+      e.preventDefault();
+      inputsRef.current[index - 1]?.focus();
+    }
+    if (e.key === 'ArrowRight' && index < 5) {
+      e.preventDefault();
+      inputsRef.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    const digits = (text || '').replace(/\D/g, '').slice(0, 6);
+    if (digits) {
+      e.preventDefault();
+      setOtp(digits);
+      const lastIndex = Math.min(digits.length - 1, 5);
+      inputsRef.current[lastIndex]?.focus();
+    }
+  };
+
   // Dynamically load Leaflet on client to avoid SSR window errors
   useEffect(() => {
     (async () => {
@@ -254,14 +294,14 @@ export default function DeliveryRouteMap({
       {/* Action Buttons */}
       {currentStep === 'toShop' ? (
         <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mt-2"
+          className="px-4 py-2 rounded mt-2 bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
           onClick={() => setCurrentStep('toCustomer')}
         >
           Picked Up The Order
         </button>
       ) : (
         <button
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-2"
+          className="px-4 py-2 rounded mt-2 bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
           onClick={() => {
             setShowOtpModal(true);
             sendOtp(selectedOrder?.Users?.email);
@@ -273,30 +313,40 @@ export default function DeliveryRouteMap({
 
       {/* OTP Modal */}
       {showOtpModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[10000]">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-80">
-            <h2 className="text-xl font-semibold mb-4 text-center">Enter OTP</h2>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-[10000]">
+          <div className="p-6 rounded-lg shadow-lg w-80 bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)]">
+            <h2 className="text-xl font-semibold mb-4 text-center" style={{ color: 'var(--foreground)' }}>Enter OTP</h2>
             {!otpSent ? (
-              <p className="text-center">Sending OTP to {selectedOrder?.Users?.email}...</p>
+              <p className="text-center" style={{ color: 'var(--muted-foreground)' }}>Sending OTP to {selectedOrder?.Users?.email}...</p>
             ) : (
               <>
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="Enter 6-digit OTP"
-                  className="border p-2 rounded w-full mb-3 text-center text-black"
-                />
+                <div className="flex items-center justify-between gap-2 mb-3" onPaste={handleOtpPaste}>
+                  {otpDigits.map((d, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => (inputsRef.current[i] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={1}
+                      value={d}
+                      onChange={handleOtpChange(i)}
+                      onKeyDown={handleOtpKeyDown(i)}
+                      className="w-10 h-12 text-center rounded bg-transparent border border-[var(--border)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[var(--ring)]"
+                      aria-label={`OTP digit ${i + 1}`}
+                    />
+                  ))}
+                </div>
                 <div className="flex gap-2 justify-center">
                   <button
                     onClick={() => verifyOtp(selectedOrder?.Users?.email)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    className="px-4 py-2 rounded bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
                   >
                     Verify
                   </button>
                   <button
                     onClick={() => setShowOtpModal(false)}
-                    className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+                    className="px-4 py-2 rounded bg-[var(--muted)] text-[var(--muted-foreground)] hover:opacity-90"
                   >
                     Cancel
                   </button>
