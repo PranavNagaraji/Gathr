@@ -39,10 +39,10 @@ export default function Dashboard() {
         const res = await axios.post(
           `${API_URL}/api/delivery/getDelivery`,
           { clerkId: user.id, 
-            // lat: latitude,
-            // long: longitude
-            lat:  15.8281257,
-            long: 78.0372792
+            lat: latitude,
+            long: longitude
+            // lat:  15.8281257,
+            // long: 78.0372792
             },
           { headers: { Authorization: `Bearer ${token}` } }
         );

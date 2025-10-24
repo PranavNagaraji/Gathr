@@ -13,13 +13,13 @@ import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 
 const ItemDetailsPage = () => {
-  const { user, isLoaded:isUserLoaded } = useUser();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const { isLoaded, getToken } = useAuth();
   const { item_id } = useParams();
-  const router=useRouter();
+  const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  const [userId, setUserId]=useState(0);
+  const [userId, setUserId] = useState(0);
   const [item, setItem] = useState({});
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -92,7 +92,7 @@ const ItemDetailsPage = () => {
       console.error(err);
     }
   };
-  
+
   const handleDeleteComment = async (commentId) => {
     if (!user) return;
 
@@ -271,7 +271,7 @@ const ItemDetailsPage = () => {
             <h3 className="text-xl font-semibold mb-4">Rate this Product</h3>
             <form onSubmit={handleAddRating} className="flex items-center gap-4">
               <div className="flex items-center gap-1">
-                {[1,2,3,4,5].map((n) => (
+                {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
                     type="button"
@@ -314,31 +314,31 @@ const ItemDetailsPage = () => {
             <AnimatePresence>
               {comments.length > 0 ? (
                 comments.map((c, idx) => <motion.div
-                key={c.id || idx}
-                variants={itemVariants}
-                exit={{ opacity: 0, x: -50 }}
-                className="bg-[var(--card)] text-[var(--card-foreground)] p-5 rounded-2xl shadow-sm border border-[var(--border)] relative"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarImage src={c.imageUrl} />
-                      <AvatarFallback>{c.username?.charAt(0) || 'A'}</AvatarFallback>
-                    </Avatar>
-                    <span className="font-bold text-lg">{c.username || "Anonymous"}</span>
+                  key={c.id || idx}
+                  variants={itemVariants}
+                  exit={{ opacity: 0, x: -50 }}
+                  className="bg-[var(--card)] text-[var(--card-foreground)] p-5 rounded-2xl shadow-sm border border-[var(--border)] relative"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-4">
+                      <Avatar>
+                        <AvatarImage src={c.imageUrl} />
+                        <AvatarFallback>{c.username?.charAt(0) || 'A'}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-bold text-lg">{c.username || "Anonymous"}</span>
+                    </div>
+                    {/* Delete Button */}
+                    {userId === c.user_id && (
+                      <button
+                        onClick={() => handleDeleteComment(c.id)}
+                        className="flex items-center gap-1 px-3 py-1 bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)] hover:opacity-90 font-semibold text-sm rounded-md shadow-sm transition-all"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
-                  {/* Delete Button */}
-                  {userId === c.user_id && (
-                  <button
-                      onClick={() => handleDeleteComment(c.id)}
-                      className="flex items-center gap-1 px-3 py-1 bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)] hover:opacity-90 font-semibold text-sm rounded-md shadow-sm transition-all"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-                <p className="text-[var(--muted-foreground)] pl-16">{c.comment}</p>
-              </motion.div>
+                  <p className="text-[var(--muted-foreground)] pl-16">{c.comment}</p>
+                </motion.div>
                 )
               ) : (
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-[var(--muted-foreground)] py-8">

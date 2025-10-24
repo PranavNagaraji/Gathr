@@ -6,7 +6,7 @@ import L from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { Button, Checkbox, FormControlLabel } from "@mui/material";
+import { Button, Checkbox, FormControlLabel, Typography } from "@mui/material";
 import { Select, ConfigProvider, theme } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
 import { useUser, useAuth } from "@clerk/nextjs";
@@ -159,19 +159,19 @@ export default function createShop() {
       markerRef.current.setLatLng([formData.location.latitude, formData.location.longitude]);
     }
   }, [formData.location.latitude, formData.location.longitude]);
-  
+
   // Image upload
   const handleImageChange = (e) => {
-  const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onloadend = () => {
-    setFormData(prev => ({ 
-      ...prev, 
-      image: reader.result // store base64 string in formData.image
-    }));
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData(prev => ({
+        ...prev,
+        image: reader.result // store base64 string in formData.image
+      }));
+    };
+    if (file) reader.readAsDataURL(file);
   };
-  if (file) reader.readAsDataURL(file);
-};
 
   const clearImage = () => {
     setFormData(prev => ({ ...prev, image: null }));
@@ -222,15 +222,17 @@ export default function createShop() {
             {/* LEFT: Details */}
             <form onSubmit={handleSubmit} className="md:col-span-3 flex flex-col gap-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {['shop_name','contact','account_no','mobile_no'].map(field => (
+                {['shop_name', 'contact', 'account_no', 'mobile_no'].map(field => (
                   <div key={field}>
-                    <label className="text-sm font-medium text-[var(--muted-foreground)]">{field.replace('_',' ').toUpperCase()}</label>
+                    <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>
+                      {field.replace('_', ' ').toUpperCase()}
+                    </Typography>
                     <input
                       type="text"
                       name={field}
                       value={formData[field]}
                       onChange={handleChange}
-                      className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
+                      className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)] transition-colors"
                       required
                     />
                   </div>
@@ -238,7 +240,7 @@ export default function createShop() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-[var(--muted-foreground)]">Address</label>
+                <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>Address</Typography>
                 <input
                   type="text"
                   name="address"
@@ -246,17 +248,17 @@ export default function createShop() {
                   value={formData.address}
                   onChange={handleChange}
                   placeholder="Start typing your address..."
-                  className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
+                  className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)] transition-colors"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-[var(--muted-foreground)] mb-2 block">Categories</label>
+                <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 1 }}>Categories</Typography>
                 <Select
                   mode="multiple"
                   value={formData.category}
-                  onChange={(values)=>setFormData(prev=>({...prev, category: values}))}
+                  onChange={(values) => setFormData(prev => ({ ...prev, category: values }))}
                   style={{ width: '100%' }}
                   placeholder="Select categories"
                   maxTagCount="responsive"
@@ -270,24 +272,26 @@ export default function createShop() {
                 />
                 {formData.category.includes('Other') && (
                   <div className="mt-3">
-                    <label className="text-sm font-medium text-[var(--muted-foreground)]">Enter custom category</label>
+                    <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600 }}>Enter custom category</Typography>
                     <input
                       type="text"
                       value={otherCategory}
-                      onChange={(e)=>setOtherCategory(e.target.value)}
-                      onBlur={()=>{
-                        if(otherCategory.trim()){
-                          setFormData(prev=>({
+                      onChange={(e) => setOtherCategory(e.target.value)}
+                      onBlur={() => {
+                        if (otherCategory.trim()) {
+                          setFormData(prev => ({
                             ...prev,
-                            category: prev.category.filter(c=>c!== 'Other').concat(otherCategory.trim())
+                            category: prev.category.filter(c => c !== 'Other').concat(otherCategory.trim())
                           }));
                           setOtherCategory("");
                         }
                       }}
-                      className="w-full mt-2 bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] p-2 focus:outline-none focus:border-[var(--primary)]"
+                      className="w-full mt-2 bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] p-2 focus:outline-none focus:border-[var(--ring)]"
                       placeholder="Type new category"
                     />
-                    <p className="text-xs text-[var(--muted-foreground)] mt-1">Blur the input to add it and replace "Other".</p>
+                    <Typography variant="caption" sx={{ color: 'var(--muted-foreground)', mt: 0.5, display: 'block' }}>
+                      Blur the input to add it and replace "Other".
+                    </Typography>
                   </div>
                 )}
               </div>
