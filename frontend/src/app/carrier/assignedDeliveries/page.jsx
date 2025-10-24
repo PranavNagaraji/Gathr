@@ -105,35 +105,20 @@ export default function AssignedDeliveries() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="border border-[var(--border)] rounded-lg shadow-sm p-3 cursor-pointer bg-[var(--card)] text-[var(--card-foreground)] hover:shadow-md transition-shadow"
-              onClick={() => setSelectedOrder(order)}
+              className="border border-[var(--border)] rounded-xl p-4 cursor-pointer bg-[var(--card)] text-[var(--card-foreground)] hover:shadow-md transition-shadow flex items-center justify-between"
+              onClick={() => router.push(`/carrier/assignedDeliveries/${order.id}`)}
             >
-              <p>
-                <strong>Order ID:</strong> {order.id} | <strong>Status:</strong> {order.status}
-              </p>
-              <p>
-                <strong>Shop:</strong> {order.Shops.shop_name}
-              </p>
-              <p>
-                <strong>Delivery:</strong> {order.Addresses.title}
-              </p>
+              <div className="space-y-1">
+                <p className="text-sm"><strong>Order ID:</strong> {order.id} <span className="mx-2">|</span> <strong>Status:</strong> {order.status}</p>
+                <p className="text-sm"><strong>Shop:</strong> {order.Shops.shop_name}</p>
+                <p className="text-sm text-[var(--muted-foreground)]"><strong>Delivery:</strong> {order.Addresses.title}</p>
+              </div>
+              <span className="text-xs px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">View</span>
             </motion.div>
           ))}
         </AnimatePresence>
       </motion.div>
-
-      {selectedOrder && carrierLocation && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-2">Route for Order {selectedOrder.id}</h2>
-          <DeliveryRouteMap
-            carrierLocation={carrierLocation}
-            shopLocation={selectedOrder.Shops.Location}
-            deliveryLocation={selectedOrder.Addresses.location}
-            onDeliveryComplete={() => handelDeliveryComplete(selectedOrder.id)}
-            selectedOrder={selectedOrder}
-          />
-        </div>
-      )}
+      {/* Map moved to detail page */}
     </div>
   );
 }
