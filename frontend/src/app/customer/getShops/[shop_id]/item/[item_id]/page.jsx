@@ -42,31 +42,45 @@ const ItemDetailsPage = () => {
   // --- Fetch item and comments ---
   useEffect(() => {
     if (!item_id) return;
+    if (!isLoaded) return;
+
+    let cancelled = false;
 
     const fetchData = async () => {
-      const token = await getToken();
       setIsLoading(true);
       try {
-        const [itemResult, commentsResult, userIdResult] = await Promise.all([
-          axios.get(`${API_URL}/api/customer/getItem/${item_id}`),
-          axios.get(`${API_URL}/api/customer/getComments/${item_id}`),
-          axios.get(`${API_URL}/api/customer/getUserId/${user?.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
+        // Fetch item and comments independently so one failing doesn't block the other
+        const [itemResult, commentsResult] = await Promise.all([
+          axios.get(`${API_URL}/api/customer/getItem/${item_id}`).catch((e) => ({ data: { item: {} }, _err: e })),
+          axios.get(`${API_URL}/api/customer/getComments/${item_id}`).catch((e) => ({ data: { comments: [] }, _err: e })),
         ]);
-        setItem(itemResult.data.item || {});
-        setComments(commentsResult.data.comments || []);
-        // console.log(userIdResult.data);
-        setUserId(userIdResult.data.user_id);
+        if (!cancelled) {
+          setItem(itemResult?.data?.item || {});
+          setComments(commentsResult?.data?.comments || []);
+        }
+
+        // Fetch userId only if we have a logged-in user
+        if (user?.id) {
+          try {
+            const token = await getToken();
+            const userIdResult = await axios.get(`${API_URL}/api/customer/getUserId/${user.id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!cancelled) setUserId(userIdResult.data.user_id);
+          } catch (e) {
+            console.error('Failed to fetch user id:', e);
+          }
+        }
       } catch (error) {
         console.error("Failed to fetch item details:", error);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [item_id, API_URL, isUserLoaded, isLoaded]);
+    return () => { cancelled = true; };
+  }, [item_id, API_URL, isUserLoaded, isLoaded, user?.id, getToken]);
 
   // --- Handlers ---
   const handleAddComment = async (e) => {
@@ -188,17 +202,17 @@ const ItemDetailsPage = () => {
             {item.images?.length > 0 ? (
               <Slider {...sliderSettings}>
                 {item.images.map((img, idx) => (
-                  <div key={idx} className="h-96 w-full relative">
+                  <div key={idx} className="w-full aspect-[4/3] sm:aspect-[16/9] relative">
                     <img
                       src={img.url}
                       alt={`${item.name} image ${idx + 1}`}
-                      className="h-full w-full object-cover rounded-2xl shadow-xl"
+                      className="absolute inset-0 h-full w-full object-cover rounded-2xl shadow-xl"
                     />
                   </div>
                 ))}
               </Slider>
             ) : (
-              <div className="h-96 w-full bg-[var(--muted)] text-[var(--muted-foreground)] rounded-2xl flex items-center justify-center">
+              <div className="w-full aspect-[4/3] sm:aspect-[16/9] bg-[var(--muted)] text-[var(--muted-foreground)] rounded-2xl flex items-center justify-center">
                 <p>No Image</p>
               </div>
             )}

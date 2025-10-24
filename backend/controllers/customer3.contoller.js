@@ -1,5 +1,5 @@
 import supabase from '../db.js';
-import {Clerk} from "@clerk/clerk-sdk-node";
+import { Clerk } from "@clerk/clerk-sdk-node";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -121,6 +121,36 @@ export const getSimilarItems = async (req, res) => {
     return res.status(200).json({ items: similar || [] });
   } catch (err) {
     console.error('Error in getSimilarItems:', err);
+    return res.status(500).json({ message: 'Internal server error', error: err.message });
+  }
+};
+
+export const getRating = async (req, res) => {
+  try {
+    const { clerkId, itemId } = req.body;
+    const { data: user, error: userError } = await supabase
+      .from('Users')
+      .select('id, role')
+      .eq('clerk_id', clerkId)
+      .single();
+    if (userError || !user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.role !== 'customer') {
+      return res.status(403).json({ message: "Unauthorized: Only logged in users can get Addresses" });
+    }
+    const { itemId } = req.params;
+    const { data: rating, error: ratingErr } = await supabase
+      .from('itemRating')
+      .select('rating')
+      .eq('item_id', itemId)
+      .single();
+
+    if (ratingErr) throw ratingErr;
+
+    return res.status(200).json({ rating });
+  } catch (err) {
+    console.error('Error in getRating:', err);
     return res.status(500).json({ message: 'Internal server error', error: err.message });
   }
 };
