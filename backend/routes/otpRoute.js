@@ -14,12 +14,12 @@ const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString()
 
 // Configure Nodemailer transporter
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  secure: false,
-  port: 587,
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // use SSL
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    pass: process.env.EMAIL_PASS, // App password
   },
 });
 
