@@ -28,7 +28,7 @@ export default function CustomerDashboard() {
         });
 
         const { latitude, longitude } = position.coords;
-        const loc = { lat: latitude, long: longitude };
+        const loc = { latitude, longitude };
 
         localStorage.setItem("userLocation", JSON.stringify(loc));
         setLocation(loc);
@@ -38,6 +38,10 @@ export default function CustomerDashboard() {
     }
 
     fetchLocation();
+  }, [isLoaded, isSignedIn, user]);
+
+  useEffect(() => {
+    if (!location) return; // Only fetch shops once location is available
 
     const get_shops = async () => {
       try {
@@ -58,8 +62,9 @@ export default function CustomerDashboard() {
         console.error("Error fetching shops:", err);
       }
     };
+
     get_shops();
-  }, [isLoaded, isSignedIn, user]);
+  }, [location, getToken, API_URL]);
 
   const filteredShops = shops.filter((shop) => {
     const matchesSearch = shop.shop_name.toLowerCase().includes(search.toLowerCase());
@@ -189,9 +194,7 @@ export default function CustomerDashboard() {
                   className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-2xl shadow-md overflow-hidden border border-[var(--border)] hover:bg-[var(--muted)]/40 dark:hover:bg-[var(--muted)]/20 transition-colors duration-200"
                 >
                   <Link href={`/customer/getShops/${shop.id}`} className="block">
-                    {/* Card wrapper */}
                     <motion.div whileTap={{ scale: 0.99 }} className="rounded-2xl overflow-hidden shadow-md transition">
-                      {/* Top image area (large visual) */}
                       <div className="h-44 md:h-48 bg-gradient-to-b from-[var(--muted)] to-[var(--card)] overflow-hidden">
                         <img
                           src={shop.image?.url || "/placeholder.png"}
@@ -200,7 +203,6 @@ export default function CustomerDashboard() {
                         />
                       </div>
 
-                      {/* Bottom info area */}
                       <div className="bg-[var(--card)] p-4 md:p-5">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
@@ -212,7 +214,6 @@ export default function CustomerDashboard() {
                             </p>
                           </div>
 
-                          {/* categories / tags */}
                           <div className="mt-4 flex flex-wrap gap-2">
                             {shop.category?.map((category, i) => {
                               const l = (category || "").toLowerCase();
@@ -228,13 +229,9 @@ export default function CustomerDashboard() {
                             })}
                           </div>
 
-                          {/* small stat row (uses your real data where available) */}
                           <div className="mt-4 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              {/* avatars placeholder - show up to 4 images if available in shop.membersImages */}
                               <div className="flex -space-x-2">
-                                {/* If you have images array on shop, it could be used. Here we keep it minimal and only show nothing if not present */}
-                                {/* Example small avatars area retained for visual parity with EmviUI */}
                                 {Array.from({ length: Math.min(3, shop.memberAvatars?.length || 0) }).map((_, aIdx) => (
                                   <img
                                     key={aIdx}
@@ -245,8 +242,6 @@ export default function CustomerDashboard() {
                                 ))}
                               </div>
                             </div>
-
-                            {/* small CTA-like text button */}
                           </div>
                         </div>
                       </div>
@@ -262,7 +257,6 @@ export default function CustomerDashboard() {
           </AnimatePresence>
         </motion.div>
       </div>
-
     </div>
   );
 }
