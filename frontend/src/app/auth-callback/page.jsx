@@ -12,6 +12,7 @@ export default function AuthCallbackPage() {
   const { user, isLoaded } = useUser();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   useEffect(() => {
     const role = searchParams.get("role") || "customer";
@@ -22,13 +23,13 @@ export default function AuthCallbackPage() {
         // Only update if role not set
         if (!user.publicMetadata?.role) {
           console.log("Setting role for user", user.id, "to", role);
-          const res = await axios.post("http://localhost:5000/set-role", {
+          const res = await axios.post(`${apiUrl}/set-role`, {
             userId: user.id,
             role,
-          },{
+          }, {
             headers: {
               "Content-Type": "application/json",
-               "Authorization": `Bearer ${token}` 
+              "Authorization": `Bearer ${token}`
             },
           })
           console.log(res);
