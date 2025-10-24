@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+// import L from 'leaflet'; // REMOVED: This causes the "window is not defined" error
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -46,6 +46,9 @@ export default function createShop() {
   const [catOpen, setCatOpen] = useState(false); // no-op after switch, kept to avoid logic changes
   const [otherCategory, setOtherCategory] = useState("");
 
+  // ADDED: State to hold the Leaflet instance once loaded
+  const [L, setL] = useState(null);
+
   const { isLoaded: mapLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     libraries: ["places"],
@@ -72,19 +75,31 @@ export default function createShop() {
     checkExistingShop();
   }, [user, getToken, API_URL, router]);
 
-  // Leaflet default icon fix
+  // MODIFIED: Leaflet dynamic import and icon fix
   useEffect(() => {
-    const defaultIcon = L.icon({
-      iconUrl: markerIcon,
-      iconRetinaUrl: markerIcon2x,
-      shadowUrl: markerShadow,
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
-    });
-    L.Marker.prototype.options.icon = defaultIcon;
-  }, []);
+    // This function now runs only once on the client
+    const initLeaflet = async () => {
+      // Dynamically import Leaflet
+      const Leaflet = (await import('leaflet')).default;
+
+      // Set up the default icon
+      const defaultIcon = Leaflet.icon({
+        iconUrl: markerIcon.src, // FIXED: Use .src for static image imports
+        iconRetinaUrl: markerIcon2x.src, // FIXED: Use .src
+        shadowUrl: markerShadow.src, // FIXED: Use .src
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+      });
+      Leaflet.Marker.prototype.options.icon = defaultIcon;
+
+      // Save the loaded Leaflet instance to state to trigger map render
+      setL(Leaflet);
+    };
+
+    initLeaflet();
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   // Text inputs
   const handleChange = (e) => {
@@ -129,8 +144,12 @@ export default function createShop() {
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
 
+  // MODIFIED: This useEffect now depends on L and will only run once L is loaded
   useEffect(() => {
-    if (!mapDivRef.current) return;
+    // ADDED: Guard to wait for Leaflet to be loaded
+    if (!mapDivRef.current || !L) return;
+
+    // --- Existing Logic (unchanged) ---
     if (!mapInstanceRef.current) {
       const map = L.map(mapDivRef.current, {
         center: [formData.location.latitude, formData.location.longitude],
@@ -158,7 +177,7 @@ export default function createShop() {
     } else {
       markerRef.current.setLatLng([formData.location.latitude, formData.location.longitude]);
     }
-  }, [formData.location.latitude, formData.location.longitude]);
+  }, [formData.location.latitude, formData.location.longitude, L]); // ADDED: L as a dependency
 
   // Image upload
   const handleImageChange = (e) => {
@@ -184,7 +203,7 @@ export default function createShop() {
     const body = {
       ...formData,
       owner_id: user.id,
-      Location: formData.location,
+      Location: formData.location, // Note: Backend might expect 'location', not 'Location'
     };
     // console.log("Image",formData.image);
     const res = await fetch(`${API_URL}/api/merchant/add_shop`, {
@@ -297,6 +316,7 @@ export default function createShop() {
               </div>
 
               <div className="w-full h-64 rounded-xl overflow-hidden border border-[var(--border)]">
+                {/* This div will be populated by the useEffect */}
                 <div style={containerStyle} ref={mapDivRef} />
               </div>
 
