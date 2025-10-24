@@ -6,7 +6,6 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function CustomerDashboard() {
-  // --- LOGIC LEFT UNCHANGED ---
   const { user } = useUser();
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [location, setLocation] = useState(null);
@@ -45,7 +44,7 @@ export default function CustomerDashboard() {
         const token = await getToken();
         const result = await axios.post(
           `${API_URL}/api/customer/getShops`,
-          { lat: 15.750366871923427, long: 78.03934675615315 },
+          { lat: location.lat, long: location.long },
           { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
         );
 
@@ -92,32 +91,32 @@ export default function CustomerDashboard() {
     show: { transition: { staggerChildren: 0.08 } },
   };
 
-const cardVariants = {
-  hidden: {
-    opacity: 0,
-    y: 50,
-  },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      type: "spring",
-      stiffness: 80,
-      damping: 12,
+  const cardVariants = {
+    hidden: {
+      opacity: 0,
+      y: 50,
     },
-  },
-  hover: {
-    scale: 1.02,
-    transition: { duration: 0.2, ease: "easeOut" },
-  },
-};
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 80,
+        damping: 12,
+      },
+    },
+    hover: {
+      scale: 1.02,
+      transition: { duration: 0.2, ease: "easeOut" },
+    },
+  };
 
-const buttonTap = { scale: 0.97 };
+  const buttonTap = { scale: 0.97 };
 
   return (
-  <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20 relative">
-    {/* Header */}
-    <div className="max-w-5xl mx-auto text-center mb-10">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20 relative">
+      {/* Header */}
+      <div className="max-w-5xl mx-auto text-center mb-10">
         <h1 className="font-extrabold text-4xl sm:text-5xl md:text-6xl leading-tight tracking-tight text-[var(--foreground)]">
           Explore Shops Near You
         </h1>
@@ -154,7 +153,7 @@ const buttonTap = { scale: 0.97 };
               aria-expanded={catOpen}
             >
               <span className="truncate">{selectedCategory}</span>
-              <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : "rotate-0"}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd"/></svg>
+              <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : "rotate-0"}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" /></svg>
             </button>
             {catOpen && (
               <ul role="listbox" className="absolute z-30 mt-2 w-full max-h-60 overflow-auto bg-[var(--popover)] text-[var(--popover-foreground)] border border-[var(--border)] rounded-lg shadow-lg">

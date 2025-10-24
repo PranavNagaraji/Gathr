@@ -38,16 +38,17 @@ export default function Dashboard() {
         const token = await getToken();
         const res = await axios.post(
           `${API_URL}/api/delivery/getDelivery`,
-          { clerkId: user.id, 
+          {
+            clerkId: user.id,
             lat: latitude,
             long: longitude
             // lat:  15.8281257,
             // long: 78.0372792
-            },
+          },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setOrders(res.data.ordersAndShop);
-        console.log(res.data.ordersAndShop);    
+        console.log(res.data.ordersAndShop);
       } catch (err) {
         console.log(err);
       }
@@ -79,19 +80,20 @@ export default function Dashboard() {
 
   const handleAcceptOrder = async (orderId) => {
     try {
-        const token = await getToken();
-        const res = await axios.post(
-          `${API_URL}/api/delivery/acceptDelivery`,{
-            clerkId: user.id,
-            orderId:orderId
-          },{
-            headers: { Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-            }
-          }
-        )
-        toast.success(res.data.message || 'Order accepted');
-        setOrders((prevOrders) => prevOrders.filter((order) => order.id !== orderId));
+      const token = await getToken();
+      const res = await axios.post(
+        `${API_URL}/api/delivery/acceptDelivery`, {
+        clerkId: user.id,
+        orderId: orderId
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+      )
+      toast.success(res.data.message || 'Order accepted');
+      setOrders((prevOrders) => prevOrders.filter((order) => order.id !== orderId));
     } catch (err) {
       console.log(err);
       toast.error('Failed to accept order');
@@ -100,47 +102,47 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 bg-[var(--background)] text-[var(--foreground)]">
-        <h1 className="text-2xl font-bold mb-4">Orders Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-4">Orders Dashboard</h1>
 
-        <motion.div className="grid gap-6" role="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {orders.length ? (
-            orders.map((order) => (
-                <motion.div role="listitem" key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="border border-[var(--border)] rounded-lg shadow-sm p-3 bg-[var(--card)] text-[var(--card-foreground)] flex flex-col md:flex-row gap-4">
-        {/* Left: Order & Details */}
-        <div className="flex-1 space-y-1">
-            <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Order ID: {order.id}</h2>
-            </div>
-            <p><strong>Amount:</strong> ₹{order.amount_paid}</p>
+      <motion.div className="grid gap-6" role="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        {orders.length ? (
+          orders.map((order) => (
+            <motion.div role="listitem" key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="border border-[var(--border)] rounded-lg shadow-sm p-3 bg-[var(--card)] text-[var(--card-foreground)] flex flex-col md:flex-row gap-4">
+              {/* Left: Order & Details */}
+              <div className="flex-1 space-y-1">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">Order ID: {order.id}</h2>
+                </div>
+                <p><strong>Amount:</strong> ₹{order.amount_paid}</p>
 
-            <div>
-            <h3 className="font-semibold text-sm">Shop:</h3>
-            <p className="text-sm">{order.Shops.shop_name}</p>
-            <p className="text-sm">{order.Shops.address}</p>
-            </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Shop:</h3>
+                  <p className="text-sm">{order.Shops.shop_name}</p>
+                  <p className="text-sm">{order.Shops.address}</p>
+                </div>
 
-            <div>
-            <h3 className="font-semibold text-sm">Delivery:</h3>
-            <p className="text-sm">{order.Addresses.title}</p>
-            <p className="text-sm">{order.Addresses.address}</p>
-            </div>
-        </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Delivery:</h3>
+                  <p className="text-sm">{order.Addresses.title}</p>
+                  <p className="text-sm">{order.Addresses.address}</p>
+                </div>
+              </div>
 
-        {/* Right: Map */}
-        <div className="w-full md:w-1/3 h-36">
-            <OrderMapCard
-            shopLocation={order.Shops.Location}
-            deliveryLocation={order.Addresses.location}
-            carrierLocation={carrierLocation}
-            />        
-        </div>
-        <button className='p-3 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-md hover:opacity-90' onClick={()=>handleAcceptOrder(order.id)}>Accept</button>
-        </motion.div>
-            ))
+              {/* Right: Map */}
+              <div className="w-full md:w-1/3 h-36">
+                <OrderMapCard
+                  shopLocation={order.Shops.Location}
+                  deliveryLocation={order.Addresses.location}
+                  carrierLocation={carrierLocation}
+                />
+              </div>
+              <button className='p-3 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-md hover:opacity-90' onClick={() => handleAcceptOrder(order.id)}>Accept</button>
+            </motion.div>
+          ))
         ) : (
-            <p className="text-[var(--muted-foreground)]">No orders yet.</p>
+          <p className="text-[var(--muted-foreground)]">No orders yet.</p>
         )}
-        </motion.div>
+      </motion.div>
     </div>
   );
 }
