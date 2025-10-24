@@ -44,7 +44,7 @@ export default function CustomerDashboard() {
         const token = await getToken();
         const result = await axios.post(
           `${API_URL}/api/customer/getShops`,
-          { lat: location.lat, long: location.long },
+          { lat: location.latitude, long: location.longitude },
           { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
         );
 
