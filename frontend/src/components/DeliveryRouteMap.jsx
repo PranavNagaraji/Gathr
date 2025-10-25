@@ -38,6 +38,8 @@ export default function DeliveryRouteMap({
   const mapInstanceRef = useRef(null);
   const markersRef = useRef({ carrier: null, shop: null, customer: null });
   const routeLineRef = useRef(null);
+  const didInitFitRef = useRef(false);
+  const userInteractedRef = useRef(false);
   const LRef = useRef(null); // Leaflet module once loaded
 
   // OTP input helpers (UI-only, no logic changes)
@@ -233,7 +235,11 @@ export default function DeliveryRouteMap({
             } else {
               routeLineRef.current = L.polyline(coords, { color: 'blue' }).addTo(mapInstanceRef.current);
             }
-            mapInstanceRef.current.fitBounds(L.latLngBounds(coords), { padding: [20, 20] });
+            // Only auto-fit once, and never after user has interacted (to preserve their zoom)
+            if (!didInitFitRef.current && !userInteractedRef.current && coords.length) {
+              mapInstanceRef.current.fitBounds(L.latLngBounds(coords), { padding: [20, 20] });
+              didInitFitRef.current = true;
+            }
           }
         } else if (status !== 'NOT_FOUND') {
           console.error(`Directions request failed: ${status}`);
@@ -260,9 +266,14 @@ export default function DeliveryRouteMap({
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
+      // Track user interaction so we don't override their zoom later
+      map.on('zoomstart', () => { userInteractedRef.current = true; });
+      map.on('movestart', () => { userInteractedRef.current = true; });
       mapInstanceRef.current = map;
     } else if (mapInstanceRef.current && center) {
-      mapInstanceRef.current.setView([center.lat, center.lng], 12);
+      // Recenter without changing the current zoom level
+      const currentZoom = mapInstanceRef.current.getZoom();
+      mapInstanceRef.current.setView([center.lat, center.lng], currentZoom);
     }
 
     const map = mapInstanceRef.current;
