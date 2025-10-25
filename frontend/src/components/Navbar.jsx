@@ -263,6 +263,11 @@ export default function Navbar() {
                 </motion.a>
               ))}
 
+              <div className="flex items-center justify-between px-6 py-3 border-t border-[var(--border)]">
+                <span className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Theme</span>
+                <ThemeToggle />
+              </div>
+
               <div className="border-t border-[#F15B3B]/30 mt-2 pt-2 px-6 pb-4">
                 {isSignedIn ? (
                   <>

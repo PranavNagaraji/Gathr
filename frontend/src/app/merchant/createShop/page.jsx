@@ -167,8 +167,9 @@ export default function createShop() {
     }
 
     const map = mapInstanceRef.current;
+    const storeIcon = L.icon({ iconUrl: '/store.png', iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28] });
     if (!markerRef.current) {
-      const m = L.marker([formData.location.latitude, formData.location.longitude], { draggable: true }).addTo(map);
+      const m = L.marker([formData.location.latitude, formData.location.longitude], { draggable: true, icon: storeIcon }).addTo(map);
       m.on('dragend', (e) => {
         const ll = e.target.getLatLng();
         setFormData(prev => ({ ...prev, location: { latitude: ll.lat, longitude: ll.lng } }));
@@ -176,6 +177,7 @@ export default function createShop() {
       markerRef.current = m;
     } else {
       markerRef.current.setLatLng([formData.location.latitude, formData.location.longitude]);
+      markerRef.current.setIcon(storeIcon);
     }
   }, [formData.location.latitude, formData.location.longitude, L]); // ADDED: L as a dependency
 

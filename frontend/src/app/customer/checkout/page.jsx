@@ -512,7 +512,8 @@ function MiniLeafletMap({ style, center, zoom = 13, marker, onMapClick, mapRefOu
         if (marker) {
           const { position, draggable = false, onDragEnd } = marker;
           if (!markerRef.current) {
-            const m = leaflet.marker(position, { draggable }).addTo(mapRef.current);
+            const icon = leaflet.icon({ iconUrl: '/destination.png', iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28] });
+            const m = leaflet.marker(position, { draggable, icon }).addTo(mapRef.current);
             if (draggable && onDragEnd) {
               m.on('dragend', (e) => onDragEnd(e.target.getLatLng()));
             }
