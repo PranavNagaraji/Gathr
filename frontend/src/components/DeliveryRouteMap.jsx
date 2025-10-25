@@ -101,9 +101,9 @@ export default function DeliveryRouteMap({
   const getPinIcons = () => {
     const L = LRef.current;
     if (!L) return {};
-    const shadowUrl = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png';
-    // Using widely used colored marker images
-    const base = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img';
+    // Use a reliable CDN for icons to avoid production fetch/CORS issues
+    const base = 'https://unpkg.com/leaflet-color-markers@1.0.0/img';
+    const shadowUrl = `${base}/marker-shadow.png`;
     return {
       blue: L.icon({
         iconUrl: `${base}/marker-icon-2x-blue.png`, shadowUrl, iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34], shadowSize: [41,41]

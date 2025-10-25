@@ -266,7 +266,12 @@ export default function Navbar() {
               <div className="border-t border-[#F15B3B]/30 mt-2 pt-2 px-6 pb-4">
                 {isSignedIn ? (
                   <>
-                    <a href="/profile" className="block py-2 font-semibold hover:text-[var(--primary)]">Profile</a>
+                    <div className=" pt-2 pb-4 border-b border-[var(--border)]">
+                        <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
+                        {user?.primaryEmailAddress?.emailAddress && (
+                          <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
+                        )}
+                      </div>
                     <SignOutButton>
                       <button className="w-full text-left py-2 font-semibold text-[var(--primary)] hover:opacity-90">
                         Sign Out
