@@ -31,6 +31,10 @@ app.post("/stripe/webhook", express.raw({type: 'application/json'}), async (req,
 app.use(express.json({ limit: "50mb"}));
 app.use(express.urlencoded({ extended: true , limit: '50mb'}));
 
+// Public routes (no Clerk auth)
+app.use("/api/otp", otpRouter);
+
+// Protected routes (Clerk auth required)
 app.use(clerkMiddleware());
 
 //routes
@@ -39,7 +43,6 @@ app.use("/api/customer", customerRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/stripe", stripeRoutes);
 app.use("/api/delivery", deliveryRoutes);
-app.use("/api/otp", otpRouter);
 //test route
 app.get("/", (req, res) => res.send("Hello from backend!"));
 

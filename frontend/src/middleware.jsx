@@ -12,29 +12,37 @@ const customerRoutes = createRouteMatcher(['/dummy']);
 const keeperRoutes = createRouteMatcher(['/merchant', '/merchant/:path*']);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) return;
-
   const client = await clerkClient();
   const { userId } = await auth();
 
-  if(!userId) 
-    return NextResponse.redirect(new URL("/sign-in", req.url));
+  // If user is logged in
+  if (userId) {
+    const user = await client.users.getUser(userId);
+    const role = user.publicMetadata.role;
 
-  const user = await client.users.getUser(userId);
-  const role = user.publicMetadata.role;
+    // Redirect logged-in users away from sign-in/sign-up
+    if (req.nextUrl.pathname === '/sign-in' || req.nextUrl.pathname === '/sign-up') {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
 
-  if (customerRoutes(req)) {
-    if (role === "customer") return;
-    console.log("Redirecting non-customer");
-    return NextResponse.redirect(new URL("/", req.url));
+    if (customerRoutes(req)) {
+      if (role === 'customer') return;
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+
+    if (keeperRoutes(req)) {
+      if (role === 'merchant') return;
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+
+    return; // logged-in user allowed
   }
 
-  if (keeperRoutes(req)) {
-    if (role === "merchant") return;
-    console.log("Redirecting non-keeper");
-    return NextResponse.redirect(new URL("/", req.url));
-  }
+  // If user is NOT logged in
+  if (isPublicRoute(req)) return; // public routes allowed
 
+  // Otherwise redirect to sign-in
+  return NextResponse.redirect(new URL('/sign-in', req.url));
 });
 
 

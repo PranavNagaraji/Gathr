@@ -49,6 +49,12 @@ export default function OrderMapCard({ shopLocation, deliveryLocation, carrierLo
         L.Marker.prototype.options.icon = defaultIcon;
       }
 
+      // Project-specific icons from public/, build absolute URLs for reliability
+      const asset = (path) => new URL(path, window.location.origin).href;
+      const shopIcon = L.icon({ iconUrl: asset('/store.png'), iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28] });
+      const deliveryIcon = L.icon({ iconUrl: asset('/destination.png'), iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28] });
+      const carrierIcon = L.icon({ iconUrl: asset('/motorbike.png'), iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28] });
+
       // --- Existing Logic (unchanged) ---
       const centerLat = center.latitude || center.lat;
       const centerLng = center.longitude || center.long || center.lng;
@@ -75,13 +81,13 @@ export default function OrderMapCard({ shopLocation, deliveryLocation, carrierLo
 
       // Shop marker
       if (shopLocation) {
-        const m = L.marker([shopLocation.latitude, shopLocation.longitude]).addTo(map);
+        const m = L.marker([shopLocation.latitude, shopLocation.longitude], { icon: shopIcon }).addTo(map);
         m.on('click', () => setSelectedMarker({ type: 'shop' }));
         markersRef.current.shop = m;
       }
       // Delivery marker
       if (deliveryLocation) {
-        const m = L.marker([deliveryLocation.lat, deliveryLocation.long]).addTo(map);
+        const m = L.marker([deliveryLocation.lat, deliveryLocation.long], { icon: deliveryIcon }).addTo(map);
         m.on('click', () => setSelectedMarker({ type: 'delivery' }));
         markersRef.current.delivery = m;
       }
@@ -89,7 +95,7 @@ export default function OrderMapCard({ shopLocation, deliveryLocation, carrierLo
       if (carrierLocation) {
         const lat = carrierLocation.latitude || carrierLocation.lat;
         const lng = carrierLocation.longitude || carrierLocation.long || carrierLocation.lng;
-        const m = L.marker([lat, lng]).addTo(map);
+        const m = L.marker([lat, lng], { icon: carrierIcon }).addTo(map);
         m.on('click', () => setSelectedMarker({ type: 'carrier' }));
         markersRef.current.carrier = m;
       }

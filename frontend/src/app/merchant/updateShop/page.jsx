@@ -170,7 +170,8 @@ const UpdateShop = () => {
                 attribution: "&copy; OpenStreetMap contributors",
             }).addTo(map);
 
-            const marker = L.marker([latitude, longitude], { draggable: true }).addTo(map);
+            const storeIcon = L.icon({ iconUrl: '/store.png', iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28] });
+            const marker = L.marker([latitude, longitude], { draggable: true, icon: storeIcon }).addTo(map);
             marker.on("dragend", (e) => {
                 const { lat, lng } = e.target.getLatLng();
                 setFormData((prev) => ({ ...prev, location: { latitude: lat, longitude: lng } }));
@@ -180,6 +181,8 @@ const UpdateShop = () => {
         } else {
             mapInstanceRef.current.setView([latitude, longitude]);
             markerRef.current.setLatLng([latitude, longitude]);
+            const storeIcon = L.icon({ iconUrl: '/store.png', iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28] });
+            markerRef.current.setIcon(storeIcon);
         }
     }, [formData.location.latitude, formData.location.longitude]);
 

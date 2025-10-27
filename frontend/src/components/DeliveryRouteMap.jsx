@@ -29,10 +29,17 @@ export default function DeliveryRouteMap({
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  // Live carrier location after pickup
+  const [liveCarrier, setLiveCarrier] = useState(null);
+  // Freeze the pre-pickup route origin to initial carrier location
+  const initialCarrierRef = useRef(null);
+
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef({ carrier: null, shop: null, customer: null });
   const routeLineRef = useRef(null);
+  const didInitFitRef = useRef(false);
+  const userInteractedRef = useRef(false);
   const LRef = useRef(null); // Leaflet module once loaded
 
   // OTP input helpers (UI-only, no logic changes)
@@ -101,18 +108,17 @@ export default function DeliveryRouteMap({
   const getPinIcons = () => {
     const L = LRef.current;
     if (!L) return {};
+    // Use project public assets for consistent icons
     const shadowUrl = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png';
-    // Using widely used colored marker images
-    const base = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img';
     return {
-      blue: L.icon({
-        iconUrl: `${base}/marker-icon-2x-blue.png`, shadowUrl, iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34], shadowSize: [41,41]
+      delivery: L.icon({
+        iconUrl: `/motorbike.png`, shadowUrl, iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -28], shadowSize: [41,41]
       }),
-      red: L.icon({
-        iconUrl: `${base}/marker-icon-2x-red.png`, shadowUrl, iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34], shadowSize: [41,41]
+      shop: L.icon({
+        iconUrl: `/store.png`, shadowUrl, iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -28], shadowSize: [41,41]
       }),
-      green: L.icon({
-        iconUrl: `${base}/marker-icon-2x-green.png`, shadowUrl, iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34], shadowSize: [41,41]
+      customer: L.icon({
+        iconUrl: `/destination.png`, shadowUrl, iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -28], shadowSize: [41,41]
       }),
     };
   };
@@ -169,6 +175,29 @@ export default function DeliveryRouteMap({
   const shop = formatLocation(shopLocation);
   const customer = formatLocation(deliveryLocation);
 
+  // Capture initial carrier once for pre-pickup routing
+  useEffect(() => {
+    if (!initialCarrierRef.current && carrier) {
+      initialCarrierRef.current = { ...carrier };
+    }
+  }, [carrier?.lat, carrier?.lng]);
+
+  // Start watching geolocation to dynamically update route and marker (both steps)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setLiveCarrier({ lat: Number(latitude), lng: Number(longitude) });
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+    );
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
+
   useEffect(() => setDirections(null), [currentStep]);
 
   useEffect(() => {
@@ -178,7 +207,9 @@ export default function DeliveryRouteMap({
 
   const canRenderMap = (carrier && shop && customer);
 
-  const routeOrigin = currentStep === 'toShop' ? carrier : shop;
+  // Use live carrier if available for routing in both steps
+  const carrierForRouting = (liveCarrier || carrier);
+  const routeOrigin = carrierForRouting;
   const routeDestination = currentStep === 'toShop' ? shop : customer;
 
   // Compute route via Google JS DirectionsService, render as Leaflet Polyline
@@ -190,7 +221,6 @@ export default function DeliveryRouteMap({
         origin: routeOrigin,
         destination: routeDestination,
         travelMode: 'DRIVING',
-        waypoints: currentStep === 'toCustomer' ? [{ location: shop, stopover: true }] : [],
       },
       (result, status) => {
         if (status === 'OK' && result) {
@@ -205,7 +235,11 @@ export default function DeliveryRouteMap({
             } else {
               routeLineRef.current = L.polyline(coords, { color: 'blue' }).addTo(mapInstanceRef.current);
             }
-            mapInstanceRef.current.fitBounds(L.latLngBounds(coords), { padding: [20, 20] });
+            // Only auto-fit once, and never after user has interacted (to preserve their zoom)
+            if (!didInitFitRef.current && !userInteractedRef.current && coords.length) {
+              mapInstanceRef.current.fitBounds(L.latLngBounds(coords), { padding: [20, 20] });
+              didInitFitRef.current = true;
+            }
           }
         } else if (status !== 'NOT_FOUND') {
           console.error(`Directions request failed: ${status}`);
@@ -232,36 +266,51 @@ export default function DeliveryRouteMap({
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
+      // Track user interaction so we don't override their zoom later
+      map.on('zoomstart', () => { userInteractedRef.current = true; });
+      map.on('movestart', () => { userInteractedRef.current = true; });
       mapInstanceRef.current = map;
     } else if (mapInstanceRef.current && center) {
-      mapInstanceRef.current.setView([center.lat, center.lng], 12);
+      // Recenter without changing the current zoom level
+      const currentZoom = mapInstanceRef.current.getZoom();
+      mapInstanceRef.current.setView([center.lat, center.lng], currentZoom);
     }
 
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    // Prepare industry-standard colored pin icons
-    const { red: carrierIcon, blue: shopIcon, green: customerIcon } = getPinIcons();
+    // Prepare project icons
+    const { delivery: carrierIcon, shop: shopIcon, customer: customerIcon } = getPinIcons();
 
-    // carrier marker
+    // carrier marker (use live position when available)
+    const cLat = (liveCarrier?.lat && liveCarrier?.lng) ? liveCarrier.lat : carrierForRouting.lat;
+    const cLng = (liveCarrier?.lat && liveCarrier?.lng) ? liveCarrier.lng : carrierForRouting.lng;
     if (!markersRef.current.carrier) {
-      const m = L.marker([carrier.lat, carrier.lng], { icon: carrierIcon }).addTo(map);
-      m.bindPopup(`<div><strong>Carrier</strong><br/>Lat: ${carrier.lat.toFixed(5)}, Lng: ${carrier.lng.toFixed(5)}</div>`);
+      const m = L.marker([cLat, cLng], { icon: carrierIcon }).addTo(map);
+      m.bindPopup(`<div><strong>Carrier</strong><br/>Lat: ${cLat.toFixed(5)}, Lng: ${cLng.toFixed(5)}</div>`);
       m.bindTooltip('Carrier');
       markersRef.current.carrier = m;
     } else {
-      markersRef.current.carrier.setLatLng([carrier.lat, carrier.lng]);
-      markersRef.current.carrier.setIcon(carrierIcon);
+      markersRef.current.carrier.setLatLng([cLat, cLng]);
     }
-    // shop marker
-    if (!markersRef.current.shop) {
-      const m = L.marker([shop.lat, shop.lng], { icon: shopIcon }).addTo(map);
-      m.bindPopup(`<div><strong>Shop</strong><br/>Lat: ${shop.lat.toFixed(5)}, Lng: ${shop.lng.toFixed(5)}</div>`);
-      m.bindTooltip('Shop');
-      markersRef.current.shop = m;
-    } else {
-      markersRef.current.shop.setLatLng([shop.lat, shop.lng]);
-      markersRef.current.shop.setIcon(shopIcon);
+    markersRef.current.carrier.setIcon(carrierIcon);
+
+    // shop marker (hide after pickup)
+    if (currentStep === 'toCustomer') {
+      if (markersRef.current.shop) {
+        map.removeLayer(markersRef.current.shop);
+        markersRef.current.shop = null;
+      }
+    } else if (shop) {
+      if (!markersRef.current.shop) {
+        const m = L.marker([shop.lat, shop.lng], { icon: shopIcon }).addTo(map);
+        m.bindPopup(`<div><strong>Shop</strong><br/>Lat: ${shop.lat.toFixed(5)}, Lng: ${shop.lng.toFixed(5)}</div>`);
+        m.bindTooltip('Shop');
+        markersRef.current.shop = m;
+      } else {
+        markersRef.current.shop.setLatLng([shop.lat, shop.lng]);
+        markersRef.current.shop.setIcon(shopIcon);
+      }
     }
     // customer marker
     if (!markersRef.current.customer) {
