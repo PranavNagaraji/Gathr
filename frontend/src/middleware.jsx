@@ -6,6 +6,8 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in',
   '/sign-up',
   '/auth-callback',
+  '/payment-success',
+  '/payment-cancelled',
 ]);
 
 const customerRoutes = createRouteMatcher(['/dummy']);
