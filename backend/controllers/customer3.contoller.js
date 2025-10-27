@@ -42,12 +42,16 @@ export const getRecommendations = async (req, res) => {
 
         if (itemsError) throw itemsError;
 
-        // Count categories
+        // Count categories (category may be a string or an array/json)
         const catCount = new Map();
         for (const ci of purchasedItems || []) {
-          const cat = ci?.Items?.category;
+          let cat = ci?.Items?.category;
           if (!cat) continue;
-          catCount.set(cat, (catCount.get(cat) || 0) + 1);
+          const cats = Array.isArray(cat) ? cat : [cat];
+          for (const c of cats) {
+            if (!c) continue;
+            catCount.set(c, (catCount.get(c) || 0) + 1);
+          }
         }
         preferredCategories = Array.from(catCount.entries())
           .sort((a, b) => b[1] - a[1])
@@ -56,33 +60,33 @@ export const getRecommendations = async (req, res) => {
     }
 
     let recs = [];
-    if (preferredCategories.length) {
-      // Pull items from top categories, prioritize rating then sold_qt, only in-stock
-      const topCats = preferredCategories.slice(0, 3);
-      const { data: catItems, error: catErr } = await supabase
-        .from('Items')
-        .select('*')
-        .in('category', topCats)
-        .gt('quantity', 0)
-        .order('rating', { ascending: false, nullsFirst: false })
-        .order('sold_qt', { ascending: false });
+    // Pull a candidate set ordered by rating and sold, then filter in JS to avoid JSON operator issues
+    const { data: candidates, error: candErr } = await supabase
+      .from('Items')
+      .select('*')
+      .gt('quantity', 0)
+      .order('rating', { ascending: false, nullsFirst: false })
+      .order('sold_qt', { ascending: false })
+      .limit(Math.max(limit * 5, 100));
 
-      if (catErr) throw catErr;
-      recs = (catItems || []).slice(0, limit);
+    if (candErr) throw candErr;
+
+    const topCats = preferredCategories.slice(0, 3);
+    const norm = (cat) => (Array.isArray(cat) ? cat : [cat]).filter(Boolean).map(String);
+    const hasOverlap = (arr, cats) => {
+      if (!arr || !cats || !cats.length) return false;
+      const s = new Set(norm(arr));
+      for (const c of cats) if (s.has(String(c))) return true;
+      return false;
+    };
+
+    if (topCats.length) {
+      recs = (candidates || []).filter((it) => hasOverlap(it.category, topCats)).slice(0, limit);
     }
 
     if (!recs.length) {
-      // Fallback: popular items globally
-      const { data: popular, error: popErr } = await supabase
-        .from('Items')
-        .select('*')
-        .gt('quantity', 0)
-        .order('rating', { ascending: false, nullsFirst: false })
-        .order('sold_qt', { ascending: false })
-        .limit(limit);
-
-      if (popErr) throw popErr;
-      recs = popular || [];
+      // Fallback: top popular items globally
+      recs = (candidates || []).slice(0, limit);
     }
 
     return res.status(200).json({ recommendations: recs });
@@ -106,19 +110,32 @@ export const getSimilarItems = async (req, res) => {
 
     if (itemErr || !item) return res.status(404).json({ message: 'Item not found' });
 
-    const { data: similar, error: simErr } = await supabase
+    const categories = Array.isArray(item.category) ? item.category : [item.category].filter(Boolean);
+    // Fetch candidates and filter in JS to avoid JSON operator issues
+    const { data: simCandidates, error: simCandErr } = await supabase
       .from('Items')
       .select('*')
-      .eq('category', item.category)
-      .neq('id', item.id)
       .gt('quantity', 0)
       .order('rating', { ascending: false, nullsFirst: false })
       .order('sold_qt', { ascending: false })
-      .limit(limit);
+      .limit(300);
 
-    if (simErr) throw simErr;
+    if (simCandErr) throw simCandErr;
 
-    return res.status(200).json({ items: similar || [] });
+    const norm = (cat) => (Array.isArray(cat) ? cat : [cat]).filter(Boolean).map(String);
+    const hasOverlap = (arr, cats) => {
+      if (!arr || !cats || !cats.length) return false;
+      const s = new Set(norm(arr));
+      for (const c of cats) if (s.has(String(c))) return true;
+      return false;
+    };
+
+    const similar = (simCandidates || [])
+      .filter((it) => String(it.id) !== String(item.id))
+      .filter((it) => hasOverlap(it.category, categories))
+      .slice(0, limit);
+
+    return res.status(200).json({ items: similar });
   } catch (err) {
     console.error('Error in getSimilarItems:', err);
     return res.status(500).json({ message: 'Internal server error', error: err.message });

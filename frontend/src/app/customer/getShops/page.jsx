@@ -10,6 +10,8 @@ export default function CustomerDashboard() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [location, setLocation] = useState(null);
   const [shops, setShops] = useState([]);
+  const [recs, setRecs] = useState([]);
+  const [recLoading, setRecLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [categories, setCategories] = useState([]);
@@ -65,6 +67,26 @@ export default function CustomerDashboard() {
 
     get_shops();
   }, [location, getToken, API_URL]);
+
+  // Fetch personalized item recommendations
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !user?.id) return;
+    const fetchRecs = async () => {
+      try {
+        setRecLoading(true);
+        const token = await getToken();
+        const res = await axios.get(`${API_URL}/api/customer/recommendations/${user.id}?limit=12`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setRecs(res?.data?.recommendations || []);
+      } catch (e) {
+        // silent fail
+      } finally {
+        setRecLoading(false);
+      }
+    };
+    fetchRecs();
+  }, [isLoaded, isSignedIn, user?.id, API_URL, getToken]);
 
   const filteredShops = shops.filter((shop) => {
     const matchesSearch = shop.shop_name.toLowerCase().includes(search.toLowerCase());
@@ -128,6 +150,34 @@ export default function CustomerDashboard() {
         <p className="mt-4 text-[var(--muted-foreground)] text-base sm:text-lg max-w-2xl mx-auto">
           Discover and support authentic local merchants — curated for your neighbourhood.
         </p>
+      </div>
+
+      {/* Recommended Items */}
+      <div className="max-w-7xl mx-auto mb-12">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Recommended for you</h2>
+          {recLoading && <span className="text-sm text-[var(--muted-foreground)]">Loading…</span>}
+        </div>
+        {recs?.length ? (
+          <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+            {recs.map((it) => (
+              <motion.div key={it.id} variants={cardVariants} className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+                <Link href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="block">
+                  <div className="aspect-[4/3] bg-[var(--muted)]">
+                    <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-3">
+                    <div className="text-sm text-[var(--muted-foreground)] truncate">{it.category || it.category?.[0]}</div>
+                    <div className="font-semibold truncate">{it.name}</div>
+                    <div className="text-[var(--primary)] font-bold">₹{it.price}</div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : (
+          <p className="text-[var(--muted-foreground)]">No recommendations yet.</p>
+        )}
       </div>
 
       {/* Search + Filter */}

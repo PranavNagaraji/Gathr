@@ -12,6 +12,7 @@ import "slick-carousel/slick/slick-theme.css";
 import { useRouter } from "next/navigation";
 import { Trash2, Heart } from "lucide-react";
 import { App as AntdApp } from "antd"; // Import Antd's App provider
+import Link from "next/link";
 
 // All of your page logic is now in this component
 const ItemDetailsContent = () => {
@@ -27,6 +28,7 @@ const ItemDetailsContent = () => {
   const [userId, setUserId] = useState(0);
   const [item, setItem] = useState({});
   const [comments, setComments] = useState([]);
+
   const [newComment, setNewComment] = useState("");
   const [newRating, setNewRating] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -35,6 +37,8 @@ const ItemDetailsContent = () => {
   const [editingRating, setEditingRating] = useState(false);
   const [inWishlist, setInWishlist] = useState(false);
   const [wlLoading, setWlLoading] = useState(false);
+  const [similarItems, setSimilarItems] = useState([]);
+  const [simLoading, setSimLoading] = useState(false);
 
   const sliderSettings = {
     dots: true,
@@ -112,6 +116,26 @@ const ItemDetailsContent = () => {
     };
   }, [item_id, API_URL, isUserLoaded, isLoaded, user?.id, getToken]);
 
+  // Fetch similar items
+  useEffect(() => {
+    if (!item_id) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        setSimLoading(true);
+        const res = await axios.get(`${API_URL}/api/customer/items/${item_id}/similar?limit=12`);
+        if (!cancelled) setSimilarItems(res?.data?.items || []);
+      } catch (_) {
+      } finally {
+        if (!cancelled) setSimLoading(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [item_id, API_URL]);
+
   useEffect(() => {
     const loadWishlistStatus = async () => {
       if (!user?.id || !item_id) return;
@@ -124,7 +148,8 @@ const ItemDetailsContent = () => {
         );
         const list = res?.data?.items || [];
         setInWishlist(list.some((it) => String(it.id) === String(item_id)));
-      } catch (_) {}
+      } catch (_) {
+      }
     };
     loadWishlistStatus();
   }, [user?.id, item_id, API_URL, getToken]);
@@ -534,6 +559,33 @@ const ItemDetailsContent = () => {
                 </motion.p>
               )}
             </AnimatePresence>
+          </motion.div>
+        </div>
+
+        {/* SIMILAR ITEMS */}
+        <div>
+          <h2 className="font-extrabold text-3xl sm:text-4xl tracking-tight mb-8">Similar Items</h2>
+          <motion.div initial="hidden" animate="show" variants={listVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {similarItems.length > 0 ? (
+              similarItems.map((it) => (
+                <motion.div key={it.id} variants={itemVariants} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+                  <Link href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="block">
+                    <div className="aspect-[4/3] bg-[var(--muted)]">
+                      <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="p-4">
+                      <div className="text-sm text-[var(--muted-foreground)] truncate">{it.category || it.category?.[0]}</div>
+                      <h3 className="font-bold text-lg mt-1 truncate">{it.name}</h3>
+                      <p className="text-2xl font-bold text-[var(--primary)] mt-1">₹{it.price}</p>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))
+            ) : (
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-[var(--muted-foreground)] py-8">
+                No similar items found.
+              </motion.p>
+            )}
           </motion.div>
         </div>
       </div>
