@@ -204,6 +204,8 @@ export default function EditItemPage() {
     }
   }
 
+  
+
   // 🔹 Cleaner loading state with Spin
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)] text-[var(--foreground)]">
@@ -212,7 +214,6 @@ export default function EditItemPage() {
   )
 
   return (
-    // 🔹 Wrap with AntD provider synced to app theme
     <ConfigProvider
       theme={{
         algorithm: currentTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
@@ -225,14 +226,22 @@ export default function EditItemPage() {
         },
         components: {
           Select: {
-            colorBgContainer: 'transparent',
+            colorBgContainer: 'var(--card)',
+            colorBgElevated: 'var(--popover)',
+            colorText: 'var(--foreground)',
+            colorTextPlaceholder: 'var(--muted-foreground)',
             colorBorder: 'var(--border)',
-            controlHeight: 48, // Taller select
+            optionSelectedBg: 'var(--accent)',
+            optionSelectedColor: 'var(--accent-foreground)',
+            optionActiveBg: 'var(--muted)',
+            controlItemBgHover: 'var(--muted)',
+            controlHeight: 48,
           },
           Input: {
-            colorBgContainer: 'transparent',
+            colorBgContainer: 'var(--card)',
+            colorText: 'var(--foreground)',
             colorBorder: 'var(--border)',
-            controlHeight: 48, // Taller input
+            controlHeight: 48,
           },
         }
       }}
@@ -241,28 +250,14 @@ export default function EditItemPage() {
         <div className="max-w-7xl mx-auto">
           <h1 className="text-4xl font-bold mb-8 text-[var(--foreground)]">Edit Item</h1>
 
-          {/* 🔹 Responsive 60/40 Grid Layout
-            - 1 column on mobile (default)
-            - 5 columns on desktop (md:)
-          */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
-
-            {/* 🔹 RIGHT COLUMN (Images)
-              - Appears FIRST in JSX for mobile-first layout
-              - Spans 2/5 of the width on desktop
-              - Pushed to the right and made sticky on desktop
-            */}
+            {/* Images (right on desktop) */}
             <div className="md:col-span-2 md:order-last md:sticky md:top-8 h-fit">
               <label className="text-sm font-medium mb-2 block text-[var(--muted-foreground)]">Item Images</label>
-
               <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
                 <div className="relative aspect-square w-full">
                   {formData.images && formData.images.length > 0 ? (
-                    <img
-                      src={formData.images[activeIndex]?.url || formData.images[activeIndex]}
-                      alt={`image-${activeIndex}`}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={formData.images[activeIndex]?.url || formData.images[activeIndex]} alt={`image-${activeIndex}`} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-sm text-[var(--muted-foreground)]">No images</div>
                   )}
@@ -273,151 +268,52 @@ export default function EditItemPage() {
                     </>
                   )}
                 </div>
-
                 {formData.images && formData.images.length > 0 && (
                   <div className="grid grid-cols-5 gap-2 p-3 bg-[var(--card)] border-t border-[var(--border)]">
                     {formData.images.map((img, i) => (
-                      <button
-                        type="button"
-                        key={i}
-                        onClick={() => setActiveIndex(i)}
-                        className={`relative aspect-square rounded-md overflow-hidden border ${i === activeIndex ? 'border-[var(--primary)]' : 'border-[var(--border)]'}`}
-                        aria-label={`Select image ${i + 1}`}
-                      >
+                      <button type="button" key={i} onClick={() => setActiveIndex(i)} className={`relative aspect-square rounded-md overflow-hidden border ${i === activeIndex ? 'border-[var(--primary)]' : 'border-[var(--border)]'}`} aria-label={`Select image ${i + 1}`}>
                         <img src={img.url || img} alt={`thumb-${i}`} className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleRemoveImage(i) }}
-                          className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-                          aria-label={`Remove image ${i + 1}`}
-                        >
-                          ✕
-                        </button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveImage(i) }} className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" aria-label={`Remove image ${i + 1}`}>✕</button>
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-
-              <label
-                htmlFor="file-upload"
-                className="mt-4 block w-full text-center py-3 px-4 rounded-lg bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] font-medium cursor-pointer transition-colors"
-              >
-                Upload More Images
-              </label>
-              <input
-                id="file-upload"
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-              />
+              <label htmlFor="file-upload" className="mt-4 block w-full text-center py-3 px-4 rounded-lg bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] font-medium cursor-pointer transition-colors">Upload More Images</label>
+              <input id="file-upload" type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" />
             </div>
 
-            {/* 🔹 LEFT COLUMN (Details)
-              - Appears SECOND in JSX
-              - Spans 3/5 of the width on desktop
-            */}
+            {/* Details (left on desktop) */}
             <form onSubmit={handleSubmit} className="md:col-span-3 flex flex-col gap-8">
-
-              {/* Name */}
               <div>
                 <label className="text-sm font-medium text-[var(--muted-foreground)]">Item Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
-                  placeholder="Enter item name"
-                />
+                <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors" placeholder="Enter item name" />
               </div>
-
-              {/* Description */}
               <div>
                 <label className="text-sm font-medium text-[var(--muted-foreground)]">Description</label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows={4}
-                  className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
-                  placeholder="Enter description"
-                />
+                <textarea name="description" value={formData.description} onChange={handleChange} rows={4} className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors" placeholder="Enter description" />
               </div>
-
-              {/* Quantity & Price (Side-by-side) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Quantity */}
                 <div>
                   <label className="text-sm font-medium text-[var(--muted-foreground)]">Quantity</label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    value={formData.quantity}
-                    onChange={handleChange}
-                    className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
-                    placeholder="Enter quantity"
-                  />
+                  <input type="number" name="quantity" value={formData.quantity} onChange={handleChange} className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors" placeholder="Enter quantity" />
                 </div>
-
-                {/* Price */}
                 <div>
                   <label className="text-sm font-medium text-[var(--muted-foreground)]">Price</label>
-                  <input
-                    type="number"
-                    name="price"
-                    min={1}
-                    value={formData.price}
-                    onChange={handleChange}
-                    className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors"
-                    placeholder="Enter price"
-                  />
+                  <input type="number" name="price" min={1} value={formData.price} onChange={handleChange} className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-lg p-2 focus:outline-none focus:ring-0 focus:border-[var(--primary)] transition-colors" placeholder="Enter price" />
                 </div>
               </div>
-
-              {/* 🔹 NEW: Categories Select */}
               <div>
                 <label className="text-sm font-medium text-[var(--muted-foreground)] mb-2 block">Categories</label>
-                <Select
-                  mode="multiple"
-                  allowClear
-                  style={{ width: '100%' }}
-                  placeholder="Select categories"
-                  value={formData.category}
-                  onChange={handleCategorySelectChange}
-                  options={allCategoryOptions}
-                  size="large" // Makes it taller
-                  className="bg-transparent text-[var(--foreground)]"
-                />
-
-                {/* 🔹 NEW: Conditional "Other" Input */}
+                <Select mode="multiple" allowClear style={{ width: '100%' }} placeholder="Select categories" value={formData.category} onChange={handleCategorySelectChange} options={allCategoryOptions} size="large" dropdownStyle={{ background: 'var(--popover)', color: 'var(--popover-foreground)' }} />
                 {formData.category.includes('Other') && (
                   <div className="mt-4">
                     <label className="text-sm font-medium text-[var(--muted-foreground)]">New Category Name</label>
-                    <Input
-                      type="text"
-                      value={otherCategory}
-                      onChange={(e) => setOtherCategory(e.target.value)}
-                      onBlur={handleAddNewCategory}
-                      onKeyDown={handleAddNewCategory}
-                      className="w-full mt-2 bg-transparent !border-[var(--border)] text-[var(--foreground)] !text-lg p-2 focus:!border-[var(--primary)]"
-                      placeholder="Type new category and press Enter"
-                      size="large"
-                    />
+                    <Input type="text" value={otherCategory} onChange={(e) => setOtherCategory(e.target.value)} onBlur={handleAddNewCategory} onKeyDown={handleAddNewCategory} className="w-full mt-2 bg-transparent !border-[var(--border)] text-[var(--foreground)] !text-lg p-2 focus:!border-[var(--primary)]" placeholder="Type new category and press Enter" size="large" />
                   </div>
                 )}
               </div>
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full bg-[var(--primary)] hover:opacity-90 text-[var(--primary-foreground)] font-semibold py-3 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-lg mt-4"
-              >
-                {saving ? "Updating..." : "Update Item"}
-              </button>
+              <button type="submit" disabled={saving} className="w-full bg-[var(--primary)] hover:opacity-90 text-[var(--primary-foreground)] font-semibold py-3 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-lg mt-4">{saving ? 'Updating...' : 'Update Item'}</button>
             </form>
           </div>
         </div>

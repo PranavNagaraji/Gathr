@@ -140,7 +140,17 @@ export default function Dashboard() {
             </motion.div>
           ))
         ) : (
-          <p className="text-[var(--muted-foreground)]">No orders yet.</p>
+          <div className="max-w-4xl mx-auto p-6">
+            <div className="mt-6 flex flex-col items-center justify-center text-center border border-dashed border-[var(--border)] rounded-2xl p-10 bg-[var(--card)]/40">
+              <div className="w-24 h-24 rounded-full bg-[var(--muted)] flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-10 h-10 text-[var(--muted-foreground)]">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7h4l2 4h8l2-4h2M7 17h10M9 21h6" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-semibold">No orders yet</h2>
+              <p className="mt-2 text-[var(--muted-foreground)] max-w-md">New orders near you will appear here. Keep location enabled to get assignments.</p>
+            </div>
+          </div>
         )}
       </motion.div>
     </div>

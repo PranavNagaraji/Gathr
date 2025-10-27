@@ -92,7 +92,19 @@ export default function AssignedDeliveries() {
     <div className="p-4 bg-[var(--background)] text-[var(--foreground)]">
       <h1 className="text-2xl font-bold mb-4">Assigned Deliveries</h1>
 
-      {orders.length === 0 && <p className="text-[var(--muted-foreground)]">No deliveries on the way.</p>}
+      {orders.length === 0 && (
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="mt-6 flex flex-col items-center justify-center text-center border border-dashed border-[var(--border)] rounded-2xl p-10 bg-[var(--card)]/40">
+            <div className="w-24 h-24 rounded-full bg-[var(--muted)] flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-10 h-10 text-[var(--muted-foreground)]">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 7h4l2 4h8l2-4h2M7 17h10M9 21h6" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-semibold">No assigned deliveries</h2>
+            <p className="mt-2 text-[var(--muted-foreground)] max-w-md">You're all caught up. New deliveries will appear here when assigned.</p>
+          </div>
+        </div>
+      )}
 
       <motion.div className="grid gap-4" role="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <AnimatePresence>

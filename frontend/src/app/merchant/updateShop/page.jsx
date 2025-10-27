@@ -217,8 +217,15 @@ const UpdateShop = () => {
                 },
                 components: {
                     Select: {
-                        colorBgContainer: 'transparent',
-                        colorBorder: 'var(--border)'
+                        colorBgContainer: 'var(--card)',
+                        colorBgElevated: 'var(--popover)',
+                        colorText: 'var(--foreground)',
+                        colorTextPlaceholder: 'var(--muted-foreground)',
+                        colorBorder: 'var(--border)',
+                        optionSelectedBg: 'var(--accent)',
+                        optionSelectedColor: 'var(--accent-foreground)',
+                        optionActiveBg: 'var(--muted)',
+                        controlItemBgHover: 'var(--muted)'
                     }
                 }
             }}
@@ -270,6 +277,8 @@ const UpdateShop = () => {
                         style={{ width: "100%" }}
                         placeholder="Select categories"
                         maxTagCount="responsive"
+                        size="large"
+                        dropdownStyle={{ background: 'var(--popover)', color: 'var(--popover-foreground)' }}
                         suffixIcon={
                             <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
                                 <span>{formData.category?.length || 0}</span>

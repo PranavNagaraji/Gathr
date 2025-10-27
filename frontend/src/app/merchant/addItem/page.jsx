@@ -125,8 +125,18 @@ export default function addItemPage() {
                     colorText: 'var(--foreground)'
                 },
                 components: {
-                    Select: { colorBgContainer: 'transparent', colorBorder: 'var(--border)' },
-                    Input: { colorBgContainer: 'transparent', colorBorder: 'var(--border)' }
+                    Select: {
+                        colorBgContainer: 'var(--card)',
+                        colorBgElevated: 'var(--popover)',
+                        colorText: 'var(--foreground)',
+                        colorTextPlaceholder: 'var(--muted-foreground)',
+                        colorBorder: 'var(--border)',
+                        optionSelectedBg: 'var(--accent)',
+                        optionSelectedColor: 'var(--accent-foreground)',
+                        optionActiveBg: 'var(--muted)',
+                        controlItemBgHover: 'var(--muted)'
+                    },
+                    Input: { colorBgContainer: 'var(--card)', colorBorder: 'var(--border)', colorText: 'var(--foreground)' }
                 }
             }}
         >
@@ -197,7 +207,7 @@ export default function addItemPage() {
                                     onChange={(values) => setFormData(prev => ({ ...prev, category: values }))}
                                     options={[...new Set([...categoryOptions, 'Other'])].map(cat => ({ label: cat, value: cat }))}
                                     size="large"
-                                    className="bg-transparent text-[var(--foreground)]"
+                                    dropdownStyle={{ background: 'var(--popover)', color: 'var(--popover-foreground)' }}
                                 />
                                 {formData.category.includes('Other') && (
                                     <div className="mt-4">

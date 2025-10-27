@@ -23,6 +23,30 @@ const Orders = () => {
     statusStyles[s?.toLowerCase?.()?.replace(/'/g, "")] ||
     "bg-[var(--muted)] text-[var(--muted-foreground)]";
 
+  const paymentStyles = {
+    paid: "bg-emerald-100 text-emerald-800",
+    success: "bg-emerald-100 text-emerald-800",
+    pending: "bg-amber-100 text-amber-800",
+    failed: "bg-red-100 text-red-800",
+    declined: "bg-red-100 text-red-800",
+    refunded: "bg-sky-100 text-sky-800",
+  };
+  const getPaymentStyle = (s) =>
+    paymentStyles[s?.toLowerCase?.()] || "bg-[var(--muted)] text-[var(--muted-foreground)]";
+
+  const deliverySteps = ["pending", "accepted", "ontheway", "delivered"];
+  const deliveryLabels = {
+    pending: "Pending",
+    accepted: "Accepted",
+    ontheway: "Ontheway",
+    delivered: "Delivered",
+  };
+
+  const formatOrderId = (id) => {
+    const s = String(id || "");
+    return s.length > 6 ? s.slice(-6).toUpperCase() : s.toUpperCase();
+  };
+
   useEffect(() => {
     const getOrders = async () => {
       if (!isLoaded || !isSignedIn || !user) return;
@@ -86,26 +110,26 @@ const Orders = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 12 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="group rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+              className="group rounded-2xl border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
             >
-              <Link href={`/customer/orders/${order.cart_id}`} className="block p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded-xl">
+              <Link href={`/customer/orders/${order.cart_id}`} className="block p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded-2xl">
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="text-base font-semibold">Order #{order.cart_id}</h2>
-                  <div className="flex gap-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${getStatusStyle(order.status)}`}>
-                      {order.status?.replace(/'/g, '')}
-                    </span>
-                    <span className="text-xs px-2 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">
+                  <div>
+                    <h2 className="text-base font-semibold">Order #{formatOrderId(order.id)}</h2>
+                    <p className="text-xs text-[var(--muted-foreground)] mt-0.5">{new Date(order.created_at).toLocaleString()}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <span className={`text-xs px-2 py-1 rounded-full ${getPaymentStyle(order.payment_status)} capitalize`}>
                       {order.payment_status}
                     </span>
                   </div>
                 </div>
                 <dl className="mt-3 space-y-1 text-sm">
-                  <div className="flex justify-between"><dt className="text-[var(--muted-foreground)]">Amount Paid</dt><dd>₹{order.amount_paid}</dd></div>
-                  <div className="flex justify-between"><dt className="text-[var(--muted-foreground)]">Method</dt><dd>{order.payment_method?.toUpperCase?.() || '-'}</dd></div>
-                  <div className="flex justify-between"><dt className="text-[var(--muted-foreground)]">Status</dt><dd>{order.status.replace(/'/g,'')}</dd></div>
-                  <div className="flex justify-between"><dt className="text-[var(--muted-foreground)]">Address ID</dt><dd>{order.address_id}</dd></div>
-                  <div className="flex justify-between"><dt className="text-[var(--muted-foreground)]">Shop</dt><dd className="truncate max-w-[60%] text-right">{order.Shops.shop_name}</dd></div>
+                  <div className="flex justify-between"><dt className="text-[var(--muted-foreground)]">Amount Paid</dt><dd className="font-medium">₹{order.amount_paid}</dd></div>
+                  <div className="flex justify-between"><dt className="text-[var(--muted-foreground)]">Method</dt><dd className="font-medium">{order.payment_method?.toUpperCase?.() || '-'}</dd></div>
+                  <div className="flex justify-between"><dt className="text-[var(--muted-foreground)]">Delivery</dt><dd className="font-medium capitalize">{order.status.replace(/'/g,'')}</dd></div>
+                  <div className="flex justify-between"><dt className="text-[var(--muted-foreground)]">Address ID</dt><dd className="font-medium">{order.address_id}</dd></div>
+                  <div className="flex justify-between"><dt className="text-[var(--muted-foreground)]">Shop</dt><dd className="truncate max-w-[60%] text-right font-medium">{order.Shops.shop_name}</dd></div>
                 </dl>
                 {order.Users ? (
                   <div className="mt-4 flex items-center gap-3">
@@ -122,7 +146,30 @@ const Orders = () => {
                 ) : (
                   <p className="mt-4 text-xs text-[var(--muted-foreground)]">Delivery partner not assigned yet</p>
                 )}
-                <p className="text-xs text-[var(--muted-foreground)] mt-3">{new Date(order.created_at).toLocaleString()}</p>
+
+                <div className="mt-4">
+                  <div className="grid grid-cols-4 items-center gap-2">
+                    {deliverySteps.map((step, idx) => {
+                      const current = order.status?.toLowerCase?.()?.replace(/'/g, "");
+                      const currentIdx = deliverySteps.indexOf(current);
+                      const completed = currentIdx >= idx;
+                      return (
+                        <div key={step} className="flex flex-col items-center">
+                          <div className="flex items-center w-full">
+                            {idx > 0 && (
+                              <div className={`h-0.5 flex-1 ${currentIdx > idx - 1 ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}`} />
+                            )}
+                            <div className={`h-2.5 w-2.5 rounded-full ${completed ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}`} />
+                            {idx < deliverySteps.length - 1 && (
+                              <div className={`h-0.5 flex-1 ${currentIdx > idx ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}`} />
+                            )}
+                          </div>
+                          <span className="mt-1 text-[11px] text-[var(--muted-foreground)]">{deliveryLabels[step]}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </Link>
             </motion.div>
           ))}

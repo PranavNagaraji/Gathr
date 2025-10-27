@@ -218,85 +218,40 @@ export default function createShop() {
     });
 
     const data = await res.json();
-    if (res.ok) alert("Shop details saved!");
-    else alert(`Error saving shop details: ${data.message}`);
-  };
-
-  return (
-    <ConfigProvider
-      theme={{
-        algorithm: currentTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
-        token: {
-          colorPrimary: 'var(--primary)',
-          colorBgBase: 'var(--background)',
           colorBgContainer: 'var(--card)',
+          colorText: 'var(--foreground)',
+          colorTextPlaceholder: 'var(--muted-foreground)',
           colorBorder: 'var(--border)',
-          colorText: 'var(--foreground)'
+          optionSelectedBg: 'var(--accent)',
+          optionSelectedColor: 'var(--accent-foreground)',
+          optionActiveBg: 'var(--muted)',
+          controlItemBgHover: 'var(--muted)',
+          colorBgElevated: 'var(--popover)'
         }
-      }}
-    >
-      <div className="min-h-screen p-4 md:p-8 bg-[var(--background)] text-[var(--foreground)]">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">Shop Registration</h2>
+      }
+    }}
+  >
+    <div className="min-h-screen p-4 md:p-8 bg-[var(--background)] text-[var(--foreground)]">
+      <div className="max-w-7xl mx-auto">
+        <h2 className="text-3xl md:text-4xl font-bold mb-6">Shop Registration</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
-            {/* LEFT: Details */}
-            <form onSubmit={handleSubmit} className="md:col-span-3 flex flex-col gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {['shop_name', 'contact', 'account_no', 'mobile_no'].map(field => (
-                  <div key={field}>
-                    <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>
-                      {field.replace('_', ' ').toUpperCase()}
-                    </Typography>
-                    <input
-                      type="text"
-                      name={field}
-                      value={formData[field]}
-                      onChange={handleChange}
-                      className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)] transition-colors"
-                      required
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>Address</Typography>
-                <input
-                  type="text"
-                  name="address"
-                  ref={addressRef}
-                  value={formData.address}
-                  onChange={handleChange}
-                  placeholder="Start typing your address..."
-                  className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)] transition-colors"
-                  required
-                />
-              </div>
-
-              <div>
-                <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 1 }}>Categories</Typography>
-                <Select
-                  mode="multiple"
-                  value={formData.category}
-                  onChange={(values) => setFormData(prev => ({ ...prev, category: values }))}
-                  style={{ width: '100%' }}
-                  placeholder="Select categories"
-                  maxTagCount="responsive"
-                  suffixIcon={
-                    <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
-                      <span>{formData.category.length}</span>
-                      <DownOutlined />
-                    </span>
-                  }
-                  options={[...new Set([...categoriesOptions, 'Other'])].map(v => ({ value: v, label: v }))}
-                />
-                {formData.category.includes('Other') && (
-                  <div className="mt-3">
-                    <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600 }}>Enter custom category</Typography>
-                    <input
-                      type="text"
-                      value={otherCategory}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
+          {/* LEFT: Details */}
+          <form onSubmit={handleSubmit} className="md:col-span-3 flex flex-col gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {['shop_name', 'contact', 'account_no', 'mobile_no'].map(field => (
+                <div key={field}>
+                  <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>
+                    {field.replace('_', ' ').toUpperCase()}
+                  </Typography>
+                  <input
+                    type="text"
+                    name={field}
+                    value={formData[field]}
+                    onChange={handleChange}
+                    className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)] transition-colors"
+                    required
+                  />
                       onChange={(e) => setOtherCategory(e.target.value)}
                       onBlur={() => {
                         if (otherCategory.trim()) {
