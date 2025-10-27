@@ -143,7 +143,18 @@ const Cart = () => {
       </div>
 
       {items.length === 0 ? (
-        <p className="text-[var(--muted-foreground)] text-lg">No items in your cart yet.</p>
+        <div className="mt-10 flex flex-col items-center justify-center text-center border border-dashed border-[var(--border)] rounded-2xl p-10 bg-[var(--card)]/40">
+          <div className="w-24 h-24 rounded-full bg-[var(--muted)] flex items-center justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-10 h-10 text-[var(--muted-foreground)]">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.25 3h1.386c.51 0 .955.343 1.09.836l.383 1.437M7.5 14.25h10.036c.48 0 .902-.323 1.019-.788l1.5-6A1.125 1.125 0 0019.969 6H6.72m0 0L5.709 2.836A1.125 1.125 0 004.636 2.25H2.25M6.72 6l1.8 7.2m0 0a2.25 2.25 0 104.38 0m-4.38 0h4.38" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-semibold">Your cart is empty</h2>
+          <p className="mt-2 text-[var(--muted-foreground)] max-w-md">Looks like you haven’t added anything yet. Explore nearby shops and find something you’ll love.</p>
+          <a href="/customer/getShops" className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold hover:opacity-90">
+            Browse Shops
+          </a>
+        </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           {/* Items list */}

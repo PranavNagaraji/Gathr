@@ -24,7 +24,7 @@ export default function ShopItems() {
   // Filter states
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({
-    category: "All",
+    categories: [],
     priceRange: [0, 10000],
     inStock: false,
     sortBy: "featured",
@@ -113,7 +113,8 @@ export default function ShopItems() {
   const filteredItems = items
     .filter((item) => {
       const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = filters.category === "All" || item.category?.includes(filters.category);
+      const sel = filters.categories || [];
+      const matchesCategory = sel.length === 0 || (Array.isArray(item.category) && item.category.some((c) => sel.includes(c)));
       const matchesPrice = item.price >= filters.priceRange[0] && item.price <= filters.priceRange[1];
       const matchesStock = !filters.inStock || item.stock > 0;
       const matchesRating = item.rating >= filters.rating;
@@ -279,12 +280,12 @@ export default function ShopItems() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 <span>Filters</span>
-                {Object.values(filters).some(val => 
-                  (Array.isArray(val) && (val[0] > priceMin || val[1] < priceMax)) || 
-                  (typeof val === 'string' && val !== 'All' && val !== 'featured') ||
-                  (typeof val === 'number' && val > 0) ||
-                  (typeof val === 'boolean' && val)
-                ) && (
+                {(filters.categories?.length > 0
+                  || filters.priceRange[0] > priceMin
+                  || filters.priceRange[1] < priceMax
+                  || filters.rating > 0
+                  || filters.inStock
+                  || filters.sortBy !== 'featured') && (
                   <span className="w-2 h-2 bg-[var(--primary)] rounded-full"></span>
                 )}
               </button>
@@ -318,22 +319,29 @@ export default function ShopItems() {
               className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 shadow-lg overflow-hidden"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Category Filter */}
+                {/* Category Filter (multi-select) */}
                 <div>
-                  <h3 className="font-medium mb-3 text-[var(--foreground)]">Category</h3>
-                  <div className="space-y-2">
-                    {['All', ...categories].map((category) => (
-                      <label key={category} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="category"
-                          checked={filters.category === category}
-                          onChange={() => setFilters({...filters, category})}
-                          className="h-4 w-4 text-[var(--primary)] focus:ring-[var(--primary)] border-[var(--border)]"
-                        />
-                        <span className="text-sm">{category}</span>
-                      </label>
-                    ))}
+                  <h3 className="font-medium mb-3 text-[var(--foreground)]">Categories</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat) => {
+                      const active = filters.categories.includes(cat);
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            setFilters((prev) => {
+                              const set = new Set(prev.categories);
+                              if (set.has(cat)) set.delete(cat); else set.add(cat);
+                              return { ...prev, categories: Array.from(set) };
+                            });
+                          }}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${active ? 'bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]' : 'bg-[var(--muted)] text-[var(--muted-foreground)] border-[var(--border)] hover:bg-[var(--muted)]/70'}`}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -419,7 +427,7 @@ export default function ShopItems() {
               <div className="mt-6 flex justify-end space-x-3">
                 <button
                   onClick={() => setFilters({
-                    category: "All",
+                    categories: [],
                     priceRange: [priceMin, priceMax],
                     inStock: false,
                     sortBy: "featured",
@@ -472,81 +480,76 @@ export default function ShopItems() {
           <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <AnimatePresence>
             {filteredItems.length > 0 ? (
-              filteredItems.map((item, idx) => (
+              filteredItems.map((item) => (
                 <motion.div
                   key={item.id}
                   variants={cardVariants}
-                  initial="hidden"
-                  animate="show"
                   whileHover="hover"
-                  delay={idx * 0.1}
-                  className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-xl shadow-md overflow-hidden border border-[var(--border)] hover:bg-[var(--muted)]/40 dark:hover:bg-[var(--muted)]/20 transition-colors duration-200"
+                  className="group relative bg-[var(--card)] text-[var(--card-foreground)] rounded-2xl shadow-sm overflow-hidden border border-[var(--border)] hover:shadow-md transition-all"
                 >
-                  <div className="block">
-                    <motion.div whileTap={{ scale: 0.99 }} className="overflow-hidden shadow-md transition">
-                      <div className="relative h-44 md:h-48 bg-gradient-to-b from-[var(--muted)] to-[var(--card)] overflow-hidden">
-                        <Link href={`/customer/getShops/${shop_id}/item/${item.id}`} className="absolute inset-0 block" />
-                        <img
-                          src={item.images?.[0]?.url || "/placeholder.png"}
-                          alt={item.name}
-                          className="w-full h-full object-cover object-center"
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}
-                          className="absolute top-2 right-2 p-2 rounded-full bg-[var(--card)]/80 border border-[var(--border)] hover:bg-[var(--muted)]/70"
-                          aria-pressed={wishlistIds.has(item.id)}
-                        >
-                          <Heart className={wishlistIds.has(item.id) ? "text-red-500" : "text-[var(--foreground)]"} fill={wishlistIds.has(item.id) ? "currentColor" : "none"} size={18} />
-                        </button>
-                      </div>
+                  <motion.div whileTap={{ scale: 0.99 }} className="overflow-hidden">
+                    <div className="relative h-44 md:h-48 bg-[var(--muted)] overflow-hidden rounded-t-2xl">
+                      <Link href={`/customer/getShops/${shop_id}/item/${item.id}`} className="absolute inset-0 block" />
+                      <img
+                        src={item.images?.[0]?.url || "/placeholder.png"}
+                        alt={item.name}
+                        className="w-full h-full object-cover object-center"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWishlist(item.id); }}
+                        className="absolute top-2 right-2 p-2 rounded-full bg-[var(--card)]/90 border border-[var(--border)] shadow-sm hover:bg-[var(--muted)]/80"
+                        aria-pressed={wishlistIds.has(item.id)}
+                      >
+                        <Heart className={wishlistIds.has(item.id) ? "text-red-500" : "text-[var(--foreground)]"} fill={wishlistIds.has(item.id) ? "currentColor" : "none"} size={18} />
+                      </button>
+                    </div>
 
-                      <div className="bg-[var(--card)] p-4 md:p-5">
-                      <div className="flex justify-between mb-2">
+                    <div className="bg-[var(--card)] p-4 md:p-5">
+                      <div className="flex items-start justify-between gap-3 mb-2">
                         <h3 className="text-[var(--card-foreground)] text-lg md:text-xl font-semibold truncate">{item.name}</h3>
-                        <p className="text-md font-bold text-[var(--primary)] mt-1">₹{item.price}</p>
+                        <p className="text-md font-bold text-[var(--primary)]">₹{item.price}</p>
                       </div>
-                        <p className="text-sm text-[var(--muted-foreground)] mt-1 truncate">{item.description}</p>
+                      <p className="text-sm text-[var(--muted-foreground)] line-clamp-2">{item.description}</p>
 
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {item.category?.map((cat, i) => (
-                            <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{cat}</span>
-                          ))}
-                        </div>
+                      <div className="mt-3 flex flex-wrap gap-2 min-h-[28px]">
+                        {item.category?.map((cat, i) => (
+                          <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{cat}</span>
+                        ))}
+                      </div>
 
-                        <div className="mt-4 flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => decQty(item.id)}
-                              aria-label="Decrease quantity"
-                              className="h-9 w-9 grid place-items-center rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/60"
-                            >
-                              <Minus className="w-4 h-4" />
-                            </button>
-                            <div className="min-w-10 px-2 h-9 grid place-items-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-sm font-semibold">
-                              {getQty(item.id)}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => incQty(item.id)}
-                              aria-label="Increase quantity"
-                              className="h-9 w-9 grid place-items-center rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/60"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => decQty(item.id)}
+                            aria-label="Decrease quantity"
+                            className="h-9 w-9 grid place-items-center rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/60"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <div className="min-w-10 px-2 h-9 grid place-items-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-sm font-semibold">
+                            {getQty(item.id)}
                           </div>
                           <button
                             type="button"
-                            onClick={() => addToCartQuick(item.id)}
-                            className="px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90"
+                            onClick={() => incQty(item.id)}
+                            aria-label="Increase quantity"
+                            className="h-9 w-9 grid place-items-center rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/60"
                           >
-                            Add
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => addToCartQuick(item.id)}
+                          className="px-4 py-2 rounded-lg bg-[var(--foreground)] text-[var(--background)] font-semibold hover:opacity-90"
+                        >
+                          Add
+                        </button>
                       </div>
-                    </motion.div>
-                  </div>
+                    </div>
+                  </motion.div>
                 </motion.div>
               ))
             ) : (

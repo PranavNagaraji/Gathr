@@ -46,7 +46,22 @@ const Orders = () => {
   if (loading) return <div className="text-center mt-10 text-[var(--muted-foreground)]">Loading orders...</div>;
 
   if (!orders.length)
-    return <div className="text-center mt-10 text-[var(--muted-foreground)]">No orders found.</div>;
+    return (
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mt-10 flex flex-col items-center justify-center text-center border border-dashed border-[var(--border)] rounded-2xl p-10 bg-[var(--card)]/40">
+          <div className="w-24 h-24 rounded-full bg-[var(--muted)] flex items-center justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-10 h-10 text-[var(--muted-foreground)]">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 3h3l.4 2M7 13h10l2-8H6.4M7 13l-1.293 1.293A1 1 0 006 15h2m-1-2v6a2 2 0 002 2h8a2 2 0 002-2v-6" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-semibold">No orders yet</h2>
+          <p className="mt-2 text-[var(--muted-foreground)] max-w-md">You haven’t placed any orders. Start exploring shops and add items to your cart.</p>
+          <a href="/customer/getShops" className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold hover:opacity-90">
+            Browse Shops
+          </a>
+        </div>
+      </div>
+    );
 
   return (
     <div className="max-w-6xl mx-auto p-6">

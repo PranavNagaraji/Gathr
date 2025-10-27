@@ -41,6 +41,13 @@ const ItemDetailsContent = () => {
   const [simLoading, setSimLoading] = useState(false);
   const [canRate, setCanRate] = useState(false);
 
+  // Ensure page starts at top when navigating here
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+  }, []);
+
   const sliderSettings = {
     dots: true,
     infinite: true,
@@ -482,6 +489,43 @@ const ItemDetailsContent = () => {
           </motion.div>
         </div>
 
+        {/* SIMILAR ITEMS (moved above comments) */}
+        <div>
+          <h2 className="font-extrabold text-3xl sm:text-4xl tracking-tight mb-8">Similar Items</h2>
+          <motion.div initial="hidden" animate="show" variants={listVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {similarItems.length > 0 ? (
+              similarItems.map((it) => (
+                <motion.div key={it.id} variants={itemVariants} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+                  <Link href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="block">
+                    <div className="aspect-[4/3] bg-[var(--muted)]">
+                      <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="p-4">
+                      <div className="mt-1 flex flex-wrap gap-2 min-h-[28px]">
+                        {Array.isArray(it.category) ? (
+                          it.category.map((cat, i) => (
+                            <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{cat}</span>
+                          ))
+                        ) : (
+                          it.category ? (
+                            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{it.category}</span>
+                          ) : null
+                        )}
+                      </div>
+                      <h3 className="font-bold text-lg mt-2 truncate">{it.name}</h3>
+                      <p className="text-2xl font-bold text-[var(--primary)] mt-1">₹{it.price}</p>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))
+            ) : (
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-[var(--muted-foreground)] py-8">
+                No similar items found.
+              </motion.p>
+            )}
+          </motion.div>
+        </div>
+
         {/* RATING & COMMENT */}
         <div className="grid md:grid-cols-2 gap-8">
           {/* Rating Form */}
@@ -590,32 +634,7 @@ const ItemDetailsContent = () => {
           </motion.div>
         </div>
 
-        {/* SIMILAR ITEMS */}
-        <div>
-          <h2 className="font-extrabold text-3xl sm:text-4xl tracking-tight mb-8">Similar Items</h2>
-          <motion.div initial="hidden" animate="show" variants={listVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {similarItems.length > 0 ? (
-              similarItems.map((it) => (
-                <motion.div key={it.id} variants={itemVariants} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
-                  <Link href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="block">
-                    <div className="aspect-[4/3] bg-[var(--muted)]">
-                      <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="p-4">
-                      <div className="text-sm text-[var(--muted-foreground)] truncate">{it.category || it.category?.[0]}</div>
-                      <h3 className="font-bold text-lg mt-1 truncate">{it.name}</h3>
-                      <p className="text-2xl font-bold text-[var(--primary)] mt-1">₹{it.price}</p>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))
-            ) : (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-[var(--muted-foreground)] py-8">
-                No similar items found.
-              </motion.p>
-            )}
-          </motion.div>
-        </div>
+        
       </div>
     </div>
   );
