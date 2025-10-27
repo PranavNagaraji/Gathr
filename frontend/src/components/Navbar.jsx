@@ -79,32 +79,33 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch cart item count
+  // Fetch cart item count (reusable)
+  const fetchCartCount = React.useCallback(async () => {
+    if (!isSignedIn || !user || role !== "customer") {
+      setCartItemCount(0);
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const res = await axios.post(
+        `${API_URL}/api/customer/getCart`,
+        { clerkId: user.id },
+        { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
+      );
+      const itemCount = res.data.cartItems?.length || 0;
+      setCartItemCount(itemCount);
+    } catch (err) {
+      console.error("Error fetching cart count:", err);
+      setCartItemCount(0);
+    }
+  }, [getToken, isSignedIn, role, user]);
+
+  // Initial/follow-up fetch on nav changes
   useEffect(() => {
-    const fetchCartCount = async () => {
-      if (!isSignedIn || !user || role !== "customer") {
-        setCartItemCount(0);
-        return;
-      }
-
-      try {
-        const token = await getToken();
-        const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-        const res = await axios.post(
-          `${API_URL}/api/customer/getCart`,
-          { clerkId: user.id },
-          { headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` } }
-        );
-        const itemCount = res.data.cartItems?.length || 0;
-        setCartItemCount(itemCount);
-      } catch (err) {
-        console.error("Error fetching cart count:", err);
-        setCartItemCount(0);
-      }
-    };
-
     fetchCartCount();
-  }, [isSignedIn, user, role, pathname]);
+  }, [fetchCartCount, pathname]);
 
   // Fetch wishlist count (backend)
   useEffect(() => {
@@ -139,6 +140,15 @@ export default function Navbar() {
     window.addEventListener('wishlist:changed', handler);
     return () => window.removeEventListener('wishlist:changed', handler);
   }, []);
+
+  // Listen for cart changes to update badge instantly (re-fetch to stay accurate)
+  useEffect(() => {
+    const handler = () => {
+      fetchCartCount();
+    };
+    window.addEventListener('cart:changed', handler);
+    return () => window.removeEventListener('cart:changed', handler);
+  }, [fetchCartCount]);
 
   return (
     <>

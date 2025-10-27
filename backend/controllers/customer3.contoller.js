@@ -10,6 +10,8 @@ export const getRecommendations = async (req, res) => {
   try {
     const { clerkId } = req.params;
     const limit = Number(req.query.limit) || 20;
+    const lat = req.query.lat ? Number(req.query.lat) : null;
+    const long = req.query.long ? Number(req.query.long) : null;
 
     const { data: user, error: userError } = await supabase
       .from('Users')
@@ -59,15 +61,41 @@ export const getRecommendations = async (req, res) => {
       }
     }
 
+    // Optional: Compute nearby shop IDs if lat/long provided (5km)
+    let nearbyShopIds = [];
+    if (lat != null && long != null && Number.isFinite(lat) && Number.isFinite(long)) {
+      const distanceKm = 5;
+      const latRad = lat * (Math.PI / 180);
+      const deltaLat = distanceKm / 111;
+      const deltaLong = distanceKm / (111 * Math.cos(latRad));
+      const minLat = lat - deltaLat;
+      const maxLat = lat + deltaLat;
+      const minLong = long - deltaLong;
+      const maxLong = long + deltaLong;
+
+      const { data: shopsBox, error: shopsErr } = await supabase
+        .from('Shops')
+        .select('id')
+        .gte('Location->>latitude', String(minLat))
+        .lte('Location->>latitude', String(maxLat))
+        .gte('Location->>longitude', String(minLong))
+        .lte('Location->>longitude', String(maxLong));
+      if (shopsErr) throw shopsErr;
+      nearbyShopIds = (shopsBox || []).map(s => s.id);
+    }
+
     let recs = [];
     // Pull a candidate set ordered by rating and sold, then filter in JS to avoid JSON operator issues
-    const { data: candidates, error: candErr } = await supabase
+    let itemsQuery = supabase
       .from('Items')
       .select('*')
       .gt('quantity', 0)
       .order('rating', { ascending: false, nullsFirst: false })
-      .order('sold_qt', { ascending: false })
-      .limit(Math.max(limit * 5, 100));
+      .order('sold_qt', { ascending: false });
+    if (nearbyShopIds && nearbyShopIds.length) {
+      itemsQuery = itemsQuery.in('shop_id', nearbyShopIds);
+    }
+    const { data: candidates, error: candErr } = await itemsQuery.limit(Math.max(limit * 5, 100));
 
     if (candErr) throw candErr;
 
@@ -101,6 +129,8 @@ export const getSimilarItems = async (req, res) => {
   try {
     const { itemId } = req.params;
     const limit = Number(req.query.limit) || 20;
+    const lat = req.query.lat ? Number(req.query.lat) : null;
+    const long = req.query.long ? Number(req.query.long) : null;
 
     const { data: item, error: itemErr } = await supabase
       .from('Items')
@@ -112,13 +142,39 @@ export const getSimilarItems = async (req, res) => {
 
     const categories = Array.isArray(item.category) ? item.category : [item.category].filter(Boolean);
     // Fetch candidates and filter in JS to avoid JSON operator issues
-    const { data: simCandidates, error: simCandErr } = await supabase
+    // Optional: build nearby shop ids (5km) if lat/long present
+    let nearbyShopIds = [];
+    if (lat != null && long != null && Number.isFinite(lat) && Number.isFinite(long)) {
+      const distanceKm = 5;
+      const latRad = lat * (Math.PI / 180);
+      const deltaLat = distanceKm / 111;
+      const deltaLong = distanceKm / (111 * Math.cos(latRad));
+      const minLat = lat - deltaLat;
+      const maxLat = lat + deltaLat;
+      const minLong = long - deltaLong;
+      const maxLong = long + deltaLong;
+
+      const { data: shopsBox, error: shopsErr } = await supabase
+        .from('Shops')
+        .select('id')
+        .gte('Location->>latitude', String(minLat))
+        .lte('Location->>latitude', String(maxLat))
+        .gte('Location->>longitude', String(minLong))
+        .lte('Location->>longitude', String(maxLong));
+      if (shopsErr) throw shopsErr;
+      nearbyShopIds = (shopsBox || []).map(s => s.id);
+    }
+
+    let simQuery = supabase
       .from('Items')
       .select('*')
       .gt('quantity', 0)
       .order('rating', { ascending: false, nullsFirst: false })
-      .order('sold_qt', { ascending: false })
-      .limit(300);
+      .order('sold_qt', { ascending: false });
+    if (nearbyShopIds && nearbyShopIds.length) {
+      simQuery = simQuery.in('shop_id', nearbyShopIds);
+    }
+    const { data: simCandidates, error: simCandErr } = await simQuery.limit(300);
 
     if (simCandErr) throw simCandErr;
 
@@ -170,6 +226,43 @@ export const getRating = async (req, res) => {
     return res.status(200).json(rating);
   } catch (err) {
     console.error('Error in getRating:', err);
+    return res.status(500).json({ message: 'Internal server error', error: err.message });
+  }
+};
+
+// Check if user is eligible to rate (must have purchased the item in past orders)
+export const canRate = async (req, res) => {
+  try {
+    const { clerkId, itemId } = req.body;
+    if (!clerkId || !itemId) return res.status(400).json({ message: 'Missing fields' });
+
+    const { data: user, error: userError } = await supabase
+      .from('Users')
+      .select('id, role')
+      .eq('clerk_id', clerkId)
+      .single();
+
+    if (userError || !user) return res.status(404).json({ message: 'User not found' });
+    if (user.role !== 'customer') return res.status(403).json({ message: 'Unauthorized' });
+
+    const { data: orders, error: ordersError } = await supabase
+      .from('Orders')
+      .select('cart_id')
+      .eq('customer_id', user.id);
+    if (ordersError) throw ordersError;
+    const cartIds = (orders || []).map(o => o.cart_id).filter(Boolean);
+    if (!cartIds.length) return res.status(200).json({ eligible: false });
+
+    const { data: purchased, error: purchasedErr } = await supabase
+      .from('Cart_items')
+      .select('id')
+      .in('cart_id', cartIds)
+      .eq('item_id', itemId)
+      .maybeSingle();
+    if (purchasedErr) throw purchasedErr;
+    return res.status(200).json({ eligible: !!purchased });
+  } catch (err) {
+    console.error('Error in canRate:', err);
     return res.status(500).json({ message: 'Internal server error', error: err.message });
   }
 };

@@ -39,6 +39,7 @@ const ItemDetailsContent = () => {
   const [wlLoading, setWlLoading] = useState(false);
   const [similarItems, setSimilarItems] = useState([]);
   const [simLoading, setSimLoading] = useState(false);
+  const [canRate, setCanRate] = useState(false);
 
   const sliderSettings = {
     dots: true,
@@ -102,6 +103,19 @@ const ItemDetailsContent = () => {
           } catch (e) {
             // If no rating found (404) or unauthorized, just ignore
           }
+
+          // Check eligibility to rate (verified purchase)
+          try {
+            const token = await getToken();
+            const elig = await axios.post(
+              `${API_URL}/api/customer/canRate`,
+              { clerkId: user.id, itemId: item_id },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (!cancelled) setCanRate(!!elig?.data?.eligible);
+          } catch (e) {
+            if (!cancelled) setCanRate(false);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch item details:", error);
@@ -123,7 +137,14 @@ const ItemDetailsContent = () => {
     const run = async () => {
       try {
         setSimLoading(true);
-        const res = await axios.get(`${API_URL}/api/customer/items/${item_id}/similar?limit=12`);
+        const qs = new URLSearchParams({ limit: '12' });
+        let loc = null;
+        try { loc = JSON.parse(localStorage.getItem('userLocation') || 'null'); } catch {}
+        if (loc?.latitude && loc?.longitude) {
+          qs.set('lat', String(loc.latitude));
+          qs.set('long', String(loc.longitude));
+        }
+        const res = await axios.get(`${API_URL}/api/customer/items/${item_id}/similar?${qs.toString()}`);
         if (!cancelled) setSimilarItems(res?.data?.items || []);
       } catch (_) {
       } finally {
@@ -285,6 +306,10 @@ const ItemDetailsContent = () => {
           description: "Item added to cart.",
         });
         setItem((prev) => ({ ...prev, quantity: item.quantity - quantity }));
+        // Notify Navbar to refresh cart count immediately
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('cart:changed'));
+        }
       }
     } catch (err) {
       const msg = err?.response?.data?.message || "Failed to add to cart";
@@ -462,7 +487,7 @@ const ItemDetailsContent = () => {
           {/* Rating Form */}
           <motion.div initial="hidden" animate="show" variants={itemVariants} className="bg-[var(--card)] text-[var(--card-foreground)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
             <h3 className="text-xl font-semibold mb-4">Rate this Product</h3>
-            {myRating != null && !editingRating ? (
+            {myRating != null && !editingRating && canRate ? (
               // Responsive: Stack on mobile
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-2">
@@ -491,18 +516,21 @@ const ItemDetailsContent = () => {
                     <button
                       key={n}
                       type="button"
-                      onClick={() => setNewRating(n)}
+                      onClick={() => canRate && setNewRating(n)}
                       className={`text-2xl ${n <= newRating ? "text-[var(--primary)]" : "text-[var(--muted-foreground)]"} hover:scale-110 transition`}
                       aria-label={`Rate ${n} star`}
-                    >
+                      >
                       ★
                     </button>
                   ))}
                 </div>
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" className="bg-[var(--primary)] text-[var(--primary-foreground)] px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition">
+                <motion.button disabled={!canRate} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" className={`px-6 py-2 rounded-lg font-semibold transition ${canRate ? "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90" : "bg-[var(--muted)] text-[var(--muted-foreground)] cursor-not-allowed"}`}>
                   {myRating != null ? "Update" : "Submit"}
                 </motion.button>
               </form>
+            )}
+            {!canRate && (
+              <p className="mt-3 text-sm text-[var(--muted-foreground)]">You can rate this product only after purchasing it.</p>
             )}
           </motion.div>
 

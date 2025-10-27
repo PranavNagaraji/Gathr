@@ -12,6 +12,7 @@ export default function CustomerDashboard() {
   const [shops, setShops] = useState([]);
   const [recs, setRecs] = useState([]);
   const [recLoading, setRecLoading] = useState(false);
+  const [showRecs, setShowRecs] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [categories, setCategories] = useState([]);
@@ -75,7 +76,16 @@ export default function CustomerDashboard() {
       try {
         setRecLoading(true);
         const token = await getToken();
-        const res = await axios.get(`${API_URL}/api/customer/recommendations/${user.id}?limit=12`, {
+        // include location if available
+        const qs = new URLSearchParams({ limit: '12' });
+        const loc = location || (() => {
+          try { return JSON.parse(localStorage.getItem('userLocation') || 'null'); } catch { return null; }
+        })();
+        if (loc?.latitude && loc?.longitude) {
+          qs.set('lat', String(loc.latitude));
+          qs.set('long', String(loc.longitude));
+        }
+        const res = await axios.get(`${API_URL}/api/customer/recommendations/${user.id}?${qs.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setRecs(res?.data?.recommendations || []);
@@ -86,7 +96,7 @@ export default function CustomerDashboard() {
       }
     };
     fetchRecs();
-  }, [isLoaded, isSignedIn, user?.id, API_URL, getToken]);
+  }, [isLoaded, isSignedIn, user?.id, API_URL, getToken, location]);
 
   const filteredShops = shops.filter((shop) => {
     const matchesSearch = shop.shop_name.toLowerCase().includes(search.toLowerCase());
@@ -152,33 +162,56 @@ export default function CustomerDashboard() {
         </p>
       </div>
 
-      {/* Recommended Items */}
-      <div className="max-w-7xl mx-auto mb-12">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Recommended for you</h2>
-          {recLoading && <span className="text-sm text-[var(--muted-foreground)]">Loading…</span>}
-        </div>
-        {recs?.length ? (
-          <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-            {recs.map((it) => (
-              <motion.div key={it.id} variants={cardVariants} className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
-                <Link href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="block">
-                  <div className="aspect-[4/3] bg-[var(--muted)]">
-                    <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="p-3">
-                    <div className="text-sm text-[var(--muted-foreground)] truncate">{it.category || it.category?.[0]}</div>
-                    <div className="font-semibold truncate">{it.name}</div>
-                    <div className="text-[var(--primary)] font-bold">₹{it.price}</div>
-                  </div>
-                </Link>
+      {/* Floating Button to open Recommendations */}
+      <button
+        type="button"
+        onClick={() => setShowRecs(true)}
+        className="fixed bottom-6 right-6 z-40 px-4 py-3 rounded-full shadow-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
+      >
+        Show Recommendations
+      </button>
+
+      {/* Recommendations Overlay */}
+      {showRecs && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowRecs(false)} />
+          <div className="relative w-full sm:max-w-6xl max-h-[85vh] overflow-auto rounded-t-2xl sm:rounded-2xl border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-xl p-5 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold">Recommended for you</h2>
+              <button
+                type="button"
+                onClick={() => setShowRecs(false)}
+                className="px-3 py-2 rounded-md border border-[var(--border)] hover:bg-[var(--muted)]/50"
+              >
+                Close
+              </button>
+            </div>
+            {recLoading && (
+              <p className="text-sm text-[var(--muted-foreground)] mb-3">Loading…</p>
+            )}
+            {recs?.length ? (
+              <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                {recs.map((it) => (
+                  <motion.div key={it.id} variants={cardVariants} className="bg-[var(--background)] border border-[var(--border)] rounded-xl overflow-hidden">
+                    <Link href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="block">
+                      <div className="aspect-[4/3] bg-[var(--muted)]">
+                        <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="p-3">
+                        <div className="text-xs text-[var(--muted-foreground)] truncate">{it.category || it.category?.[0]}</div>
+                        <div className="font-semibold truncate">{it.name}</div>
+                        <div className="text-[var(--primary)] font-bold">₹{it.price}</div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
-          </motion.div>
-        ) : (
-          <p className="text-[var(--muted-foreground)]">No recommendations yet.</p>
-        )}
-      </div>
+            ) : (
+              <p className="text-[var(--muted-foreground)]">No recommendations yet.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Search + Filter */}
       <div className="max-w-4xl mx-auto mb-12">

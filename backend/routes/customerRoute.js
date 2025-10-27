@@ -3,7 +3,7 @@ import express from "express";
 import { addComments, addRating, addToCart, deleteFromCart, getCurrentCart, getLocalShops, getShopItems, getUserId } from "../controllers/customer.controller.js";
 import { getComments, deleteComment, getitem, getAddressesByUser, addAddress, deleteAddress, updateAddress, getItemsByIds, getWishlist, addToWishlist, removeFromWishlist, getWishlistCount } from "../controllers/customer2.controller.js";
 import { getcarthistory, getcartitems } from "../controllers/customer2.controller.js";
-import { getRating, getRecommendations, getSimilarItems } from "../controllers/customer3.contoller.js";
+import { getRating, getRecommendations, getSimilarItems, canRate } from "../controllers/customer3.contoller.js";
 
 const router = express.Router();
 
@@ -14,6 +14,7 @@ router.get("/getShopItem/:shopId", getShopItems);
 router.post("/addComment", requireAuth, addComments);
 router.post("/addRating", requireAuth, addRating);
 router.post("/getRating", requireAuth, getRating);
+router.post("/canRate", requireAuth, canRate);
 router.get("/recommendations/:clerkId", requireAuth, getRecommendations);
 router.get("/items/:itemId/similar", getSimilarItems);
 
