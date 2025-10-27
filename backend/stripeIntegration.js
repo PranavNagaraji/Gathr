@@ -14,7 +14,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const FRONTEND_URL = process.env.FRONTEND_URL;
+console.log(FRONTEND_URL);
 
 // Helper Functions
 async function getUserByClerkId(clerkId) {
@@ -23,7 +24,7 @@ async function getUserByClerkId(clerkId) {
     .select("id, role")
     .eq("clerk_id", clerkId)
     .single();
-  
+
   if (error || !user) return null;
   return user;
 }
@@ -145,9 +146,9 @@ async function createOrderFromCartHandler(req, res) {
     // Add detailed error logging
     if (itemsError) {
       console.error("Failed to fetch cart items - Supabase error:", itemsError);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "Failed to fetch cart items",
-        details: itemsError.message 
+        details: itemsError.message
       });
     }
 
@@ -160,7 +161,7 @@ async function createOrderFromCartHandler(req, res) {
     // Group items by shop (assuming one shop per order)
     const shopId = cartItems[0].Items?.shop_id;
     console.log("✓ Shop ID extracted:", shopId);
-    
+
     const totalAmount = cartItems.reduce((sum, item) => {
       const itemPrice = item.Items?.price || 0;
       const itemQty = item.quantity || 0;
@@ -179,12 +180,12 @@ async function createOrderFromCartHandler(req, res) {
 
     if (addressError || !address) {
       console.error("Invalid address for user:", user.id, "Address:", addressId, "Error:", addressError);
-      return res.status(400).json({ 
-        error: "Invalid address", 
-        message: "The selected address is not valid" 
+      return res.status(400).json({
+        error: "Invalid address",
+        message: "The selected address is not valid"
       });
     }
-    
+
     console.log("✓ Using address:", addressId);
 
     // Create the order
@@ -195,7 +196,7 @@ async function createOrderFromCartHandler(req, res) {
       amount_paid: totalAmount,
       item_count: cartItems.length
     });
-    
+
     const { data: order, error: orderError } = await supabase
       .from("Orders")
       .insert({
@@ -212,12 +213,12 @@ async function createOrderFromCartHandler(req, res) {
 
     if (orderError) {
       console.error("Error creating order:", orderError);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "Failed to create order",
-        details: orderError.message 
+        details: orderError.message
       });
     }
-    
+
     console.log("✓ Order created successfully:", order.id);
 
     // Link cart items to the order (update cart_items with order_id)
@@ -236,9 +237,9 @@ async function createOrderFromCartHandler(req, res) {
 
   } catch (error) {
     console.error("Error creating order from cart:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: "Failed to create order from cart",
-      details: error.message 
+      details: error.message
     });
   }
 }
@@ -248,8 +249,8 @@ async function createCheckoutSessionHandler(req, res) {
     const { orderId, clerkId } = req.body;
 
     if (!orderId || !clerkId) {
-      return res.status(400).json({ 
-        error: "Missing required fields: orderId and clerkId are required" 
+      return res.status(400).json({
+        error: "Missing required fields: orderId and clerkId are required"
       });
     }
 
@@ -313,16 +314,16 @@ async function createCheckoutSessionHandler(req, res) {
       })
       .eq("id", orderId);
 
-    return res.json({ 
+    return res.json({
       url: session.url,
-      sessionId: session.id 
+      sessionId: session.id
     });
 
   } catch (error) {
     console.error("Error creating checkout session:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: "Failed to create checkout session",
-      details: error.message 
+      details: error.message
     });
   }
 }
@@ -357,7 +358,7 @@ async function getPaymentStatusHandler(req, res) {
 
     // Retrieve Stripe session to get current payment status
     const stripeSession = await retrieveSession(sessionId);
-    
+
     // Update order if payment is completed
     if (stripeSession.payment_status === 'paid' && order.payment_status !== 'paid') {
       await supabase
@@ -368,7 +369,7 @@ async function getPaymentStatusHandler(req, res) {
           stripe_payment_intent_id: stripeSession.payment_intent
         })
         .eq("id", order.id);
-      
+
       // Update order with latest payment info
       order.payment_status = "paid";
       order.amount_paid = stripeSession.amount_total / 100;
@@ -385,9 +386,9 @@ async function getPaymentStatusHandler(req, res) {
 
   } catch (error) {
     console.error("Error getting payment status:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: "Failed to get payment status",
-      details: error.message 
+      details: error.message
     });
   }
 }
@@ -397,7 +398,7 @@ async function handleWebhook(req, res) {
   try {
     const payload = req.body;
     const signature = req.headers['stripe-signature'];
-    
+
     let event;
     try {
       event = stripe.webhooks.constructEvent(
@@ -419,7 +420,7 @@ async function handleWebhook(req, res) {
         console.log(`Payment successful for session ${session.id}`);
         console.log(`Payment intent ID from Stripe: ${session.payment_intent}`);
         console.log(`Amount total: ${session.amount_total / 100}`);
-        
+
         // Update order status to paid with Stripe payment intent ID
         const { error: updateError } = await supabase
           .from("Orders")
@@ -429,7 +430,7 @@ async function handleWebhook(req, res) {
             stripe_payment_intent_id: session.payment_intent
           })
           .eq("stripe_session_id", session.id);
-          
+
         if (updateError) {
           console.error('❌ Error updating order:', updateError);
           console.error('Session ID that failed:', session.id);
@@ -437,23 +438,23 @@ async function handleWebhook(req, res) {
           console.log('✅ Order updated successfully to paid status');
         }
         break;
-        
+
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object;
         console.log(`PaymentIntent succeeded: ${paymentIntent.id}`);
         break;
-        
+
       case 'payment_intent.payment_failed':
         const failedIntent = event.data.object;
         console.log(`PaymentIntent failed: ${failedIntent.id}`);
-        
+
         // Update order to failed status
         await supabase
           .from("Orders")
           .update({ payment_status: "failed" })
           .eq("stripe_payment_intent_id", failedIntent.id);
         break;
-        
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
@@ -471,8 +472,8 @@ async function refundHandler(req, res) {
     const { orderId, clerkId, amount } = req.body;
 
     if (!orderId || !clerkId) {
-      return res.status(400).json({ 
-        error: "Missing required fields: orderId and clerkId are required" 
+      return res.status(400).json({
+        error: "Missing required fields: orderId and clerkId are required"
       });
     }
 
@@ -491,9 +492,9 @@ async function refundHandler(req, res) {
     }
 
     if (order.payment_status !== "paid") {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "Can only refund paid orders",
-        currentStatus: order.payment_status 
+        currentStatus: order.payment_status
       });
     }
 
@@ -529,9 +530,9 @@ async function refundHandler(req, res) {
 
   } catch (error) {
     console.error("Error processing refund:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: "Failed to process refund",
-      details: error.message 
+      details: error.message
     });
   }
 }
