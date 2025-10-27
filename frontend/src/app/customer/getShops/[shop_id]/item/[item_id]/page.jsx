@@ -10,7 +10,7 @@ import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Trash2, Heart } from "lucide-react";
 import { App as AntdApp } from "antd"; // Import Antd's App provider
 
 // All of your page logic is now in this component
@@ -33,6 +33,8 @@ const ItemDetailsContent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [myRating, setMyRating] = useState(null); // current user's rating if exists
   const [editingRating, setEditingRating] = useState(false);
+  const [inWishlist, setInWishlist] = useState(false);
+  const [wlLoading, setWlLoading] = useState(false);
 
   const sliderSettings = {
     dots: true,
@@ -109,6 +111,50 @@ const ItemDetailsContent = () => {
       cancelled = true;
     };
   }, [item_id, API_URL, isUserLoaded, isLoaded, user?.id, getToken]);
+
+  useEffect(() => {
+    const loadWishlistStatus = async () => {
+      if (!user?.id || !item_id) return;
+      try {
+        const token = await getToken();
+        const res = await axios.post(
+          `${API_URL}/api/customer/wishlist/list`,
+          { clerkId: user.id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const list = res?.data?.items || [];
+        setInWishlist(list.some((it) => String(it.id) === String(item_id)));
+      } catch (_) {}
+    };
+    loadWishlistStatus();
+  }, [user?.id, item_id, API_URL, getToken]);
+
+  const toggleWishlist = async () => {
+    if (!user?.id || !item_id) return;
+    setWlLoading(true);
+    try {
+      const token = await getToken();
+      if (inWishlist) {
+        await axios.post(
+          `${API_URL}/api/customer/wishlist/remove`,
+          { clerkId: user.id, itemId: item_id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setInWishlist(false);
+        window.dispatchEvent(new CustomEvent("wishlist:changed", { detail: { delta: -1 } }));
+      } else {
+        await axios.post(
+          `${API_URL}/api/customer/wishlist/add`,
+          { clerkId: user.id, itemId: item_id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setInWishlist(true);
+        window.dispatchEvent(new CustomEvent("wishlist:changed", { detail: { delta: 1 } }));
+      }
+    } finally {
+      setWlLoading(false);
+    }
+  };
 
   // --- Handlers ---
   const handleAddComment = async (e) => {
@@ -317,6 +363,17 @@ const ItemDetailsContent = () => {
             className="flex flex-col space-y-5"
           >
             <h1 className="font-extrabold text-4xl sm:text-5xl tracking-tight">{item.name}</h1>
+            <div className="mt-3">
+              <button
+                type="button"
+                disabled={wlLoading}
+                onClick={toggleWishlist}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/60"
+              >
+                <Heart className={inWishlist ? "text-red-500" : ""} fill={inWishlist ? "currentColor" : "none"} size={18} />
+                <span>{inWishlist ? "Wishlisted" : "Add to Wishlist"}</span>
+              </button>
+            </div>
 
             <p className="flex items-center gap-2">
               {item.rating ? renderStars(item.rating) : <span className="text-[var(--muted-foreground)]">Not rated yet</span>}

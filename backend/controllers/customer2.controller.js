@@ -107,6 +107,106 @@ export const deleteComment = async (req, res) => {
   }
 }
 
+export const getWishlist = async (req, res) => {
+  try {
+    const { clerkId } = req.body || {};
+    if (!clerkId) return res.status(400).json({ message: "Missing clerkId" });
+
+    const { data: rows, error: wlErr } = await supabase
+      .from("wishlist")
+      .select("item_id")
+      .eq("user_clerk_id", clerkId)
+      .order("created_at", { ascending: false });
+    if (wlErr) {
+      console.error("[wishlist/list] select error:", wlErr);
+      return res.status(500).json({ message: wlErr.message || "Failed to fetch wishlist" });
+    }
+
+    const ids = (rows || []).map(r => r.item_id);
+    if (ids.length === 0) return res.status(200).json({ items: [] });
+
+    const { data: items, error } = await supabase
+      .from("Items")
+      .select("*")
+      .in("id", ids);
+    if (error) {
+      console.error("[wishlist/list] items fetch error:", error);
+      return res.status(500).json({ message: error.message || "Failed to fetch items" });
+    }
+
+    return res.status(200).json({ items: items || [] });
+  } catch (e) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export const addToWishlist = async (req, res) => {
+  try {
+    const { clerkId, itemId } = req.body || {};
+    if (!clerkId || !itemId) return res.status(400).json({ message: "Missing clerkId or itemId" });
+
+    let shopId = null;
+    const { data: item, error: itemErr } = await supabase
+      .from("Items")
+      .select("id, shop_id")
+      .eq("id", itemId)
+      .maybeSingle();
+    if (itemErr || !item) return res.status(404).json({ message: "Item not found" });
+    shopId = item.shop_id;
+
+    const { error } = await supabase
+      .from("wishlist")
+      .upsert({ user_clerk_id: clerkId, item_id: itemId, shop_id: shopId }, { onConflict: "user_clerk_id,item_id" });
+    if (error) {
+      console.error("[wishlist/add] upsert error:", error);
+      return res.status(500).json({ message: error.message || "Failed to add" });
+    }
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error("[wishlist/add] unhandled:", e);
+    return res.status(500).json({ message: e.message || "Internal server error" });
+  }
+}
+
+export const removeFromWishlist = async (req, res) => {
+  try {
+    const { clerkId, itemId } = req.body || {};
+    if (!clerkId || !itemId) return res.status(400).json({ message: "Missing clerkId or itemId" });
+    const { error } = await supabase
+      .from("wishlist")
+      .delete()
+      .eq("user_clerk_id", clerkId)
+      .eq("item_id", itemId);
+    if (error) {
+      console.error("[wishlist/remove] delete error:", error);
+      return res.status(500).json({ message: error.message || "Failed to remove" });
+    }
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error("[wishlist/remove] unhandled:", e);
+    return res.status(500).json({ message: e.message || "Internal server error" });
+  }
+}
+
+export const getWishlistCount = async (req, res) => {
+  try {
+    const { clerkId } = req.body || {};
+    if (!clerkId) return res.status(400).json({ message: "Missing clerkId" });
+    const { count, error } = await supabase
+      .from("wishlist")
+      .select("id", { count: "exact", head: true })
+      .eq("user_clerk_id", clerkId);
+    if (error) {
+      console.error("[wishlist/count] count error:", error);
+      return res.status(500).json({ message: error.message || "Failed to fetch count" });
+    }
+    return res.status(200).json({ count: count || 0 });
+  } catch (e) {
+    console.error("[wishlist/count] unhandled:", e);
+    return res.status(500).json({ message: e.message || "Internal server error" });
+  }
+}
+
 export const getitem = async (req, res) => {
   const { itemId } = req.params;
   const { data: item, error: itemError } = await supabase.from("Items").select("*").eq("id", itemId).single();
@@ -252,4 +352,28 @@ export const getcartitems = async (req, res) => {
   }
 
   return res.status(200).json({ items });
+}
+
+export const getItemsByIds = async (req, res) => {
+  try {
+    const { ids } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(200).json({ items: [] });
+    }
+
+    const { data: items, error } = await supabase
+      .from("Items")
+      .select("*")
+      .in("id", ids);
+
+    if (error) {
+      console.error("Error fetching items by ids:", error);
+      return res.status(500).json({ message: "Failed to fetch items" });
+    }
+
+    return res.status(200).json({ items: items || [] });
+  } catch (e) {
+    console.error("Unhandled error in getItemsByIds:", e);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 }

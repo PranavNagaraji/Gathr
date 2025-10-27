@@ -151,6 +151,4 @@ async function ensureWishlistSchema() {
   }
 }
 
-ensureWishlistSchema().finally(() => {
-  app.listen(5000, () => console.log("Backend listening running on http://localhost:5000"));
-});
+app.listen(5000, () => console.log("Backend listening running on http://localhost:5000"));

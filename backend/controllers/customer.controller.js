@@ -294,7 +294,12 @@ export const addToCart = async (req, res) => {
     console.log("Error while fetching item");
     return res.status(404).json({ message: "Item not found" });
   }
-  const { data: cartItemData, error: cartItemError } = await supabase.from("Cart_items").select("*,Items(*)").eq("cart_id", cartId).maybeSingle();
+  const { data: cartItemData, error: cartItemError } = await supabase
+    .from("Cart_items")
+    .select("Items(shop_id)")
+    .eq("cart_id", cartId)
+    .limit(1)
+    .maybeSingle();
   if (cartItemError) {
     console.log("Error while fetching cart item");
     return res.status(500).json({ message: "Failed to fetch cart item" });

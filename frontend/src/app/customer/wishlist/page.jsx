@@ -1,8 +1,7 @@
 "use client";
 
 import { useAuth, useUser } from "@clerk/nextjs";
-import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,11 +13,7 @@ export default function WishlistPage() {
   const { getToken } = useAuth();
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  const supabase = useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    return url && key ? createClient(url, key) : null;
-  }, []);
+  
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -26,41 +21,20 @@ export default function WishlistPage() {
   // Load wishlist and hydrate with item details
   useEffect(() => {
     const loadWishlist = async () => {
-      if (!isSignedIn || !user?.id || !supabase) {
+      if (!isSignedIn || !user?.id) {
         setItems([]);
         setLoading(false);
         return;
       }
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("wishlist")
-          .select("item_id, shop_id, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-
-        const ids = (data || []).map((r) => r.item_id);
-        if (ids.length === 0) {
-          setItems([]);
-          return;
-        }
-
         const token = await getToken();
-        const detailed = await Promise.all(
-          ids.map(async (id) => {
-            try {
-              const res = await axios.get(`${API_URL}/api/customer/getItem/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              return res.data?.item || null;
-            } catch {
-              return null;
-            }
-          })
+        const res = await axios.post(
+          `${API_URL}/api/customer/wishlist/list`,
+          { clerkId: user.id },
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-
-        setItems(detailed.filter(Boolean));
+        setItems((res?.data?.items || []).filter(Boolean));
       } catch (e) {
         console.error("Failed to load wishlist", e);
         setItems([]);
@@ -70,17 +44,17 @@ export default function WishlistPage() {
     };
 
     loadWishlist();
-  }, [isSignedIn, user?.id, supabase, API_URL, getToken]);
+  }, [isSignedIn, user?.id, API_URL, getToken]);
 
   const removeFromWishlist = async (itemId) => {
-    if (!supabase || !user?.id) return;
+    if (!user?.id) return;
     try {
-      const { error } = await supabase
-        .from("wishlist")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("item_id", itemId);
-      if (error) throw error;
+      const token = await getToken();
+      await axios.post(
+        `${API_URL}/api/customer/wishlist/remove`,
+        { clerkId: user.id, itemId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setItems((prev) => prev.filter((i) => i.id !== itemId));
       window.dispatchEvent(new CustomEvent("wishlist:changed", { detail: { delta: -1 } }));
       toast.success("Removed from wishlist");

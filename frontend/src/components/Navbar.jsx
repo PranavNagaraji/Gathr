@@ -8,7 +8,6 @@ import { motion, useScroll, useSpring, AnimatePresence } from "framer-motion";
 import { Home, ShoppingCart, } from "lucide-react";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import axios from "axios";
-import { createClient } from "@supabase/supabase-js";
 
 // --- Link configurations for different user roles ---
 const merchantLinks = [
@@ -56,9 +55,7 @@ export default function Navbar() {
   });
 
   const { isSignedIn, user } = useUser();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null;
+  
   const { getToken } = useAuth();
   const profileImage = user?.imageUrl;
   const role = user?.publicMetadata?.role;
@@ -109,27 +106,29 @@ export default function Navbar() {
     fetchCartCount();
   }, [isSignedIn, user, role, pathname]);
 
-  // Fetch wishlist count (Supabase)
+  // Fetch wishlist count (backend)
   useEffect(() => {
     const fetchWishlistCount = async () => {
-      if (!isSignedIn || !user || role !== "customer" || !supabase) {
+      if (!isSignedIn || !user || role !== "customer") {
         setWishlistCount(0);
         return;
       }
       try {
-        const { count, error } = await supabase
-          .from("wishlist")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        if (error) throw error;
-        setWishlistCount(count || 0);
+        const token = await getToken();
+        const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const res = await axios.post(
+          `${API_URL}/api/customer/wishlist/count`,
+          { clerkId: user.id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setWishlistCount(res?.data?.count || 0);
       } catch (e) {
         console.error("Error fetching wishlist count:", e);
         setWishlistCount(0);
       }
     };
     fetchWishlistCount();
-  }, [isSignedIn, user, role, pathname, supabase]);
+  }, [isSignedIn, user, role, pathname]);
 
   // Listen for wishlist changes to update badge instantly
   useEffect(() => {

@@ -6,16 +6,14 @@ import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import ChatbotWidget from "../../../../components/ChatbotWidget.jsx";
-import { createClient } from "@supabase/supabase-js";
+ 
 import { Heart, Plus, Minus } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export default function ShopItems() {
   const { user } = useUser();
   const { isLoaded, isSignedIn, getToken } = useAuth();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null;
+ 
   const { shop_id } = useParams();
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -91,15 +89,16 @@ export default function ShopItems() {
 
   useEffect(() => {
     const loadWishlist = async () => {
-      if (!supabase || !user?.id || !isSignedIn) return;
+      if (!isSignedIn || !user?.id) return;
       setIsWlLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("wishlist")
-          .select("item_id")
-          .eq("user_id", user.id);
-        if (error) throw error;
-        const ids = new Set((data || []).map((r) => r.item_id));
+        const token = await getToken();
+        const res = await axios.post(
+          `${API_URL}/api/customer/wishlist/list`,
+          { clerkId: user.id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const ids = new Set((res?.data?.items || []).map((it) => it.id));
         setWishlistIds(ids);
       } catch (_) {
         setWishlistIds(new Set());
@@ -108,7 +107,7 @@ export default function ShopItems() {
       }
     };
     loadWishlist();
-  }, [supabase, isSignedIn, user?.id]);
+  }, [isSignedIn, user?.id, getToken, API_URL]);
 
   // --- Filter items ---
   const filteredItems = items
@@ -181,31 +180,35 @@ export default function ShopItems() {
   };
 
   const toggleWishlist = async (itemId) => {
-    if (!supabase || !user?.id) return;
+    if (!user?.id) return;
     const inWl = wishlistIds.has(itemId);
     try {
+      const token = await getToken();
       if (inWl) {
-        const { error } = await supabase
-          .from("wishlist")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("item_id", itemId);
-        if (error) throw error;
+        await axios.post(
+          `${API_URL}/api/customer/wishlist/remove`,
+          { clerkId: user.id, itemId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         const next = new Set(wishlistIds);
         next.delete(itemId);
         setWishlistIds(next);
         window.dispatchEvent(new CustomEvent('wishlist:changed', { detail: { delta: -1 } }));
       } else {
-        const { error } = await supabase
-          .from("wishlist")
-          .insert({ user_id: user.id, item_id: itemId, shop_id });
-        if (error) throw error;
+        await axios.post(
+          `${API_URL}/api/customer/wishlist/add`,
+          { clerkId: user.id, itemId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         const next = new Set(wishlistIds);
         next.add(itemId);
         setWishlistIds(next);
         window.dispatchEvent(new CustomEvent('wishlist:changed', { detail: { delta: 1 } }));
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('Wishlist toggle failed', err);
+      toast.error('Failed to update wishlist');
+    }
   };
 
   const getQty = (id) => quantities[id] || 1;
