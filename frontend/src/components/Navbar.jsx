@@ -2,11 +2,13 @@
 import { SignOutButton, useUser, useAuth } from "@clerk/nextjs";
 import React, { useState, useRef, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import { Heart } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, useScroll, useSpring, AnimatePresence } from "framer-motion";
 import { Home, ShoppingCart, } from "lucide-react";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import axios from "axios";
+import { createClient } from "@supabase/supabase-js";
 
 // --- Link configurations for different user roles ---
 const merchantLinks = [
@@ -41,6 +43,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(0);
+  const [wishlistCount, setWishlistCount] = useState(0);
   const menuRef = useRef(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -53,6 +56,9 @@ export default function Navbar() {
   });
 
   const { isSignedIn, user } = useUser();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : null;
   const { getToken } = useAuth();
   const profileImage = user?.imageUrl;
   const role = user?.publicMetadata?.role;
@@ -102,6 +108,38 @@ export default function Navbar() {
 
     fetchCartCount();
   }, [isSignedIn, user, role, pathname]);
+
+  // Fetch wishlist count (Supabase)
+  useEffect(() => {
+    const fetchWishlistCount = async () => {
+      if (!isSignedIn || !user || role !== "customer" || !supabase) {
+        setWishlistCount(0);
+        return;
+      }
+      try {
+        const { count, error } = await supabase
+          .from("wishlist")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        if (error) throw error;
+        setWishlistCount(count || 0);
+      } catch (e) {
+        console.error("Error fetching wishlist count:", e);
+        setWishlistCount(0);
+      }
+    };
+    fetchWishlistCount();
+  }, [isSignedIn, user, role, pathname, supabase]);
+
+  // Listen for wishlist changes to update badge instantly
+  useEffect(() => {
+    const handler = (e) => {
+      const delta = e?.detail?.delta ?? 0;
+      setWishlistCount((prev) => Math.max(0, (prev || 0) + delta));
+    };
+    window.addEventListener('wishlist:changed', handler);
+    return () => window.removeEventListener('wishlist:changed', handler);
+  }, []);
 
   return (
     <>
@@ -169,8 +207,25 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* Right Side Profile / Join */}
+          {/* Right Side Icons + Profile */}
           <div className="hidden md:flex items-center gap-3" ref={menuRef}>
+            {/* Wishlist Icon (customers) */}
+            {role === "customer" && (
+              <button
+                aria-label="Wishlist"
+                title="Wishlist"
+                onClick={() => router.push("/customer/wishlist")}
+                className="relative rounded-full p-2 hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+              >
+                <Heart className="w-5 h-5" />
+                {wishlistCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-[var(--primary)] text-[var(--primary-foreground)] text-[10px] font-bold rounded-full h-4 min-w-4 px-1 flex items-center justify-center">
+                    {wishlistCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {isSignedIn ? (
               <div className="relative">
                 <motion.button

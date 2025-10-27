@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import supabase from "./db.js";
+import pg from "pg";
 import merchantRoutes from "./routes/merchantRoute.js";
 import customerRoutes from "./routes/customerRoute.js";
 import orderRoutes from "./routes/orderRoute.js";
@@ -100,4 +101,56 @@ app.post("/set-role", async (req, res) => {
   }
 });
 
-app.listen(5000, () => console.log("Backend listening running on http://localhost:5000"));
+async function ensureWishlistSchema() {
+  const { SUPABASE_DB_URL } = process.env;
+  if (!SUPABASE_DB_URL) {
+    console.warn("[ensureWishlistSchema] SUPABASE_DB_URL not set; skipping migration");
+    return;
+  }
+  const pool = new pg.Pool({ connectionString: SUPABASE_DB_URL, max: 1 });
+  const sql = `
+  create table if not exists public.wishlist (
+    id bigserial primary key,
+    user_id uuid not null references auth.users(id) on delete cascade,
+    item_id uuid not null,
+    shop_id uuid not null,
+    created_at timestamptz default now(),
+    unique (user_id, item_id)
+  );
+  alter table public.wishlist enable row level security;
+  do $$
+  begin
+    if not exists (
+      select 1 from pg_policies where schemaname = 'public' and tablename = 'wishlist' and policyname = 'read own wishlist'
+    ) then
+      create policy "read own wishlist" on public.wishlist for select using (auth.uid() = user_id);
+    end if;
+    if not exists (
+      select 1 from pg_policies where schemaname = 'public' and tablename = 'wishlist' and policyname = 'insert own wishlist'
+    ) then
+      create policy "insert own wishlist" on public.wishlist for insert with check (auth.uid() = user_id);
+    end if;
+    if not exists (
+      select 1 from pg_policies where schemaname = 'public' and tablename = 'wishlist' and policyname = 'delete own wishlist'
+    ) then
+      create policy "delete own wishlist" on public.wishlist for delete using (auth.uid() = user_id);
+    end if;
+  end$$;`;
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query(sql);
+    await client.query('commit');
+    console.log('[ensureWishlistSchema] wishlist schema ensured');
+  } catch (e) {
+    await client.query('rollback');
+    console.error('[ensureWishlistSchema] migration failed:', e.message);
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+ensureWishlistSchema().finally(() => {
+  app.listen(5000, () => console.log("Backend listening running on http://localhost:5000"));
+});
