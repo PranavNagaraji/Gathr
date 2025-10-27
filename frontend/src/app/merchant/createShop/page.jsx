@@ -205,9 +205,8 @@ export default function createShop() {
     const body = {
       ...formData,
       owner_id: user.id,
-      Location: formData.location, // Note: Backend might expect 'location', not 'Location'
+      location: formData.location, // Note: Backend might expect 'location', not 'Location'
     };
-    // console.log("Image",formData.image);
     const res = await fetch(`${API_URL}/api/merchant/add_shop`, {
       method: "POST",
       headers: {
@@ -216,8 +215,13 @@ export default function createShop() {
       },
       body: JSON.stringify(body),
     });
-
     const data = await res.json();
+  };
+
+  return (
+    <ConfigProvider
+      theme={{
+        token: {
           colorBgContainer: 'var(--card)',
           colorText: 'var(--foreground)',
           colorTextPlaceholder: 'var(--muted-foreground)',
@@ -228,52 +232,32 @@ export default function createShop() {
           controlItemBgHover: 'var(--muted)',
           colorBgElevated: 'var(--popover)'
         }
-      }
-    }}
-  >
-    <div className="min-h-screen p-4 md:p-8 bg-[var(--background)] text-[var(--foreground)]">
-      <div className="max-w-7xl mx-auto">
-        <h2 className="text-3xl md:text-4xl font-bold mb-6">Shop Registration</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
-          {/* LEFT: Details */}
-          <form onSubmit={handleSubmit} className="md:col-span-3 flex flex-col gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {['shop_name', 'contact', 'account_no', 'mobile_no'].map(field => (
-                <div key={field}>
-                  <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>
-                    {field.replace('_', ' ').toUpperCase()}
-                  </Typography>
-                  <input
-                    type="text"
-                    name={field}
-                    value={formData[field]}
-                    onChange={handleChange}
-                    className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)] transition-colors"
-                    required
-                  />
-                      onChange={(e) => setOtherCategory(e.target.value)}
-                      onBlur={() => {
-                        if (otherCategory.trim()) {
-                          setFormData(prev => ({
-                            ...prev,
-                            category: prev.category.filter(c => c !== 'Other').concat(otherCategory.trim())
-                          }));
-                          setOtherCategory("");
-                        }
-                      }}
-                      className="w-full mt-2 bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] p-2 focus:outline-none focus:border-[var(--ring)]"
-                      placeholder="Type new category"
-                    />
-                    <Typography variant="caption" sx={{ color: 'var(--muted-foreground)', mt: 0.5, display: 'block' }}>
-                      Blur the input to add it and replace "Other".
+      }}
+    >
+      <div className="min-h-screen p-4 md:p-8 bg-[var(--background)] text-[var(--foreground)]">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold mb-6">Shop Registration</h2>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
+            <form onSubmit={handleSubmit} className="md:col-span-3 flex flex-col gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {['shop_name', 'contact', 'account_no', 'mobile_no'].map((field) => (
+                  <div key={field}>
+                    <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>
+                      {field.replace('_', ' ').toUpperCase()}
                     </Typography>
+                    <input
+                      type="text"
+                      name={field}
+                      value={formData[field]}
+                      onChange={handleChange}
+                      className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)] transition-colors"
+                      required
+                    />
                   </div>
-                )}
+                ))}
               </div>
 
               <div className="w-full h-64 rounded-xl overflow-hidden border border-[var(--border)]">
-                {/* This div will be populated by the useEffect */}
                 <div style={containerStyle} ref={mapDivRef} />
               </div>
 
@@ -286,7 +270,6 @@ export default function createShop() {
               </Button>
             </form>
 
-            {/* RIGHT: Image */}
             <div className="md:col-span-2 md:order-last md:sticky md:top-8 h-fit">
               <label className="text-sm font-medium mb-2 block text-[var(--muted-foreground)]">Shop Image</label>
               <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
@@ -301,7 +284,6 @@ export default function createShop() {
                   )}
                 </div>
               </div>
-
               <label htmlFor="shop-image-upload" className="mt-4 block w-full text-center py-3 px-4 rounded-lg bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] font-medium cursor-pointer transition-colors">Upload Image</label>
               <input id="shop-image-upload" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
             </div>
