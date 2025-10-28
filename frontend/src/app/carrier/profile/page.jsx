@@ -1,11 +1,22 @@
 "use client";
 
-import { UserProfile } from "@clerk/nextjs";
+import { UserProfile, useUser } from "@clerk/nextjs";
 
 export default function CarrierProfilePage() {
+  const { user } = useUser();
+  const role = user?.publicMetadata?.role || "carrier";
+  const name = user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || "User";
+  const avatar = user?.imageUrl;
   return (
     <div className="min-h-screen w-full px-4 py-10 flex items-start justify-center bg-[var(--background)] text-[var(--foreground)]">
       <div className="w-full max-w-5xl">
+        <div className="mb-6 flex items-center gap-4 p-4 rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+          {avatar && <img src={avatar} alt="Avatar" className="w-14 h-14 rounded-full object-cover border" />}
+          <div>
+            <div className="text-xl font-semibold">{name}</div>
+            <div className="text-sm text-[var(--muted-foreground)] capitalize">Role: {String(role)}</div>
+          </div>
+        </div>
         <UserProfile
           appearance={{
             variables: {
@@ -32,3 +43,4 @@ export default function CarrierProfilePage() {
     </div>
   );
 }
+
