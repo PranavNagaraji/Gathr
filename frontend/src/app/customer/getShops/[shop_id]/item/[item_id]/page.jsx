@@ -40,6 +40,8 @@ const ItemDetailsContent = () => {
   const [similarItems, setSimilarItems] = useState([]);
   const [simLoading, setSimLoading] = useState(false);
   const [canRate, setCanRate] = useState(false);
+  const [shop, setShop] = useState(null);
+  const [shopLoading, setShopLoading] = useState(false);
 
   // Ensure page starts at top when navigating here
   useEffect(() => {
@@ -136,6 +138,26 @@ const ItemDetailsContent = () => {
       cancelled = true;
     };
   }, [item_id, API_URL, isUserLoaded, isLoaded, user?.id, getToken]);
+
+  // Fetch shop details when item is loaded
+  useEffect(() => {
+    const shopId = item?.shop_id;
+    if (!shopId) return;
+    let cancelled = false;
+    const fetchShop = async () => {
+      try {
+        setShopLoading(true);
+        const res = await axios.get(`${API_URL}/api/customer/getShop/${shopId}`);
+        if (!cancelled) setShop(res?.data?.shop || null);
+      } catch (_) {
+        if (!cancelled) setShop(null);
+      } finally {
+        if (!cancelled) setShopLoading(false);
+      }
+    };
+    fetchShop();
+    return () => { cancelled = true; };
+  }, [item?.shop_id, API_URL]);
 
   // Fetch similar items
   useEffect(() => {
@@ -488,6 +510,28 @@ const ItemDetailsContent = () => {
             </div>
           </motion.div>
         </div>
+
+        {/* SHOP DETAILS */}
+        {(shopLoading || shop) && (
+          <div className="bg-[var(--card)] text-[var(--card-foreground)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
+            <h2 className="font-extrabold text-3xl sm:text-4xl tracking-tight mb-4">Shop Details</h2>
+            {shopLoading ? (
+              <p className="text-[var(--muted-foreground)]">Loading shop info…</p>
+            ) : shop ? (
+              <div className="space-y-2">
+                <p className="text-xl font-semibold">{shop.shop_name}</p>
+                {shop.address && (
+                  <p className="text-[var(--muted-foreground)]">{shop.address}</p>
+                )}
+                {(shop.mobile_no || shop.contact) && (
+                  <p className="text-[var(--muted-foreground)]">Phone: {shop.mobile_no || shop.contact}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-[var(--muted-foreground)]">Shop information unavailable.</p>
+            )}
+          </div>
+        )}
 
         {/* SIMILAR ITEMS (moved above comments) */}
         <div>

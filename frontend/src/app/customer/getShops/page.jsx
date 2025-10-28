@@ -190,17 +190,27 @@ export default function CustomerDashboard() {
               <p className="text-sm text-[var(--muted-foreground)] mb-3">Loading…</p>
             )}
             {recs?.length ? (
-              <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+              <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
                 {recs.map((it) => (
-                  <motion.div key={it.id} variants={cardVariants} className="bg-[var(--background)] border border-[var(--border)] rounded-xl overflow-hidden">
+                  <motion.div key={it.id} variants={cardVariants} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
                     <Link href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="block">
                       <div className="aspect-[4/3] bg-[var(--muted)]">
                         <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
                       </div>
-                      <div className="p-3">
-                        <div className="text-xs text-[var(--muted-foreground)] truncate">{it.category || it.category?.[0]}</div>
-                        <div className="font-semibold truncate">{it.name}</div>
-                        <div className="text-[var(--primary)] font-bold">₹{it.price}</div>
+                      <div className="p-4">
+                        <div className="mt-1 flex flex-wrap gap-2 min-h-[28px]">
+                          {Array.isArray(it.category) ? (
+                            it.category.map((cat, i) => (
+                              <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{cat}</span>
+                            ))
+                          ) : (
+                            it.category ? (
+                              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{it.category}</span>
+                            ) : null
+                          )}
+                        </div>
+                        <h3 className="font-bold text-lg mt-2 truncate">{it.name}</h3>
+                        <p className="text-2xl font-bold text-[var(--primary)] mt-1">₹{it.price}</p>
                       </div>
                     </Link>
                   </motion.div>
@@ -263,10 +273,23 @@ export default function CustomerDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto">
-        <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8" role="list" aria-label="Shops">
-          <AnimatePresence>
-            {filteredShops.length > 0 ? (
-              filteredShops.map((shop, idx) => (
+        {filteredShops.length === 0 ? (
+          <div className="mt-10 flex flex-col items-center justify-center text-center border border-dashed border-[var(--border)] rounded-2xl p-10 bg-[var(--card)]/40">
+            <div className="w-24 h-24 rounded-full bg-[var(--muted)] flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-10 h-10 text-[var(--muted-foreground)]">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 3h3l.4 2M7 13h10l2-8H6.4M7 13l-1.293 1.293A1 1 0 006 15h2m-1-2v6a2 2 0 002 2h8a2 2 0 002-2v-6" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-semibold">No shops nearby</h2>
+            <p className="mt-2 text-[var(--muted-foreground)] max-w-md">We couldn't find shops based on your current filters or location. Try adjusting filters or check again later.</p>
+            <a href="/customer/getShops" className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold hover:opacity-90">
+              Refresh
+            </a>
+          </div>
+        ) : (
+          <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8" role="list" aria-label="Shops">
+            <AnimatePresence>
+              {filteredShops.map((shop, idx) => (
                 <motion.div
                   key={shop.id}
                   variants={cardVariants}
@@ -276,6 +299,15 @@ export default function CustomerDashboard() {
                   delay={idx * 0.1}
                   className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-2xl shadow-md overflow-hidden border border-[var(--border)] hover:bg-[var(--muted)]/40 dark:hover:bg-[var(--muted)]/20 transition-colors duration-200"
                 >
+                  {/* Info icon top-right */}
+                  <Link href={`/customer/getShops/${shop.id}/about`} aria-label="Shop details" className="absolute top-3 right-3 z-10 inline-flex items-center justify-center w-8 h-8 rounded-full bg-[var(--card)]/80 border border-[var(--border)] hover:bg-[var(--muted)]/60">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 8h.01" />
+                      <path d="M11 12h1v4h1" />
+                    </svg>
+                  </Link>
+
                   <Link href={`/customer/getShops/${shop.id}`} className="block">
                     <motion.div whileTap={{ scale: 0.99 }} className="rounded-2xl overflow-hidden shadow-md transition">
                       <div className="h-44 md:h-48 bg-gradient-to-b from-[var(--muted)] to-[var(--card)] overflow-hidden">
@@ -331,14 +363,10 @@ export default function CustomerDashboard() {
                     </motion.div>
                   </Link>
                 </motion.div>
-              ))
-            ) : (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full text-center text-[var(--muted-foreground)] mt-8">
-                No shops found.
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        )}
       </div>
     </div>
   );

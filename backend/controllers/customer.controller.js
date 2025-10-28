@@ -52,6 +52,25 @@ export const getShopItems = async (req, res) => {
   res.status(200).json({ items });
 }
 
+// Fetch a single shop by ID
+export const getShopById = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const { data: shop, error } = await supabase
+      .from('Shops')
+      .select('*')
+      .eq('id', shopId)
+      .single();
+
+    if (error || !shop) {
+      return res.status(404).json({ message: 'Shop not found', error });
+    }
+    return res.status(200).json({ shop });
+  } catch (e) {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 export const addComments = async (req, res) => {
   const { itemId, clerkId, parentId, comment } = req.body;
   const { data: user, error: userError } = await supabase

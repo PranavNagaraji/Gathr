@@ -1,6 +1,6 @@
 import requireAuth from "../utils/check.js";
 import express from "express";
-import { addComments, addRating, addToCart, deleteFromCart, getCurrentCart, getLocalShops, getShopItems, getUserId } from "../controllers/customer.controller.js";
+import { addComments, addRating, addToCart, deleteFromCart, getCurrentCart, getLocalShops, getShopItems, getUserId, getShopById } from "../controllers/customer.controller.js";
 import { getComments, deleteComment, getitem, getAddressesByUser, addAddress, deleteAddress, updateAddress, getItemsByIds, getWishlist, addToWishlist, removeFromWishlist, getWishlistCount } from "../controllers/customer2.controller.js";
 import { getcarthistory, getcartitems } from "../controllers/customer2.controller.js";
 import { getRating, getRecommendations, getSimilarItems, canRate } from "../controllers/customer3.contoller.js";
@@ -25,6 +25,9 @@ router.get("/getItem/:itemId", getitem);
 router.post("/getCart", requireAuth, getCurrentCart);
 router.post("/addToCart", requireAuth, addToCart);
 router.post("/deleteFromCart", requireAuth, deleteFromCart);
+
+// Shop details
+router.get("/getShop/:shopId", getShopById);
 
 router.get("/getAddressesByUser/:clerkId", requireAuth, getAddressesByUser);
 router.post("/addAddress", requireAuth, addAddress);

@@ -261,12 +261,15 @@ export default function Navbar() {
                       transition={{ duration: 0.25 }}
                       className="absolute right-0 mt-3 w-56 bg-[var(--popover)] text-[var(--popover-foreground)] rounded-xl shadow-lg border border-[var(--border)] overflow-hidden z-50"
                     >
-                      <div className="px-4 py-3 border-b border-[var(--border)]">
+                      <button
+                        className="w-full text-left px-4 py-3 border-b border-[var(--border)] hover:bg-[var(--accent)]/40"
+                        onClick={() => { setIsProfileOpen(false); router.push('/profile'); }}
+                      >
                         <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
                         {user?.primaryEmailAddress?.emailAddress && (
                           <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
                         )}
-                      </div>
+                      </button>
                       <SignOutButton>
                         <button className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--accent)]/40">
                           Sign out
@@ -335,12 +338,18 @@ export default function Navbar() {
               <div className="border-t border-[#F15B3B]/30 mt-2 pt-2 px-6 pb-4">
                 {isSignedIn ? (
                   <>
-                    <div className=" pt-2 pb-4 border-b border-[var(--border)]">
-                        <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
-                        {user?.primaryEmailAddress?.emailAddress && (
-                          <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
-                        )}
-                      </div>
+                    <button
+                      onClick={() => { router.push('/profile'); setMenuOpen(false); }}
+                      className="w-full text-left py-2 font-semibold hover:bg-[var(--accent)]/40 rounded-lg px-2"
+                    >
+                      Profile
+                    </button>
+                    <div className="pt-2 pb-4 border-b border-[var(--border)]">
+                      <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
+                      {user?.primaryEmailAddress?.emailAddress && (
+                        <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
+                      )}
+                    </div>
                     <SignOutButton>
                       <button className="w-full text-left py-2 font-semibold text-[var(--primary)] hover:opacity-90">
                         Sign Out
