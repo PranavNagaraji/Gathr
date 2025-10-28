@@ -155,44 +155,35 @@ export default function Dashboard() {
                         {filteredItems.map((item) => (
                             <div
                                 key={item.id}
-                                className="bg-[var(--card)] text-[var(--card-foreground)] rounded-3xl border border-[var(--border)] shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden"
+                                className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-2xl shadow-md overflow-hidden border border-[var(--border)] hover:bg-[var(--muted)]/40 dark:hover:bg-[var(--muted)]/20 transition-colors duration-200"
                             >
-                                <div className="p-4">
-                                    <div className="aspect-[4/3] w-full overflow-hidden rounded-2xl bg-[var(--muted)]">
-                                        {item.images && item.images.length > 0 ? (
-                                            <img
-                                                src={item.images[0].url}
-                                                alt={item.name}
-                                                className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
-                                            />
-                                        ) : null}
+                                <div className="h-44 md:h-48 bg-gradient-to-b from-[var(--muted)] to-[var(--card)] overflow-hidden">
+                                    {item.images && item.images.length > 0 ? (
+                                        <img
+                                            src={item.images[0].url}
+                                            alt={item.name}
+                                            className="w-full h-full object-cover object-center"
+                                        />
+                                    ) : null}
+                                </div>
+
+                                <div className="bg-[var(--card)] p-4 md:p-5">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <h2 className="text-lg md:text-xl font-semibold truncate">{item.name}</h2>
+                                            <p className="text-sm text-[var(--muted-foreground)] mt-1 truncate">{item.description}</p>
+                                        </div>
                                     </div>
 
-                                    <div className="pt-4">
-                                        <h2 className="text-lg md:text-xl font-semibold truncate">
-                                            {item.name}
-                                        </h2>
-                                        <p className="text-sm mt-1 text-[var(--muted-foreground)] truncate">
-                                            {item.description}
-                                        </p>
-                                        <div className="mt-3 flex flex-wrap gap-2">
-                                            {item.category.map((cat) => (
-                                                <span
-                                                    key={cat}
-                                                    className="text-xs font-medium bg-[var(--muted)] text-[var(--muted-foreground)] px-3 py-1 rounded-full"
-                                                >
-                                                    {cat}
-                                                </span>
-                                            ))}
-                                        </div>
-                                        <div className="mt-4 flex items-center justify-between">
-                                            <span className="font-semibold text-[var(--primary)]">
-                                                ₹{item.price}
-                                            </span>
-                                            <span className="text-xs text-[var(--muted-foreground)]">
-                                                Qty: {item.quantity}
-                                            </span>
-                                        </div>
+                                    <div className="mt-3 flex flex-wrap gap-2 min-h-[28px]">
+                                        {Array.isArray(item.category) && item.category.map((cat, i) => (
+                                            <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{cat}</span>
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-4 flex items-center justify-between gap-3">
+                                        <p className="text-2xl font-bold text-[var(--primary)]">₹{item.price}</p>
+                                        <span className="text-xs px-2 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)] border border-[var(--border)]">Qty: {item.quantity}</span>
                                     </div>
                                 </div>
 
