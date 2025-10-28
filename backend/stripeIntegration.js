@@ -162,13 +162,13 @@ async function createOrderFromCartHandler(req, res) {
     const shopId = cartItems[0].Items?.shop_id;
     console.log("✓ Shop ID extracted:", shopId);
 
-    const totalAmount = cartItems.reduce((sum, item) => {
+    const subtotal = cartItems.reduce((sum, item) => {
       const itemPrice = item.Items?.price || 0;
       const itemQty = item.quantity || 0;
       console.log(`  Item: ${item.Items?.name}, Price: ${itemPrice}, Qty: ${itemQty}`);
       return sum + (itemPrice * itemQty);
     }, 0);
-    console.log("✓ Total amount calculated:", totalAmount);
+    console.log("✓ Subtotal calculated:", subtotal);
 
     // Validate that the provided address belongs to the user
     const { data: address, error: addressError } = await supabase
@@ -187,6 +187,48 @@ async function createOrderFromCartHandler(req, res) {
     }
 
     console.log("✓ Using address:", addressId);
+
+    // Load shop location for distance-based delivery
+    const { data: shop, error: shopError } = await supabase
+      .from("Shops")
+      .select("id, Location")
+      .eq("id", shopId)
+      .single();
+    if (shopError || !shop) {
+      return res.status(404).json({ error: "Shop not found for delivery computation" });
+    }
+
+    // Compute distance (Haversine)
+    const toRad = (v) => (v * Math.PI) / 180;
+    const getDistanceKm = (lat1, lon1, lat2, lon2) => {
+      const R = 6371;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    };
+
+    const shopLat = shop?.Location?.latitude ?? shop?.Location?.lat;
+    const shopLong = shop?.Location?.longitude ?? shop?.Location?.long;
+    const destLat = address?.location?.lat ?? address?.location?.latitude;
+    const destLong = address?.location?.long ?? address?.location?.longitude;
+    if ([shopLat, shopLong, destLat, destLong].some(v => v == null)) {
+      return res.status(400).json({ error: "Missing coordinates for delivery computation" });
+    }
+    const distanceKm = getDistanceKm(Number(shopLat), Number(shopLong), Number(destLat), Number(destLong));
+
+    // Compute GST and delivery fee (configurable via env)
+    const GST_RATE = parseFloat(process.env.GST_RATE || '0.18');
+    const DELIVERY_BASE_KM = parseFloat(process.env.DELIVERY_BASE_KM || '2');
+    const DELIVERY_BASE_FEE = parseFloat(process.env.DELIVERY_BASE_FEE || '30');
+    const DELIVERY_PER_KM_FEE = parseFloat(process.env.DELIVERY_PER_KM_FEE || '10');
+
+    const extraKm = Math.max(0, distanceKm - DELIVERY_BASE_KM);
+    const deliveryFee = DELIVERY_BASE_FEE + Math.ceil(extraKm) * DELIVERY_PER_KM_FEE;
+    const gst = subtotal * GST_RATE;
+    const totalAmount = subtotal + gst + deliveryFee;
+    console.log("✓ Totals:", { subtotal, gst, deliveryFee, totalAmount, distanceKm });
 
     // Create the order
     console.log("Creating order:", {
@@ -281,6 +323,7 @@ async function createCheckoutSessionHandler(req, res) {
     }
 
     // Map order items to Stripe line items
+    const itemSubtotal = order.items.reduce((sum, it) => sum + (it.price || 0) * (it.quantity || 0), 0);
     const lineItems = order.items.map(item => ({
       price_data: {
         currency: "inr",
@@ -288,14 +331,76 @@ async function createCheckoutSessionHandler(req, res) {
           name: item.name,
           description: item.description || "",
         },
-        unit_amount: Math.round(item.price * 100), // Convert to cents
+        unit_amount: Math.round(item.price * 100),
       },
       quantity: item.quantity,
     }));
 
+    // Recompute GST and delivery for the order
+    let extraLineItems = [];
+    try {
+      const { data: shop, error: shopError } = await supabase
+        .from('Shops')
+        .select('id, Location')
+        .eq('id', order.shop_id)
+        .single();
+      const { data: address, error: addrError } = await supabase
+        .from('Addresses')
+        .select('id, location')
+        .eq('id', order.address_id)
+        .single();
+      if (!shopError && !addrError && shop && address) {
+        const toRad = (v) => (v * Math.PI) / 180;
+        const getDistanceKm = (lat1, lon1, lat2, lon2) => {
+          const R = 6371;
+          const dLat = toRad(lat2 - lat1);
+          const dLon = toRad(lon2 - lon1);
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          return R * c;
+        };
+        const shopLat = shop?.Location?.latitude ?? shop?.Location?.lat;
+        const shopLong = shop?.Location?.longitude ?? shop?.Location?.long;
+        const destLat = address?.location?.lat ?? address?.location?.latitude;
+        const destLong = address?.location?.long ?? address?.location?.longitude;
+        if ([shopLat, shopLong, destLat, destLong].every(v => v != null)) {
+          const distanceKm = getDistanceKm(Number(shopLat), Number(shopLong), Number(destLat), Number(destLong));
+          const GST_RATE = parseFloat(process.env.GST_RATE || '0.18');
+          const DELIVERY_BASE_KM = parseFloat(process.env.DELIVERY_BASE_KM || '2');
+          const DELIVERY_BASE_FEE = parseFloat(process.env.DELIVERY_BASE_FEE || '30');
+          const DELIVERY_PER_KM_FEE = parseFloat(process.env.DELIVERY_PER_KM_FEE || '10');
+          const extraKm = Math.max(0, distanceKm - DELIVERY_BASE_KM);
+          const deliveryFee = DELIVERY_BASE_FEE + Math.ceil(extraKm) * DELIVERY_PER_KM_FEE;
+          const gst = itemSubtotal * GST_RATE;
+          if (gst > 0) {
+            extraLineItems.push({
+              price_data: {
+                currency: 'inr',
+                product_data: { name: `GST (${Math.round(GST_RATE*100)}%)` },
+                unit_amount: Math.round(gst * 100),
+              },
+              quantity: 1,
+            });
+          }
+          if (deliveryFee > 0) {
+            extraLineItems.push({
+              price_data: {
+                currency: 'inr',
+                product_data: { name: `Delivery Fee (${distanceKm.toFixed(1)} km)` },
+                unit_amount: Math.round(deliveryFee * 100),
+              },
+              quantity: 1,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to compute GST/delivery for Stripe session:', e.message);
+    }
+
     // Create checkout session
     const session = await createCheckoutSession({
-      lineItems,
+      lineItems: [...lineItems, ...extraLineItems],
       successUrl: `${FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${FRONTEND_URL}/payment-cancelled`,
       metadata: {

@@ -1,6 +1,7 @@
 "use client";
 import { useAuth,useUser } from "@clerk/nextjs";
 import Hero from "@/components/Hero";
+import Footer from "@/components/Footer";
 import DarkVeil from "@/components/gsap/DarkVeil";
 import { Box } from "@mui/material";
 import { useEffect } from "react";
@@ -43,10 +44,12 @@ export default function Home() {
           blend={0.5}
           amplitude={1.0}
           speed={0.5} /> */}
+          
       </Box>
       <FadeIn>
         <Hero />
       </FadeIn>
+       <Footer />      
     </div>
   </>);
 }

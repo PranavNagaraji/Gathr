@@ -28,6 +28,7 @@ const Checkout = () => {
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [checkOutDetails , setCheckOutDetails] = useState({});
+  const [priceBreakdown, setPriceBreakdown] = useState(null);
 
   const [addressToggle, setAddressToggle] = useState(false);
   const [addresses, setAddresses] = useState([]);
@@ -109,6 +110,26 @@ const Checkout = () => {
 
   }, [isLoaded, isSignedIn, user]);
 
+  // Fetch server-side price breakdown whenever an address is selected
+  useEffect(() => {
+    const fetchBreakdown = async () => {
+      if (!isLoaded || !isSignedIn || !user || !selectedAddressId) return;
+      try {
+        const token = await getToken();
+        const res = await axios.post(
+          `${API_URL}/api/order/price-breakdown`,
+          { clerkId: user.id, addressId: selectedAddressId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setPriceBreakdown(res.data);
+      } catch (e) {
+        console.error('Failed to fetch price breakdown:', e.response?.data || e.message);
+        setPriceBreakdown(null);
+      }
+    };
+    fetchBreakdown();
+  }, [selectedAddressId, isLoaded, isSignedIn, user]);
+
   const handleSelect = (id) => {
     setSelectedAddressId(id);
   };
@@ -167,7 +188,7 @@ const Checkout = () => {
             shop_id: checkOutDetails.shop_id || checkOutDetails.shopId,
             cart_id: checkOutDetails.cart_id || checkOutDetails.cartId,
             payment_method: "cod",
-            amount: Number(checkOutDetails.totalPrice || 0),
+            amount: Number(priceBreakdown?.total ?? checkOutDetails.totalPrice ?? 0),
             address_id: selectedAddressId,
             payment_status: "pending",
           };
@@ -454,11 +475,13 @@ const Checkout = () => {
             <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span>Items</span><span>{checkOutDetails?.cartItems?.length ?? 0}</span></div>
-              <div className="flex justify-between"><span>Subtotal</span><span>₹{checkOutDetails?.totalPrice?.toFixed(2) ?? "0.00"}</span></div>
+              <div className="flex justify-between"><span>Subtotal</span><span>₹{(priceBreakdown?.subtotal ?? checkOutDetails?.totalPrice ?? 0).toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>GST</span><span>₹{(priceBreakdown?.gst ?? 0).toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>Delivery Fee</span><span>{selectedAddressId ? `₹${(priceBreakdown?.deliveryFee ?? 0).toFixed(2)}` : 'Select address'}</span></div>
             </div>
             <div className="mt-4 border-t border-[var(--border)] pt-4 flex justify-between font-semibold">
               <span>Total</span>
-              <span>₹{checkOutDetails?.totalPrice?.toFixed(2) ?? "0.00"}</span>
+              <span>₹{(priceBreakdown?.total ?? checkOutDetails?.totalPrice ?? 0).toFixed(2)}</span>
             </div>
             <div className="mt-4">
             <AnimatedButton onClick={handleCheckOut} className="" size="lg" rounded="lg" variant="primary" >
