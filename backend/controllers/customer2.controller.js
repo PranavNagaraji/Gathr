@@ -304,6 +304,10 @@ export const updateAddress = async (req, res) => {
 
 export const getcarthistory = async (req, res) => {
   const { clerkId } = req.params;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, Math.min(50, parseInt(req.query.limit) || 10));
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
 
   const { data: user, error: userError } = await supabase
     .from('Users')
@@ -319,13 +323,18 @@ export const getcarthistory = async (req, res) => {
     return res.status(403).json({ message: "Unauthorized: Only logged in users can get cart history" });
   }
 
-  const { data: carts, error: cartsError } = await supabase.from('Orders ').select('*, Shops(*), Users:carrier_id(*)').eq('customer_id', user.id).order('created_at', { ascending: false });
+  const { data: carts, error: cartsError, count } = await supabase
+    .from('Orders ')
+    .select('*, Shops(*), Users:carrier_id(*)', { count: 'exact' })
+    .eq('customer_id', user.id)
+    .order('created_at', { ascending: false })
+    .range(from, to);
 
   if (cartsError || !carts) {
     return res.status(404).json({ message: "Cart history not found" });
   }
 
-  return res.status(200).json({ carts });
+  return res.status(200).json({ carts, total: count || 0, page, limit });
 }
 
 export const getcartitems = async (req, res) => {

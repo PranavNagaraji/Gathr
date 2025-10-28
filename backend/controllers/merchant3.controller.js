@@ -90,6 +90,10 @@ export const updateOrderStatus = async (req, res) => {
 
 export const get_all_carts = async (req,res)=>{
     const { clerkId } = req.params;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit) || 10));
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
     const { data: user, error: userError } = await supabase
         .from('Users')
@@ -114,14 +118,15 @@ export const get_all_carts = async (req,res)=>{
         return res.status(404).json({ message: "Shop not found for this user." });
     }
 
-    const { data: carts, error } = await supabase
+    const { data: carts, error, count } = await supabase
         .from("Orders")
-        .select("*, Cart(* , Cart_items(* , Items(*))), Addresses(*), Users:carrier_id(*)")
+        .select("*, Cart(* , Cart_items(* , Items(*))), Addresses(*), Users:carrier_id(*)", { count: 'exact' })
         .eq("shop_id", shop.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(from, to);
     if (error) {
         return res.status(500).json({ message: "Failed to fetch carts.", error: error.message });
     }
-    return res.status(200).json({ carts });
+    return res.status(200).json({ carts, total: count || 0, page, limit });
         
 }

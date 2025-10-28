@@ -13,6 +13,9 @@ const AllOrders = () => {
   const [orders, setOrders] = useState([]);
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(8);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return;
@@ -20,14 +23,13 @@ const AllOrders = () => {
     const fetchOrders = async () => {
       try {
         const token = await getToken();
+        setLoading(true);
         const res = await axios.get(
-          `${API_URL}/api/merchant/get_all_carts/${user.id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          `${API_URL}/api/merchant/get_all_carts/${user.id}?page=${page}&limit=${limit}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         setOrders(res.data.carts || []);
-        console.log(res.data.carts);
+        setTotal(res.data.total || 0);
       } catch (err) {
         console.error("Error fetching orders:", err);
       } finally {
@@ -36,7 +38,7 @@ const AllOrders = () => {
     };
 
     fetchOrders();
-  }, [isLoaded, isSignedIn, user, getToken, API_URL]);
+  }, [isLoaded, isSignedIn, user, getToken, API_URL, page, limit]);
 
   const toggleExpand = (id) => {
     setExpandedOrder(expandedOrder === id ? null : id);
@@ -190,6 +192,26 @@ const AllOrders = () => {
           )}
         </div>
       ))}
+
+      <div className="mt-6 flex items-center justify-center gap-3">
+        <button
+          className="px-3 py-1.5 rounded-md border border-[var(--border)] disabled:opacity-50"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page <= 1 || loading}
+        >
+          Prev
+        </button>
+        <span className="text-sm text-[var(--muted-foreground)]">
+          Page {page} of {Math.max(1, Math.ceil(total / limit))}
+        </span>
+        <button
+          className="px-3 py-1.5 rounded-md border border-[var(--border)] disabled:opacity-50"
+          onClick={() => setPage((p) => p + 1)}
+          disabled={loading || page >= Math.max(1, Math.ceil(total / limit))}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 };

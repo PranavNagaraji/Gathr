@@ -11,6 +11,9 @@ const Orders = () => {
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(9);
+  const [total, setTotal] = useState(0);
 
   const statusStyles = {
     ordered: "bg-blue-100 text-blue-800",
@@ -52,11 +55,13 @@ const Orders = () => {
       if (!isLoaded || !isSignedIn || !user) return;
       try {
         const token = await getToken();
+        setLoading(true);
         const res = await axios.get(
-          `${API_URL}/api/customer/getcarthistory/${user.id}`,
+          `${API_URL}/api/customer/getcarthistory/${user.id}?page=${page}&limit=${limit}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setOrders(res.data.carts || []);
+        setTotal(res.data.total || 0);
       } catch (err) {
         console.error(err);
       } finally {
@@ -65,7 +70,7 @@ const Orders = () => {
     };
 
     getOrders();
-  }, [user, isLoaded, isSignedIn]);
+  }, [user, isLoaded, isSignedIn, page, limit]);
 
   if (loading) return <div className="text-center mt-10 text-[var(--muted-foreground)]">Loading orders...</div>;
 
@@ -175,6 +180,25 @@ const Orders = () => {
           ))}
         </AnimatePresence>
       </motion.section>
+      <div className="mt-6 flex items-center justify-center gap-3">
+        <button
+          className="px-3 py-1.5 rounded-md border border-[var(--border)] disabled:opacity-50"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page <= 1 || loading}
+        >
+          Prev
+        </button>
+        <span className="text-sm text-[var(--muted-foreground)]">
+          Page {page} of {Math.max(1, Math.ceil(total / limit))}
+        </span>
+        <button
+          className="px-3 py-1.5 rounded-md border border-[var(--border)] disabled:opacity-50"
+          onClick={() => setPage((p) => p + 1)}
+          disabled={loading || page >= Math.max(1, Math.ceil(total / limit))}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 };

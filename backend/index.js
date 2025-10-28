@@ -18,7 +18,13 @@ const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 
 const app = express();
 
-app.use(cors());
+
+//cors policy security check
+app.use(cors({
+  origin: ["https://gathr-se.vercel.app" , "http://localhost:3000"], 
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true
+}));
 
 // CRITICAL: Webhook route MUST come BEFORE express.json()
 // Stripe needs raw body for signature verification
