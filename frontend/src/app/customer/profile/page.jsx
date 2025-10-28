@@ -9,6 +9,15 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { useJsApiLoader, StandaloneSearchBox } from "@react-google-maps/api";
+import ProfileShell from "@/components/profile/ProfileShell";
+
+function DotIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" className="h-3 w-3">
+      <path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512z" />
+    </svg>
+  );
+}
 
 export default function CustomerProfilePage() {
   const { user } = useUser();
@@ -116,21 +125,9 @@ export default function CustomerProfilePage() {
     }
   };
   return (
-    <div className="min-h-screen w-full px-4 py-10 flex items-start justify-center bg-[var(--background)] text-[var(--foreground)]">
-      <div className="w-full max-w-5xl">
-        <div className="mb-6 flex items-center gap-4 p-5 rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-          {avatar && <img src={avatar} alt="Avatar" className="w-16 h-16 rounded-full object-cover border" />}
-          <div className="flex flex-col">
-            <div className="text-2xl font-extrabold tracking-tight">{name}</div>
-            <div className="mt-1 inline-flex items-center gap-2 text-xs uppercase tracking-wider text-white bg-gray-500 px-2 py-1 rounded-md w-max">
-              <span className="h-1.5 w-1.5 rounded-full bg-white" />
-              {String(role)}
-            </div>
-          </div>
-        </div>
-
-        {/* Clerk UserProfile first */}
-        <div className="flex flex-col items-stretch w-full">
+    <ProfileShell>
+      {/* Clerk UserProfile first */}
+      <div className="flex flex-col items-stretch w-full">
         <UserProfile
           appearance={{
             variables: {
@@ -155,50 +152,52 @@ export default function CustomerProfilePage() {
             },
           }}
           routing="hash"
-        />
-        </div>
-
-        {/* Addresses after Clerk */}
-        <div className="mt-8 mb-8 bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Your Addresses</h2>
-            <button
-              onClick={() => setAddressToggle(true)}
-              className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
-            >
-              Add Address
-            </button>
-          </div>
-          {addresses.length === 0 ? (
-            <div className="text-sm text-[var(--muted-foreground)]">No addresses added yet.</div>
-          ) : (
-            <div className="grid md:grid-cols-2 gap-4">
-              {addresses.map((address, idx) => (
-                <div key={idx} className="relative border border-[var(--border)] rounded-xl p-4 bg-[var(--card)]">
-                  <button
-                    onClick={() => handleDeleteAddress(address.id)}
-                    className="absolute top-3 right-3 text-[var(--destructive)] hover:opacity-80"
-                    aria-label="Delete address"
-                    title="Delete address"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                  <div className="font-semibold mb-1 pr-6">{address.title}</div>
-                  <div className="text-sm text-[var(--muted-foreground)] mb-1">{address.address}</div>
-                  {address.description && (
-                    <div className="text-xs text-[var(--muted-foreground)] mb-1">{address.description}</div>
-                  )}
-                  {address.mobile_no && (
-                    <div className="text-sm">📞 {address.mobile_no}</div>
-                  )}
+        >
+          <UserProfile.Page label="Addresses" labelIcon={<DotIcon />} url="addresses">
+            <div className="bg-[var(--card)] text-[var(--card-foreground)]">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Your Addresses</h2>
+                <button
+                  onClick={() => setAddressToggle(true)}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
+                >
+                  Add Address
+                </button>
+              </div>
+              {addresses.length === 0 ? (
+                <div className="text-sm text-[var(--muted-foreground)]">No addresses added yet.</div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {addresses.map((address, idx) => (
+                    <div key={idx} className="relative border border-[var(--border)] rounded-xl p-4 bg-[var(--card)]">
+                      <button
+                        onClick={() => handleDeleteAddress(address.id)}
+                        className="absolute top-3 right-3 text-[var(--destructive)] hover:opacity-80"
+                        aria-label="Delete address"
+                        title="Delete address"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                      <div className="font-semibold mb-1 pr-6">{address.title}</div>
+                      <div className="text-sm text-[var(--muted-foreground)] mb-1">{address.address}</div>
+                      {address.description && (
+                        <div className="text-xs text-[var(--muted-foreground)] mb-1">{address.description}</div>
+                      )}
+                      {address.mobile_no && (
+                        <div className="text-sm">📞 {address.mobile_no}</div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
-        {addressToggle && (
-          <div className="fixed inset-0 z-[9999] bg-black/40 flex items-center justify-center">
-            <div className="bg-[var(--popover)] text-[var(--popover-foreground)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-xl relative space-y-3">
+          </UserProfile.Page>
+        </UserProfile>
+      </div>
+
+      {addressToggle && (
+        <div className="fixed inset-0 z-[9999] bg-black/40 flex items-center justify-center">
+          <div className="bg-[var(--popover)] text-[var(--popover-foreground)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-xl relative space-y-3">
               <button
                 onClick={() => setAddressToggle(false)}
                 className="absolute top-3 right-3 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-xl font-bold"
@@ -282,8 +281,7 @@ export default function CustomerProfilePage() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </ProfileShell>
   );
 }
 

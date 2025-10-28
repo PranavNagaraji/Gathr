@@ -60,6 +60,11 @@ export default function Navbar() {
   const profileImage = user?.imageUrl;
   const role = user?.publicMetadata?.role;
 
+  const profileHref =
+    role === "merchant" ? "/merchant/profile" :
+    role === "carrier" ? "/carrier/profile" :
+    role === "customer" ? "/customer/profile" : "/profile";
+
   const navLinks =
     role === "merchant"
       ? merchantLinks
@@ -263,7 +268,7 @@ export default function Navbar() {
                     >
                       <button
                         className="w-full text-left px-4 py-3 border-b border-[var(--border)] hover:bg-[var(--accent)]/40"
-                        onClick={() => { setIsProfileOpen(false); router.push('/profile'); }}
+                        onClick={() => { setIsProfileOpen(false); router.push(profileHref); }}
                       >
                         <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
                         {user?.primaryEmailAddress?.emailAddress && (
@@ -339,7 +344,7 @@ export default function Navbar() {
                 {isSignedIn ? (
                   <>
                     <button
-                      onClick={() => { router.push('/profile'); setMenuOpen(false); }}
+                      onClick={() => { router.push(profileHref); setMenuOpen(false); }}
                       className="w-full text-left py-2 font-semibold hover:bg-[var(--accent)]/40 rounded-lg px-2"
                     >
                       Profile
