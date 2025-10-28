@@ -214,10 +214,6 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ---------------------- ⚙️ Footer ---------------------- */}
-        <footer className="py-8 sm:py-10 bg-[var(--card)] text-center text-[var(--muted-foreground)] text-sm border-t border-[var(--border)]">
-          &copy; {new Date().getFullYear()} Gathr — Empowering Local Commerce.
-        </footer>
       </main>
     </div>
   );
