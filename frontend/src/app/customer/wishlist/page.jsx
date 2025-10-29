@@ -110,9 +110,17 @@ export default function WishlistPage() {
 
         {/* Content */}
         {loading ? (
-          <div className="text-center py-20">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary)]"></div>
-            <p className="mt-4 text-[var(--muted-foreground)]">Loading your wishlist...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-pulse">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+                <div className="h-48 bg-[var(--muted)]" />
+                <div className="p-4 space-y-3">
+                  <div className="h-5 w-2/3 bg-[var(--muted)] rounded" />
+                  <div className="h-4 w-1/2 bg-[var(--muted)] rounded" />
+                  <div className="h-8 w-full bg-[var(--muted)] rounded" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">

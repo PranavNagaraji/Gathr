@@ -17,6 +17,7 @@ export default function Dashboard() {
     const [searchTerm, setSearchTerm] = useState("");
     const [categories, setCategories] = useState(["All Categories"]);
     const [selectedCategory, setSelectedCategory] = useState("All Categories");
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const checkShop = async () => {
@@ -44,6 +45,7 @@ export default function Dashboard() {
             const token = await getToken();
 
             try {
+                setLoading(true);
                 const result = await axios.post(
                     `${API_URL}/api/merchant/get_items`,
                     { owner_id: user.id },
@@ -60,6 +62,8 @@ export default function Dashboard() {
                 setCategories(["All Categories", ...allCategories]);
             } catch (err) {
                 console.log(`err: ${err.message}`);
+            } finally {
+                setLoading(false);
             }
         };
 
@@ -150,7 +154,20 @@ export default function Dashboard() {
                 </div>
 
                 {/* 🛍️ Items Grid */}
-                {filteredItems.length > 0 ? (
+                {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-10 w-full">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-2xl shadow-md overflow-hidden border border-[var(--border)] animate-pulse">
+                                <div className="h-44 md:h-48 bg-[var(--muted)]" />
+                                <div className="p-4 space-y-3">
+                                    <div className="h-5 w-2/3 bg-[var(--muted)] rounded" />
+                                    <div className="h-4 w-1/2 bg-[var(--muted)] rounded" />
+                                    <div className="h-6 w-1/3 bg-[var(--muted)] rounded" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : filteredItems.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-10 w-full">
                         {filteredItems.map((item) => (
                             <div

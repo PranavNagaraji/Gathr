@@ -206,10 +206,35 @@ export default function EditItemPage() {
 
   
 
-  // 🔹 Cleaner loading state with Spin
+  // 🔹 Skeleton loading state
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] text-[var(--foreground)]">
-      <Spin size="large" />
+    <div className="min-h-screen p-4 md:p-8 bg-[var(--background)] text-[var(--foreground)]">
+      <div className="max-w-7xl mx-auto animate-pulse">
+        <div className="h-10 w-48 bg-[var(--muted)] rounded mb-8" />
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
+          <div className="md:col-span-2 md:order-last">
+            <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+              <div className="aspect-square w-full bg-[var(--muted)]" />
+              <div className="grid grid-cols-5 gap-2 p-3 border-t border-[var(--border)]">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="aspect-square bg-[var(--muted)] rounded-md" />
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 h-12 bg-[var(--muted)] rounded" />
+          </div>
+          <div className="md:col-span-3 flex flex-col gap-8">
+            <div className="h-12 bg-[var(--muted)] rounded" />
+            <div className="h-28 bg-[var(--muted)] rounded" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="h-12 bg-[var(--muted)] rounded" />
+              <div className="h-12 bg-[var(--muted)] rounded" />
+            </div>
+            <div className="h-16 bg-[var(--muted)] rounded" />
+            <div className="h-12 bg-[var(--muted)] rounded" />
+          </div>
+        </div>
+      </div>
     </div>
   )
 

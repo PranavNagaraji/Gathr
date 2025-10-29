@@ -18,6 +18,12 @@ export default function ShopItems() {
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const [items, setItems] = useState([]);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(12);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [didInitPriceRange, setDidInitPriceRange] = useState(false);
   const [wishlistIds, setWishlistIds] = useState(new Set());
   const [isWlLoading, setIsWlLoading] = useState(false);
   const [quantities, setQuantities] = useState({});
@@ -46,46 +52,73 @@ export default function ShopItems() {
     { value: "newest", label: "Newest First" }
   ];
 
-  // --- Fetch items ---
+  // Reset price range init when shop changes
+  useEffect(() => {
+    setDidInitPriceRange(false);
+  }, [shop_id]);
+
+  // --- Fetch items (debounced) ---
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return;
 
+    let alive = true;
     const fetchItems = async () => {
       try {
+        setLoading(true);
         const token = await getToken();
-        const res = await axios.get(`${API_URL}/api/customer/getShopItem/${shop_id}`, {
+        const qs = new URLSearchParams();
+        qs.set('page', String(page));
+        qs.set('limit', String(limit));
+        if (search && search.trim()) qs.set('search', search.trim());
+        if (filters.categories?.length) qs.set('categories', filters.categories.join(','));
+        if (typeof filters.priceRange?.[0] === 'number') qs.set('minPrice', String(filters.priceRange[0]));
+        if (typeof filters.priceRange?.[1] === 'number') qs.set('maxPrice', String(filters.priceRange[1]));
+        if (filters.inStock) qs.set('inStock', 'true');
+        if (filters.rating > 0) qs.set('rating', String(filters.rating));
+        if (filters.sortBy) qs.set('sort', filters.sortBy);
+
+        const res = await axios.get(`${API_URL}/api/customer/getShopItem/${shop_id}?${qs.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        // Add mock data for demonstration
-        const fetchedItems = (res.data.items || []).map(item => ({
-          ...item,
-          rating: Math.floor(Math.random() * 5) + 1, // Mock rating 1-5
-          stock: Math.floor(Math.random() * 100), // Mock stock
-          createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString() // Mock creation date
-        }));
-        
+        const payload = res?.data || {};
+        const fetchedItems = Array.isArray(payload.items) ? payload.items : [];
+        if (!alive) return;
         setItems(fetchedItems);
+        setTotal(Number(payload.total || 0));
+        setTotalPages(Number(payload.totalPages || 1));
 
-        // Extract unique categories
         const allCategories = new Set(fetchedItems.flatMap((item) => item.category || []));
+        if (!alive) return;
         setCategories(Array.from(allCategories).sort());
 
-        // Set initial price range
-        if (fetchedItems.length > 0) {
-          const maxPrice = Math.ceil(Math.max(...fetchedItems.map(item => item.price || 0)) / 500) * 500; // Round up to nearest 500
-          setFilters(prev => ({
-            ...prev,
-            priceRange: [0, Math.max(maxPrice, 1000)] // Ensure at least 1000 max price
-          }));
+        if (alive && fetchedItems.length > 0 && !didInitPriceRange) {
+          const maxPrice = Math.ceil(Math.max(...fetchedItems.map(item => item.price || 0)) / 500) * 500;
+          const nextUpper = Math.max(maxPrice || 0, 1000);
+          setFilters(prev => {
+            const curUpper = Array.isArray(prev.priceRange) ? prev.priceRange[1] : undefined;
+            if (curUpper === nextUpper) return prev;
+            return { ...prev, priceRange: [prev.priceRange?.[0] ?? 0, nextUpper] };
+          });
+          setDidInitPriceRange(true);
         }
       } catch (err) {
         console.error('Error fetching items:', err);
+        if (!alive) return;
+        setItems([]);
+        setTotal(0);
+        setTotalPages(1);
+      } finally {
+        if (alive) setLoading(false);
       }
     };
 
-    fetchItems();
-  }, [user, isLoaded, isSignedIn, getToken, shop_id]);
+    const delay = setTimeout(fetchItems, 220);
+    return () => {
+      alive = false;
+      clearTimeout(delay);
+    };
+  }, [user, isLoaded, isSignedIn, getToken, shop_id, page, limit, search, filters.categories, filters.priceRange, filters.inStock, filters.rating, filters.sortBy, API_URL, didInitPriceRange]);
 
   useEffect(() => {
     const loadWishlist = async () => {
@@ -109,34 +142,13 @@ export default function ShopItems() {
     loadWishlist();
   }, [isSignedIn, user?.id, getToken, API_URL]);
 
-  // --- Filter items ---
-  const filteredItems = items
-    .filter((item) => {
-      const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
-      const sel = filters.categories || [];
-      const matchesCategory = sel.length === 0 || (Array.isArray(item.category) && item.category.some((c) => sel.includes(c)));
-      const matchesPrice = item.price >= filters.priceRange[0] && item.price <= filters.priceRange[1];
-      const matchesStock = !filters.inStock || item.stock > 0;
-      const matchesRating = item.rating >= filters.rating;
-      
-      return matchesSearch && matchesCategory && matchesPrice && matchesStock && matchesRating;
-    })
-    .sort((a, b) => {
-      switch (filters.sortBy) {
-        case 'price-asc':
-          return a.price - b.price;
-        case 'price-desc':
-          return b.price - a.price;
-        case 'name-asc':
-          return a.name.localeCompare(b.name);
-        case 'name-desc':
-          return b.name.localeCompare(a.name);
-        case 'newest':
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        default:
-          return 0; // featured - keep original order
-      }
-    });
+  useEffect(() => {
+    setPage(1);
+  }, [search, filters.categories, filters.priceRange, filters.inStock, filters.rating, filters.sortBy]);
+
+  const displayedItems = items;
+  const showingStart = total ? (page - 1) * limit + 1 : 0;
+  const showingEnd = total ? Math.min(total, page * limit) : 0;
 
   // --- Animations ---
   const gridVariants = {
@@ -290,7 +302,7 @@ export default function ShopItems() {
                 )}
               </button>
               <span className="text-sm text-[var(--muted-foreground)]">
-                {filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} found
+                {total} {total === 1 ? 'item' : 'items'} found
               </span>
             </div>
 
@@ -451,7 +463,20 @@ export default function ShopItems() {
 
       {/* Items Grid */}
       <div className="max-w-7xl mx-auto">
-        {filteredItems.length === 0 ? (
+        {loading && displayedItems.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: Math.min(limit, 12) }).map((_, i) => (
+              <div key={i} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden animate-pulse">
+                <div className="h-44 md:h-48 bg-[var(--muted)]" />
+                <div className="p-4 space-y-3">
+                  <div className="h-5 w-2/3 bg-[var(--muted)] rounded" />
+                  <div className="h-4 w-1/2 bg-[var(--muted)] rounded" />
+                  <div className="h-8 w-full bg-[var(--muted)] rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : total === 0 ? (
           <div className="text-center py-16">
             <svg className="mx-auto h-16 w-16 text-[var(--muted-foreground)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -477,10 +502,10 @@ export default function ShopItems() {
             </div>
           </div>
         ) : (
-          <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <motion.div initial={false} animate="show" variants={gridVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           <AnimatePresence>
-            {filteredItems.length > 0 ? (
-              filteredItems.map((item) => (
+            {displayedItems.length > 0 ? (
+              displayedItems.map((item) => (
                 <motion.div
                   key={item.id}
                   variants={cardVariants}
@@ -560,6 +585,99 @@ export default function ShopItems() {
           </AnimatePresence>
         </motion.div>
         )}
+      </div>
+
+      <div className="max-w-7xl mx-auto mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <button
+            disabled={page <= 1 || loading}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/60 disabled:opacity-50"
+          >
+            <span className="inline-flex items-center gap-2">
+              Prev
+              {loading && (
+                <svg className="w-3.5 h-3.5 animate-spin text-[var(--muted-foreground)]" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+              )}
+            </span>
+          </button>
+          <div className="hidden sm:flex items-center gap-1">
+            {(() => {
+              const len = Math.min(totalPages, 7);
+              const start = totalPages > 7 ? Math.max(1, Math.min(page - 3, totalPages - 6)) : 1;
+              const nums = Array.from({ length: len }, (_, i) => start + i);
+              return nums.map((pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  disabled={loading}
+                  className={`px-3 py-2 rounded-lg border ${page === pageNum ? 'bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]' : 'bg-[var(--card)] text-[var(--foreground)] border-[var(--border)] hover:bg-[var(--muted)]/60'} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {pageNum}
+                </button>
+              ));
+            })()}
+          </div>
+          <button
+            disabled={page >= totalPages || loading}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/60 disabled:opacity-50"
+          >
+            <span className="inline-flex items-center gap-2">
+              Next
+              {loading && (
+                <svg className="w-3.5 h-3.5 animate-spin text-[var(--muted-foreground)]" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+              )}
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="hidden sm:flex items-center text-sm text-[var(--muted-foreground)] mr-2">
+            <span>Showing&nbsp;</span>
+            <span className="font-medium text-[var(--foreground)]">{showingStart}-{showingEnd}</span>
+            <span>&nbsp;of&nbsp;{total}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[var(--muted-foreground)]">Page</span>
+            <input
+              type="number"
+              min={1}
+              max={totalPages || 1}
+              value={page}
+              onChange={(e) => {
+                const v = Math.max(1, Math.min(Number(e.target.value || 1), totalPages || 1));
+                setPage(v);
+              }}
+              className="w-20 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)]"
+            />
+            <span className="text-sm text-[var(--muted-foreground)]">of {totalPages}</span>
+            {loading && (
+              <svg className="w-4 h-4 animate-spin text-[var(--muted-foreground)]" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[var(--muted-foreground)]">Per page</span>
+            <select
+              value={limit}
+              onChange={(e) => { setPage(1); setLimit(Number(e.target.value)); }}
+              className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)]"
+            >
+              {[8, 12, 24, 36].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Chatbot Widget */}

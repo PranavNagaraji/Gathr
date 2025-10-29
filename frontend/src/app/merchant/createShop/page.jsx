@@ -218,6 +218,31 @@ export default function createShop() {
     const data = await res.json();
   };
 
+  if (!L) {
+    return (
+      <div className="min-h-screen p-4 md:p-8 bg-[var(--background)] text-[var(--foreground)]">
+        <div className="max-w-7xl mx-auto animate-pulse">
+          <div className="h-10 w-64 bg-[var(--muted)] rounded mb-6" />
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
+            <div className="md:col-span-3 flex flex-col gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-12 bg-[var(--muted)] rounded" />
+                ))}
+              </div>
+              <div className="w-full h-64 rounded-xl bg-[var(--muted)]" />
+              <div className="h-10 w-40 bg-[var(--muted)] rounded" />
+            </div>
+            <div className="md:col-span-2">
+              <div className="aspect-square w-full rounded-xl bg-[var(--muted)]" />
+              <div className="mt-4 h-12 bg-[var(--muted)] rounded" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ConfigProvider
       theme={{

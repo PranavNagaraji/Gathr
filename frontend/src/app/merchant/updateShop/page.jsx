@@ -39,6 +39,7 @@ const UpdateShop = () => {
     });
 
     const [imagePreview, setImagePreview] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [otherCategory, setOtherCategory] = useState("");
     const [autocomplete, setAutocomplete] = useState(null);
     const addressRef = useRef();
@@ -114,7 +115,7 @@ const UpdateShop = () => {
                 }
             } catch (err) {
                 console.error("Error fetching shop:", err);
-            }
+            } finally { setLoading(false); }
         };
         getShop();
     }, [user, isSignedIn, isLoaded, getToken, API_URL]);
@@ -202,6 +203,28 @@ const UpdateShop = () => {
             alert("Error updating shop");
         }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex flex-col md:flex-row bg-[var(--background)] text-[var(--foreground)] p-8 animate-pulse">
+                <div className="flex-1 pr-8 space-y-5 max-w-2xl">
+                    <div className="h-10 w-64 bg-[var(--muted)] rounded" />
+                    <div className="h-4 w-80 bg-[var(--muted)] rounded" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {Array.from({length:4}).map((_,i)=>(
+                            <div key={i} className="h-12 bg-[var(--muted)] rounded" />
+                        ))}
+                    </div>
+                    <div className="h-12 bg-[var(--muted)] rounded w-full" />
+                    <div className="h-12 bg-[var(--muted)] rounded w-full" />
+                    <div className="h-10 w-40 bg-[var(--muted)] rounded" />
+                </div>
+                <div className="md:w-1/2 w-full h-[50vh] md:h-auto mt-8 md:mt-0">
+                    <div className="w-full h-full bg-[var(--muted)] rounded-xl" />
+                </div>
+            </div>
+        );
+    }
 
     // ✅ Final UI
     return (

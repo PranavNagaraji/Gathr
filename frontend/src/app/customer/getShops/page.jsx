@@ -18,6 +18,14 @@ export default function CustomerDashboard() {
   const [categories, setCategories] = useState([]);
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const [catOpen, setCatOpen] = useState(false);
+  const [shopsLoading, setShopsLoading] = useState(false);
+
+  // Global item search states
+  const [itemQuery, setItemQuery] = useState("");
+  const [itemLoading, setItemLoading] = useState(false);
+  const [itemResults, setItemResults] = useState([]);
+  const [itemPage, setItemPage] = useState(1);
+  const [itemTotalPages, setItemTotalPages] = useState(1);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return;
@@ -48,6 +56,7 @@ export default function CustomerDashboard() {
 
     const get_shops = async () => {
       try {
+        setShopsLoading(true);
         const token = await getToken();
         const result = await axios.post(
           `${API_URL}/api/customer/getShops`,
@@ -63,11 +72,57 @@ export default function CustomerDashboard() {
         setCategories(["All", ...Array.from(allCategories)]);
       } catch (err) {
         console.error("Error fetching shops:", err);
+      } finally {
+        setShopsLoading(false);
       }
     };
 
     get_shops();
   }, [location, getToken, API_URL]);
+
+  // Global item search effect (debounced)
+  useEffect(() => {
+    if (!location) return;
+    if (!itemQuery.trim()) {
+      setItemResults([]);
+      setItemPage(1);
+      setItemTotalPages(1);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        setItemLoading(true);
+        const token = await getToken();
+        const res = await axios.post(
+          `${API_URL}/api/customer/searchLocalItems`,
+          {
+            lat: location.latitude,
+            long: location.longitude,
+            q: itemQuery,
+            page: itemPage,
+            limit: 12,
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!cancelled) {
+          setItemResults(res?.data?.items || []);
+          setItemTotalPages(res?.data?.totalPages || 1);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setItemResults([]);
+          setItemTotalPages(1);
+        }
+      } finally {
+        if (!cancelled) setItemLoading(false);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [itemQuery, itemPage, location, API_URL, getToken]);
 
   // Fetch personalized item recommendations
   useEffect(() => {
@@ -270,10 +325,103 @@ export default function CustomerDashboard() {
             )}
           </div>
         </div>
+        {/* Global Item Search */}
+        <div className="mt-6">
+          <label className="sr-only">Search items nearby</label>
+          <div className="relative">
+            <input
+              type="text"
+              value={itemQuery}
+              onChange={(e) => { setItemQuery(e.target.value); setItemPage(1); }}
+              placeholder="Search items across nearby shops (e.g., bread, onions, shampoo)"
+              className="w-full px-5 py-3 bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-sm placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/30 rounded-lg"
+            />
+            <svg className="w-5 h-5 text-[var(--muted-foreground)] absolute right-4 top-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
+            </svg>
+          </div>
+        </div>
       </div>
 
+      {/* Global Item Search Results */}
+      {itemQuery.trim() && (
+        <div className="max-w-7xl mx-auto mb-12">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Items near you</h2>
+            {itemTotalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setItemPage((p) => Math.max(1, p - 1))}
+                  disabled={itemPage <= 1 || itemLoading}
+                  className="px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--card)] disabled:opacity-50"
+                >Prev</button>
+                <span className="text-sm text-[var(--muted-foreground)]">Page {itemPage} of {itemTotalPages}</span>
+                <button
+                  type="button"
+                  onClick={() => setItemPage((p) => Math.min(itemTotalPages, p + 1))}
+                  disabled={itemPage >= itemTotalPages || itemLoading}
+                  className="px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--card)] disabled:opacity-50"
+                >Next</button>
+              </div>
+            )}
+          </div>
+
+          {itemLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden animate-pulse">
+                  <div className="aspect-[4/3] bg-[var(--muted)]" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-5 w-2/3 bg-[var(--muted)] rounded" />
+                    <div className="h-4 w-1/2 bg-[var(--muted)] rounded" />
+                    <div className="h-7 w-1/3 bg-[var(--muted)] rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : itemResults.length === 0 ? (
+            <p className="text-[var(--muted-foreground)]">No items found nearby for "{itemQuery}".</p>
+          ) : (
+            <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+              {itemResults.map((it) => (
+                <motion.div key={it.id} variants={cardVariants} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+                  <Link href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="block">
+                    <div className="aspect-[4/3] bg-[var(--muted)]">
+                      <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="p-4">
+                      <div className="mt-1 flex flex-wrap gap-2 min-h-[28px]">
+                        {Array.isArray(it.category) && it.category.slice(0, 2).map((cat, i) => (
+                          <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{cat}</span>
+                        ))}
+                      </div>
+                      <h3 className="font-bold text-lg mt-2 truncate">{it.name}</h3>
+                      <p className="text-2xl font-bold text-[var(--primary)] mt-1">₹{it.price}</p>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
-        {filteredShops.length === 0 ? (
+        {shopsLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-2xl shadow-md overflow-hidden border border-[var(--border)] animate-pulse">
+                <div className="h-44 md:h-48 bg-[var(--muted)]" />
+                <div className="p-4 space-y-3">
+                  <div className="h-5 w-2/3 bg-[var(--muted)] rounded" />
+                  <div className="h-4 w-1/2 bg-[var(--muted)] rounded" />
+                  <div className="h-6 w-1/3 bg-[var(--muted)] rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredShops.length === 0 ? (
           <div className="mt-10 flex flex-col items-center justify-center text-center border border-dashed border-[var(--border)] rounded-2xl p-10 bg-[var(--card)]/40">
             <div className="w-24 h-24 rounded-full bg-[var(--muted)] flex items-center justify-center mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-10 h-10 text-[var(--muted-foreground)]">

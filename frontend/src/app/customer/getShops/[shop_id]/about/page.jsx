@@ -43,7 +43,34 @@ export default function ShopAboutPage() {
 
         <div className="bg-[var(--card)] text-[var(--card-foreground)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
           {loading ? (
-            <p className="text-[var(--muted-foreground)]">Loading shop info…</p>
+            <div className="animate-pulse space-y-5">
+              <div>
+                <div className="h-8 w-48 bg-[var(--muted)] rounded" />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="h-6 w-20 bg-[var(--muted)] rounded-full" />
+                  <div className="h-6 w-16 bg-[var(--muted)] rounded-full" />
+                  <div className="h-6 w-24 bg-[var(--muted)] rounded-full" />
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="h-4 w-20 bg-[var(--muted)] rounded" />
+                  <div className="h-5 w-3/4 bg-[var(--muted)] rounded" />
+                  <div className="h-4 w-20 bg-[var(--muted)] rounded" />
+                  <div className="h-5 w-1/2 bg-[var(--muted)] rounded" />
+                </div>
+                <div className="space-y-3">
+                  <div className="h-4 w-20 bg-[var(--muted)] rounded" />
+                  <div className="h-5 w-1/2 bg-[var(--muted)] rounded" />
+                  <div className="h-4 w-28 bg-[var(--muted)] rounded" />
+                  <div className="h-5 w-1/3 bg-[var(--muted)] rounded" />
+                </div>
+              </div>
+              <div>
+                <div className="h-4 w-24 bg-[var(--muted)] rounded mb-2" />
+                <div className="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--muted)] h-72" />
+              </div>
+            </div>
           ) : shop ? (
             <div className="space-y-5">
               <div>

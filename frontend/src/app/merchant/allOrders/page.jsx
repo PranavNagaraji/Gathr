@@ -46,8 +46,30 @@ const AllOrders = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-60 text-gray-500">
-        Loading orders...
+      <div className="max-w-5xl mx-auto p-6">
+        <div className="h-8 w-48 bg-[var(--muted)] rounded mb-6 animate-pulse" />
+        <div className="space-y-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="border border-[var(--border)] rounded-2xl p-4 bg-[var(--card)] text-[var(--card-foreground)] animate-pulse">
+              <div className="flex justify-between items-center">
+                <div className="space-y-2">
+                  <div className="h-5 w-40 bg-[var(--muted)] rounded" />
+                  <div className="h-3 w-28 bg-[var(--muted)] rounded" />
+                </div>
+                <div className="h-5 w-5 bg-[var(--muted)] rounded-full" />
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="h-3 w-full bg-[var(--muted)] rounded" />
+                <div className="h-3 w-5/6 bg-[var(--muted)] rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <div className="h-8 w-16 bg-[var(--muted)] rounded" />
+          <div className="h-4 w-32 bg-[var(--muted)] rounded" />
+          <div className="h-8 w-16 bg-[var(--muted)] rounded" />
+        </div>
       </div>
     );
   }

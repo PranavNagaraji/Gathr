@@ -62,7 +62,30 @@ export default function Orders() {
     }
   }
 
-  if (loading) return <div className="p-6 text-lg">Loading orders...</div>;
+  if (loading) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="h-8 w-48 bg-[var(--muted)] rounded mb-6 animate-pulse" />
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="border border-[var(--border)] rounded-2xl shadow-sm bg-[var(--card)] text-[var(--card-foreground)] p-4 animate-pulse">
+              <div className="flex justify-between items-center">
+                <div className="space-y-2">
+                  <div className="h-5 w-40 bg-[var(--muted)] rounded" />
+                  <div className="h-3 w-28 bg-[var(--muted)] rounded" />
+                </div>
+                <div className="h-5 w-5 bg-[var(--muted)] rounded-full" />
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="h-3 w-full bg-[var(--muted)] rounded" />
+                <div className="h-3 w-5/6 bg-[var(--muted)] rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">

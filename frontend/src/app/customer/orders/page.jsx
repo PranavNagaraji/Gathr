@@ -72,7 +72,36 @@ const Orders = () => {
     getOrders();
   }, [user, isLoaded, isSignedIn, page, limit]);
 
-  if (loading) return <div className="text-center mt-10 text-[var(--muted-foreground)]">Loading orders...</div>;
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <header className="mb-6 text-center">
+          <div className="h-8 w-48 bg-[var(--muted)] rounded mx-auto animate-pulse" />
+          <div className="h-4 w-64 bg-[var(--muted)] rounded mx-auto mt-3 animate-pulse" />
+        </header>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 animate-pulse">
+              <div className="h-5 w-40 bg-[var(--muted)] rounded" />
+              <div className="h-3 w-28 bg-[var(--muted)] rounded mt-2" />
+              <div className="mt-4 space-y-2">
+                <div className="h-3 w-full bg-[var(--muted)] rounded" />
+                <div className="h-3 w-5/6 bg-[var(--muted)] rounded" />
+                <div className="h-3 w-2/3 bg-[var(--muted)] rounded" />
+                <div className="h-3 w-1/2 bg-[var(--muted)] rounded" />
+              </div>
+              <div className="mt-4 h-8 w-full bg-[var(--muted)] rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <div className="h-8 w-16 bg-[var(--muted)] rounded" />
+          <div className="h-4 w-32 bg-[var(--muted)] rounded" />
+          <div className="h-8 w-16 bg-[var(--muted)] rounded" />
+        </div>
+      </div>
+    );
+  }
 
   if (!orders.length)
     return (

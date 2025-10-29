@@ -13,6 +13,7 @@ const Cart = () => {
   const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [loadingItem, setLoadingItem] = useState(null);
   const [isMixedShops, setIsMixedShops] = useState(false);
 
@@ -24,6 +25,7 @@ const Cart = () => {
     const getItems = async () => {
       const token = await getToken();
       try {
+        setLoading(true);
         const res = await axios.post(
           `${API_URL}/api/customer/getCart`,
           { clerkId: user.id },
@@ -42,7 +44,7 @@ const Cart = () => {
         setIsMixedShops(uniqueShopIds.length > 1);
       } catch (err) {
         console.error("Error fetching cart:", err);
-      }
+      } finally { setLoading(false); }
     };
 
     getItems();
@@ -141,8 +143,35 @@ const Cart = () => {
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Your Cart</h1>
         <span className="text-sm text-[var(--muted-foreground)]">{items.length} items</span>
       </div>
-
-      {items.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start animate-pulse">
+          {/* items skeleton */}
+          <div className="lg:col-span-2 space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex justify-between items-center bg-[var(--card)] rounded-xl p-4 border border-[var(--border)]">
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 bg-[var(--muted)] rounded-lg" />
+                  <div className="space-y-2">
+                    <div className="h-4 w-40 bg-[var(--muted)] rounded" />
+                    <div className="h-3 w-24 bg-[var(--muted)] rounded" />
+                  </div>
+                </div>
+                <div className="h-9 w-40 bg-[var(--muted)] rounded-lg" />
+              </div>
+            ))}
+          </div>
+          {/* summary skeleton */}
+          <aside className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+            <div className="h-5 w-32 bg-[var(--muted)] rounded" />
+            <div className="mt-4 space-y-3">
+              <div className="h-4 w-full bg-[var(--muted)] rounded" />
+              <div className="h-4 w-5/6 bg-[var(--muted)] rounded" />
+              <div className="h-4 w-2/3 bg-[var(--muted)] rounded" />
+            </div>
+            <div className="mt-5 h-10 w-full bg-[var(--muted)] rounded" />
+          </aside>
+        </div>
+      ) : items.length === 0 ? (
         <div className="mt-10 flex flex-col items-center justify-center text-center border border-dashed border-[var(--border)] rounded-2xl p-10 bg-[var(--card)]/40">
           <div className="w-24 h-24 rounded-full bg-[var(--muted)] flex items-center justify-center mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-10 h-10 text-[var(--muted-foreground)]">
