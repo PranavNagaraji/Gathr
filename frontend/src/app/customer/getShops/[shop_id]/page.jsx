@@ -38,6 +38,7 @@ export default function ShopItems() {
   });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [sliderMaxCap, setSliderMaxCap] = useState(10000);
   
   // Get unique values for filters
   const priceMin = 0;
@@ -100,6 +101,7 @@ export default function ShopItems() {
             if (curUpper === nextUpper) return prev;
             return { ...prev, priceRange: [prev.priceRange?.[0] ?? 0, nextUpper] };
           });
+          setSliderMaxCap(nextUpper);
           setDidInitPriceRange(true);
         }
       } catch (err) {
@@ -368,8 +370,8 @@ export default function ShopItems() {
                     <input
                       type="range"
                       min={priceMin}
-                      max={10000}
-                      value={Math.min(filters.priceRange[1] ?? 0, 10000)}
+                      max={sliderMaxCap}
+                      value={Math.min(filters.priceRange[1] ?? 0, sliderMaxCap)}
                       onChange={(e) => setFilters({
                         ...filters,
                         priceRange: [filters.priceRange[0], parseInt(e.target.value)]
@@ -378,20 +380,21 @@ export default function ShopItems() {
                     />
                     <div className="flex justify-between text-xs text-[var(--muted-foreground)] mt-1">
                       <span>₹{priceMin}</span>
-                      <span>₹10000+</span>
+                      <span>₹{sliderMaxCap}+</span>
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <div className="flex flex-col col-span-2 sm:col-span-1">
-                        <label className="text-xs text-[var(--muted-foreground)] mb-1">Min</label>
+                        <label className="text-xs text-[var(--muted-foreground)] mb-1">Max</label>
                         <input
                           type="number"
-                          min={priceMin}
-                          max={filters.priceRange[1]}
-                          value={filters.priceRange[0]}
+                          min={filters.priceRange[0]}
+                          max={9999999}
+                          value={sliderMaxCap}
                           onChange={(e) => {
                             const raw = Number(e.target.value || 0);
-                            const v = Math.max(priceMin, Math.min(raw, filters.priceRange[1]));
-                            setFilters({ ...filters, priceRange: [v, filters.priceRange[1]] });
+                            const cap = Math.max(filters.priceRange[0], raw);
+                            setSliderMaxCap(cap);
+                            setFilters({ ...filters, priceRange: [filters.priceRange[0], Math.min(filters.priceRange[1], cap)] });
                           }}
                           inputMode="numeric"
                           step={1}
