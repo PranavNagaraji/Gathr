@@ -207,6 +207,28 @@ export default function CustomerDashboard() {
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20 relative">
+      {/* Floating FAB to open Recommendations */}
+      <div className="z-50 fixed bottom-6 right-6">
+        <motion.button
+          type="button"
+          onClick={() => setShowRecs(true)}
+          aria-label="Open recommendations"
+          initial={{ scale: 0.98, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.97 }}
+          className="group relative h-14 w-14 grid place-items-center rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] shadow-lg border border-[color-mix(in_oklab,var(--primary),black_15%)] fixed bottom-6 right-6 z-50"
+        >
+          {/* subtle halo */}
+          <span className="absolute inset-0 rounded-full bg-[var(--primary)]/25 blur-xl -z-10" />
+          {/* icon */}
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+            <path d="M12 2l1.9 4.6 4.9.4-3.7 3.2 1.1 4.8L12 12.9 7.8 15l1.1-4.8L5.2 7l4.9-.4L12 2z"/>
+          </svg>
+          {/* hover tooltip */}
+          <span className="pointer-events-none absolute -left-2 -translate-x-full top-1/2 -translate-y-1/2 whitespace-nowrap text-xs px-2 py-1 rounded-md bg-[var(--popover)] text-[var(--popover-foreground)] border border-[var(--border)] opacity-0 group-hover:opacity-100 transition-opacity">Recommendations</span>
+        </motion.button>
+      </div>
       {/* Header */}
       <div className="max-w-5xl mx-auto text-center mb-10">
         <h1 className="font-extrabold text-4xl sm:text-5xl md:text-6xl leading-tight tracking-tight text-[var(--foreground)]">
@@ -216,15 +238,6 @@ export default function CustomerDashboard() {
           Discover and support authentic local merchants — curated for your neighbourhood.
         </p>
       </div>
-
-      {/* Floating Button to open Recommendations */}
-      <button
-        type="button"
-        onClick={() => setShowRecs(true)}
-        className="fixed bottom-6 right-6 z-40 px-4 py-3 rounded-full shadow-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
-      >
-        Show Recommendations
-      </button>
 
       {/* Recommendations Overlay */}
       {showRecs && (
