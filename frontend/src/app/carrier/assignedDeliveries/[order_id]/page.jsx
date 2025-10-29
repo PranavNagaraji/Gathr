@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useUser, useAuth } from '@clerk/nextjs';
 import axios from 'axios';
 import { useRouter, useParams } from 'next/navigation';
 import DeliveryRouteMap from '../../../../components/DeliveryRouteMap';
 import { toast } from 'react-hot-toast';
+import { io } from 'socket.io-client';
 
 export default function AssignedDeliveryDetail() {
   const { user } = useUser();
@@ -16,6 +17,10 @@ export default function AssignedDeliveryDetail() {
 
   const [order, setOrder] = useState(null);
   const [carrierLocation, setCarrierLocation] = useState(null);
+  const socketRef = useRef(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [messages, setMessages] = useState([]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return;
@@ -57,6 +62,70 @@ export default function AssignedDeliveryDetail() {
     getCarrierLocation();
   }, [user, isLoaded, isSignedIn, params.order_id]);
 
+  // Init socket once order is known
+  useEffect(() => {
+    if (!order || !API_URL) return;
+    if (socketRef.current) return;
+    const s = io(API_URL, { withCredentials: true, transports: ['websocket','polling'] });
+    socketRef.current = s;
+    s.emit('room:join', { orderId: order.id, role: 'carrier', name: user?.fullName || '' });
+    s.on('chat:message', (msg) => {
+      setMessages((prev) => [...prev.slice(-199), msg]);
+      if (!chatOpen) {
+        toast.success('New message from customer');
+        setChatOpen(true);
+      }
+    });
+    return () => { s.disconnect(); socketRef.current = null; };
+  }, [order?.id, API_URL]);
+
+  // Periodically publish carrier live location while on this page
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !user) return;
+    let timerId;
+    const pushLocation = async (lat, long) => {
+      try {
+        const token = await getToken();
+        await axios.post(
+          `${API_URL}/api/delivery/updateLocation`,
+          { clerkId: user.id, lat, long },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } catch (_) {}
+      // Also emit via socket if available
+      if (socketRef.current && order?.id) {
+        socketRef.current.emit('location:update', { orderId: order.id, lat, long });
+      }
+    };
+    const tick = () => {
+      if (!('geolocation' in navigator)) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setCarrierLocation({ lat: latitude, lng: longitude });
+          pushLocation(latitude, longitude);
+        },
+        () => {
+          // ignore
+        },
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 8000 }
+      );
+    };
+    // fire immediately and then every 5s
+    tick();
+    timerId = window.setInterval(tick, 5000);
+    return () => { if (timerId) window.clearInterval(timerId); };
+  }, [isLoaded, isSignedIn, user, getToken, API_URL, order?.id]);
+
+  const sendMessage = () => {
+    const text = chatInput.trim();
+    if (!text || !socketRef.current || !order) return;
+    const msg = { orderId: order.id, from: 'carrier', text, name: user?.fullName || '' };
+    socketRef.current.emit('chat:message', msg);
+    setMessages((prev) => [...prev.slice(-199), { ...msg, ts: Date.now() }]);
+    setChatInput('');
+  };
+
   const handleComplete = async () => {
     if (!order) return;
     try {
@@ -89,6 +158,31 @@ export default function AssignedDeliveryDetail() {
             selectedOrder={order}
             onDeliveryComplete={handleComplete}
           />
+        )}
+
+        {order && (
+          <div className="mt-4">
+            <button onClick={() => setChatOpen((v)=>!v)} className="w-full md:w-auto px-4 py-2 rounded bg-[var(--muted)] text-[var(--muted-foreground)] hover:opacity-90">{chatOpen ? 'Hide' : 'Chat with customer'}</button>
+            {chatOpen && (
+              <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--card)]">
+                <div className="max-h-64 overflow-y-auto p-3 flex flex-col gap-2">
+                  {messages.length === 0 && <p className="text-xs text-[var(--muted-foreground)]">Say hi to the customer.</p>}
+                  {messages.map((m, i) => {
+                    const me = m.from === 'carrier';
+                    return (
+                      <div key={i} className={`flex ${me ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm ${me ? 'bg-[var(--primary)] text-[var(--primary-foreground)]' : 'bg-[var(--muted)] text-[var(--foreground)]'}`}>{m.text}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-2 p-2 border-t border-[var(--border)]">
+                  <input value={chatInput} onChange={(e)=>setChatInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') sendMessage(); }} placeholder="Type a message" className="flex-1 bg-transparent px-3 py-2 rounded border border-[var(--border)] focus:outline-none" />
+                  <button onClick={sendMessage} className="px-3 py-2 rounded bg-[var(--primary)] text-[var(--primary-foreground)]">Send</button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

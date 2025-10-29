@@ -1,4 +1,7 @@
 import express from "express";
+import http from "http";
+import { Server as SocketIOServer } from "socket.io";
+
 import { Clerk } from "@clerk/clerk-sdk-node";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -17,14 +20,49 @@ dotenv.config();
 const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 
 const app = express();
-
+const server = http.createServer(app);
 
 //cors policy security check
+const allowedOrigins = ["https://gathr-se.vercel.app", "http://localhost:3000"];
 app.use(cors({
-  origin: ["https://gathr-se.vercel.app" , "http://localhost:3000"], 
+  origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true
 }));
+
+// Socket.IO server with same CORS
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+io.on("connection", (socket) => {
+  // client will join order-specific room
+  socket.on("room:join", ({ orderId, role, name }) => {
+    if (!orderId) return;
+    const room = `order:${orderId}`;
+    socket.join(room);
+    io.to(room).emit("system:joined", { who: role || "user", name: name || "", ts: Date.now() });
+  });
+
+  // carrier pushes location; broadcast to room
+  socket.on("location:update", ({ orderId, lat, long }) => {
+    if (!orderId || lat == null || long == null) return;
+    const room = `order:${orderId}`;
+    io.to(room).emit("location:update", { lat: Number(lat), long: Number(long), ts: Date.now() });
+  });
+
+  // chat messages (no persistence)
+  socket.on("chat:message", ({ orderId, from, text, name }) => {
+    if (!orderId || !text) return;
+    const room = `order:${orderId}`;
+    // send to everyone EXCEPT the sender to avoid duplicates on sender
+    socket.to(room).emit("chat:message", { from: from || "user", text, name: name || "", ts: Date.now() });
+  });
+});
 
 // CRITICAL: Webhook route MUST come BEFORE express.json()
 // Stripe needs raw body for signature verification
@@ -52,7 +90,6 @@ app.use("/stripe", stripeRoutes);
 app.use("/api/delivery", deliveryRoutes);
 //test route
 app.get("/", (req, res) => res.send("Hello from backend!"));
-
 
 app.post("/set-role", async (req, res) => {
   const { userId, role } = req.body;
@@ -157,4 +194,4 @@ async function ensureWishlistSchema() {
   }
 }
 
-app.listen(5000, () => console.log("Backend listening running on http://localhost:5000"));
+server.listen(5000, () => console.log("Backend + Socket.IO running on http://localhost:5000"));

@@ -108,18 +108,11 @@ export default function DeliveryRouteMap({
   const getPinIcons = () => {
     const L = LRef.current;
     if (!L) return {};
-    // Use project public assets for consistent icons
     const shadowUrl = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png';
     return {
-      delivery: L.icon({
-        iconUrl: `/motorbike.png`, shadowUrl, iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -28], shadowSize: [41,41]
-      }),
-      shop: L.icon({
-        iconUrl: `/store.png`, shadowUrl, iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -28], shadowSize: [41,41]
-      }),
-      customer: L.icon({
-        iconUrl: `/destination.png`, shadowUrl, iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -28], shadowSize: [41,41]
-      }),
+      delivery: L.icon({ iconUrl: `/motorbike.png`, shadowUrl, iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28], shadowSize: [41,41] }),
+      shop: L.icon({ iconUrl: `/store.png`, shadowUrl, iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28], shadowSize: [41,41] }),
+      customer: L.icon({ iconUrl: `/destination.png`, shadowUrl, iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28], shadowSize: [41,41] }),
     };
   };
 

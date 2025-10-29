@@ -363,6 +363,34 @@ export const getcartitems = async (req, res) => {
   return res.status(200).json({ items });
 }
 
+export const getOrderByCart = async (req, res) => {
+  try {
+    const { clerkId, cartId } = req.body || {};
+    if (!clerkId || !cartId) return res.status(400).json({ message: 'Missing clerkId or cartId' });
+
+    const { data: user, error: userError } = await supabase
+      .from('Users')
+      .select('id, role')
+      .eq('clerk_id', clerkId)
+      .maybeSingle();
+    if (userError || !user) return res.status(404).json({ message: 'User not found' });
+    if (user.role !== 'customer') return res.status(403).json({ message: 'Unauthorized' });
+
+    const { data: order, error } = await supabase
+      .from('Orders')
+      .select('*, Shops(*), Addresses(*), Users:carrier_id(*)')
+      .eq('customer_id', user.id)
+      .eq('cart_id', cartId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ message: 'Failed to fetch order', error });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    return res.status(200).json({ order });
+  } catch (e) {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 export const getItemsByIds = async (req, res) => {
   try {
     const { ids } = req.body || {};

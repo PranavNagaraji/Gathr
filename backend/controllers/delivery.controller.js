@@ -122,6 +122,36 @@ export const getOnTheWay = async (req, res) => {
     }
 }
 
+export const updateCarrierLocation = async (req, res) => {
+  try {
+    const { clerkId, lat, long } = req.body || {};
+    if (!clerkId || lat == null || long == null) {
+      return res.status(400).json({ message: "Missing clerkId, lat or long" });
+    }
+    const { data: user, error: userError } = await supabase
+      .from('Users')
+      .select('id, role, delivery_details')
+      .eq('clerk_id', clerkId)
+      .maybeSingle();
+    if (userError || !user) return res.status(404).json({ message: 'User not found' });
+    if (user.role !== 'carrier') return res.status(403).json({ message: 'Unauthorized: Only carriers can update location' });
+
+    const prev = user.delivery_details || {};
+    const next = {
+      ...prev,
+      current_location: { lat: Number(lat), long: Number(long), updated_at: new Date().toISOString() },
+    };
+    const { error: updErr } = await supabase
+      .from('Users')
+      .update({ delivery_details: next })
+      .eq('id', user.id);
+    if (updErr) return res.status(500).json({ message: 'Failed to update location', error: updErr });
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
 export const getCarrier = async (req, res) => {
     const { carrierId } = req.params;
     const { data, error } = await supabase
