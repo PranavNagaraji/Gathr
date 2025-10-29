@@ -94,7 +94,7 @@ export default function ShopItems() {
 
         if (alive && fetchedItems.length > 0 && !didInitPriceRange) {
           const maxPrice = Math.ceil(Math.max(...fetchedItems.map(item => item.price || 0)) / 500) * 500;
-          const nextUpper = Math.max(maxPrice || 0, 1000);
+          const nextUpper = Math.max(maxPrice || 0, 10000);
           setFilters(prev => {
             const curUpper = Array.isArray(prev.priceRange) ? prev.priceRange[1] : undefined;
             if (curUpper === nextUpper) return prev;
@@ -322,12 +322,14 @@ export default function ShopItems() {
           </div>
 
           {/* Filter Panel */}
+          <AnimatePresence initial={false}>
           {isFilterOpen && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
+            <motion.div
+              key="filters-panel"
+              initial={{ opacity: 0, y: -8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
               className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 shadow-lg overflow-hidden"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -366,8 +368,8 @@ export default function ShopItems() {
                     <input
                       type="range"
                       min={priceMin}
-                      max={priceMax}
-                      value={filters.priceRange[1]}
+                      max={10000}
+                      value={Math.min(filters.priceRange[1] ?? 0, 10000)}
                       onChange={(e) => setFilters({
                         ...filters,
                         priceRange: [filters.priceRange[0], parseInt(e.target.value)]
@@ -376,7 +378,27 @@ export default function ShopItems() {
                     />
                     <div className="flex justify-between text-xs text-[var(--muted-foreground)] mt-1">
                       <span>₹{priceMin}</span>
-                      <span>₹{priceMax}+</span>
+                      <span>₹10000+</span>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="flex flex-col col-span-2 sm:col-span-1">
+                        <label className="text-xs text-[var(--muted-foreground)] mb-1">Min</label>
+                        <input
+                          type="number"
+                          min={priceMin}
+                          max={filters.priceRange[1]}
+                          value={filters.priceRange[0]}
+                          onChange={(e) => {
+                            const raw = Number(e.target.value || 0);
+                            const v = Math.max(priceMin, Math.min(raw, filters.priceRange[1]));
+                            setFilters({ ...filters, priceRange: [v, filters.priceRange[1]] });
+                          }}
+                          inputMode="numeric"
+                          step={1}
+                          onKeyDown={(e) => { if (["e","E","+","-","."].includes(e.key)) e.preventDefault(); }}
+                          className="px-3 py-2 w-28 text-right rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/30"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -458,6 +480,7 @@ export default function ShopItems() {
               </div>
             </motion.div>
           )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -488,7 +511,7 @@ export default function ShopItems() {
                 onClick={() => {
                   setSearch('');
                   setFilters({
-                    category: "All",
+                    categories: [],
                     priceRange: [priceMin, priceMax],
                     inStock: false,
                     sortBy: "featured",

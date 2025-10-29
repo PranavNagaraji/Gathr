@@ -88,9 +88,42 @@ export const searchLocalItems = async (req, res) => {
 
     const term = String(q || '').trim();
     if (term) {
-      query = query.or(`name.ilike.%${term}%,description.ilike.%${term}%`);
+      // Fetch a capped list then filter in JS to also match category text (partial, case-insensitive)
+      let base = supabase
+        .from('Items')
+        .select('*')
+        .in('shop_id', shopIds);
+
+      const { data: allItems, error: qErr } = await base.limit(1000);
+      if (qErr) return res.status(500).json({ message: 'Error fetching items', error: qErr });
+
+      const needle = term.toLowerCase();
+      let list = (allItems || []).filter((it) => {
+        const name = String(it.name || '').toLowerCase();
+        const desc = String(it.description || '').toLowerCase();
+        const cats = Array.isArray(it.category) ? it.category.map((c) => String(c || '').toLowerCase()) : [];
+        return name.includes(needle) || desc.includes(needle) || cats.some((c) => c.includes(needle));
+      });
+
+      // Sort to keep parity with default path
+      list.sort((a, b) => (Number(b.rating ?? 0) - Number(a.rating ?? 0)) || (new Date(b.created_at || 0) - new Date(a.created_at || 0)));
+
+      const total = list.length;
+      const totalPages = Math.max(Math.ceil(total / limitNum), 1);
+      const sliced = list.slice(from, from + limitNum);
+
+      return res.status(200).json({
+        items: sliced,
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+        hasPrev: pageNum > 1,
+        hasNext: pageNum < totalPages,
+      });
     }
 
+    // When no search term, use DB pagination and ordering
     query = query.order('rating', { ascending: false }).order('created_at', { ascending: false });
 
     const { data: items, error, count } = await query.range(from, to);
