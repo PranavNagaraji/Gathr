@@ -29,6 +29,7 @@ const CartItems = () => {
   const [messages, setMessages] = useState([]);
   const routeLineRef = useRef(null);
   const [etaInfo, setEtaInfo] = useState(null);
+  const getChatKey = (oid) => (oid ? `chat_${oid}` : null);
 
   // Dynamically load Leaflet once on client
   useEffect(() => {
@@ -83,6 +84,14 @@ const CartItems = () => {
         );
         const ord = res?.data?.order || null;
         setOrder(ord);
+        // Load chat memory for this order once we know the ID
+        const key = getChatKey(ord?.id);
+        if (key && typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem(key);
+            if (raw) setMessages(JSON.parse(raw));
+          } catch (_) {}
+        }
         const loc = ord?.Users?.delivery_details?.current_location;
         if (loc && (loc.lat != null) && (loc.long != null)) {
           setDriverLoc({ lat: Number(loc.lat), lng: Number(loc.long) });
@@ -112,6 +121,24 @@ const CartItems = () => {
       socketRef.current = null;
     };
   }, [order?.id, order?.status, API_URL]);
+
+  // Persist chat memory per order in localStorage
+  useEffect(() => {
+    const key = getChatKey(order?.id);
+    if (!key || typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(key, JSON.stringify(messages.slice(-200)));
+    } catch (_) {}
+  }, [messages, order?.id]);
+
+  // Clear chat memory when order is delivered
+  useEffect(() => {
+    const key = getChatKey(order?.id);
+    if (!key || typeof window === 'undefined') return;
+    if (String(order?.status || '').toLowerCase() === 'delivered') {
+      try { localStorage.removeItem(key); } catch (_) {}
+    }
+  }, [order?.status, order?.id]);
 
   const sendMessage = () => {
     const text = chatInput.trim();
@@ -233,7 +260,7 @@ const CartItems = () => {
                 </div>
               )}
               <div className="md:col-span-3">
-                <button onClick={() => setChatOpen((v) => !v)} className="w-full md:w-auto px-4 py-2 rounded bg-[var(--muted)] text-[var(--muted-foreground)] hover:opacity-90">{chatOpen ? 'Hide' : 'Chat with delivery partner'}</button>
+                <button onClick={() => setChatOpen((v) => !v)} className="w-full md:w-auto px-4 py-2 rounded bg-neutral-900 text-white dark:bg-[var(--muted)] dark:text-[var(--muted-foreground)] hover:opacity-90">{chatOpen ? 'Hide' : 'Chat with delivery partner'}</button>
                 {chatOpen && (
                   <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--card)]">
                     <div className="max-h-64 overflow-y-auto p-3 flex flex-col gap-2">

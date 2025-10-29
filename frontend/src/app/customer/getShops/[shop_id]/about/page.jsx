@@ -29,6 +29,19 @@ export default function ShopAboutPage() {
     return () => { cancelled = true; };
   }, [shop_id, API_URL]);
 
+  const getShopImageUrl = (s) => {
+    if (!s) return "/placeholder.png";
+    return (
+      s.banner?.url || s.banner ||
+      s.cover?.url || s.cover ||
+      s.image?.url || s.image ||
+      s.logo?.url || s.logo || s.logo_url ||
+      s.image_url || s.thumbnail ||
+      (Array.isArray(s.images) && (s.images[0]?.url || s.images[0])) ||
+      "/placeholder.png"
+    );
+  };
+
   const lat = shop?.Location?.latitude || shop?.Location?.Latitude || shop?.location?.latitude;
   const lng = shop?.Location?.longitude || shop?.Location?.Longitude || shop?.location?.longitude;
   const hasCoords = lat != null && lng != null && `${lat}` !== "" && `${lng}` !== "";
@@ -40,6 +53,16 @@ export default function ShopAboutPage() {
           <h1 className="font-extrabold text-3xl sm:text-4xl tracking-tight">Shop Details</h1>
           <Link href={`/customer/getShops/${shop_id}`} className="px-4 py-2 rounded-lg border border-[var(--border)] hover:bg-[var(--muted)]/50">Back to items</Link>
         </div>
+
+        {/* Hero image */}
+        {!loading && shop && (
+          <div className="rounded-2xl overflow-hidden border border-[var(--border)] mb-6">
+            <div className="relative h-44 sm:h-56 md:h-64">
+              <img src={getShopImageUrl(shop)} alt={shop.shop_name || 'Shop'} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            </div>
+          </div>
+        )}
 
         <div className="bg-[var(--card)] text-[var(--card-foreground)] p-6 rounded-2xl shadow-sm border border-[var(--border)]">
           {loading ? (

@@ -21,6 +21,7 @@ export default function AssignedDeliveryDetail() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState([]);
+  const getChatKey = (oid) => (oid ? `chat_${oid}` : null);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return;
@@ -35,7 +36,17 @@ export default function AssignedDeliveryDetail() {
         );
         const list = res.data.ShopsAndAddresses || [];
         const found = list.find((o) => String(o.id) === String(params.order_id));
-        if (found) setOrder(found);
+        if (found) {
+          setOrder(found);
+          // Load chat memory
+          const key = getChatKey(found.id);
+          if (key && typeof window !== 'undefined') {
+            try {
+              const raw = localStorage.getItem(key);
+              if (raw) setMessages(JSON.parse(raw));
+            } catch (_) {}
+          }
+        }
         else toast.error('Order not found');
       } catch (err) {
         console.error(err);
@@ -78,6 +89,13 @@ export default function AssignedDeliveryDetail() {
     });
     return () => { s.disconnect(); socketRef.current = null; };
   }, [order?.id, API_URL]);
+
+  // Persist chat memory per order in localStorage
+  useEffect(() => {
+    const key = getChatKey(order?.id);
+    if (!key || typeof window === 'undefined') return;
+    try { localStorage.setItem(key, JSON.stringify(messages.slice(-200))); } catch (_) {}
+  }, [messages, order?.id]);
 
   // Periodically publish carrier live location while on this page
   useEffect(() => {
@@ -136,6 +154,8 @@ export default function AssignedDeliveryDetail() {
         { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
       );
       toast.success(res.data.message || 'Delivery completed');
+      // Clear chat memory for this order
+      try { const key = getChatKey(order.id); if (key) localStorage.removeItem(key); } catch (_) {}
       router.push('/carrier/assignedDeliveries');
     } catch (error) {
       console.error('Error completing delivery:', error);
@@ -162,7 +182,7 @@ export default function AssignedDeliveryDetail() {
 
         {order && (
           <div className="mt-4">
-            <button onClick={() => setChatOpen((v)=>!v)} className="w-full md:w-auto px-4 py-2 rounded bg-[var(--muted)] text-[var(--muted-foreground)] hover:opacity-90">{chatOpen ? 'Hide' : 'Chat with customer'}</button>
+            <button onClick={() => setChatOpen((v)=>!v)} className="w-full md:w-auto px-4 py-2 rounded bg-neutral-900 text-white dark:bg-[var(--muted)] dark:text-[var(--muted-foreground)] hover:opacity-90">{chatOpen ? 'Hide' : 'Chat with customer'}</button>
             {chatOpen && (
               <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--card)]">
                 <div className="max-h-64 overflow-y-auto p-3 flex flex-col gap-2">
