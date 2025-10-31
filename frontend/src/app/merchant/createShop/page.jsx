@@ -75,7 +75,7 @@ export default function createShop() {
         // ignore errors; user likely has no shop yet
       }
     };
-    checkExistingShop();
+    // checkExistingShop();
   }, [user, getToken, API_URL, router]);
 
   // MODIFIED: Leaflet dynamic import and icon fix

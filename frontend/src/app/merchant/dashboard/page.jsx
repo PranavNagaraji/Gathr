@@ -1,10 +1,103 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import AnimatedButton from "@/components/ui/AnimatedButton";
+
+// Lightweight canvas bar chart (no external deps)
+function CanvasBarChart({ labels = [], values = [], height = 160, color = undefined, grid = true }) {
+    const canvasRef = useRef(null);
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const parent = canvas.parentElement;
+        const dpr = window.devicePixelRatio || 1;
+        const widthCss = Math.max(300, parent.clientWidth);
+        const heightCss = height;
+        canvas.width = Math.floor(widthCss * dpr);
+        canvas.height = Math.floor(heightCss * dpr);
+        canvas.style.width = widthCss + "px";
+        canvas.style.height = heightCss + "px";
+        const ctx = canvas.getContext("2d");
+        ctx.scale(dpr, dpr);
+
+        // Resolve theme color var(--primary) to actual color
+        let barColor = color;
+        if (!barColor) {
+            const tmp = document.createElement('div');
+            tmp.style.background = 'var(--primary)';
+            document.body.appendChild(tmp);
+            barColor = getComputedStyle(tmp).backgroundColor || '#4f46e5';
+            tmp.remove();
+        }
+        const axisColor = getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground') || 'rgba(0,0,0,0.5)';
+
+        // Padding and sizes
+        const padL = 28, padR = 12, padT = 12, padB = 22;
+        const w = widthCss - padL - padR;
+        const h = heightCss - padT - padB;
+
+        // Background
+        ctx.clearRect(0, 0, widthCss, heightCss);
+
+        // Grid
+        const maxVal = Math.max(1, ...values);
+        if (grid) {
+            ctx.strokeStyle = 'rgba(127,127,127,0.18)';
+            ctx.lineWidth = 1;
+            const gridLines = 4;
+            for (let i = 0; i <= gridLines; i++) {
+                const y = padT + (h * i) / gridLines;
+                ctx.beginPath();
+                ctx.moveTo(padL, y);
+                ctx.lineTo(padL + w, y);
+                ctx.stroke();
+            }
+        }
+
+        // Bars
+        const n = values.length || 1;
+        const gap = 8;
+        const bw = Math.max(6, (w - gap * (n - 1)) / n);
+        ctx.fillStyle = barColor;
+        for (let i = 0; i < n; i++) {
+            const v = values[i] || 0;
+            const x = padL + i * (bw + gap);
+            const hh = Math.max(4, (v / maxVal) * h);
+            const y = padT + h - hh;
+            ctx.beginPath();
+            ctx.roundRect(x, y, bw, hh, 4);
+            ctx.fill();
+        }
+
+        // X labels
+        ctx.fillStyle = axisColor.trim() || '#6b7280';
+        ctx.font = '10px system-ui, -apple-system, Segoe UI, Roboto';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        for (let i = 0; i < n; i++) {
+            const x = padL + i * (bw + gap) + bw / 2;
+            ctx.fillText(String(labels[i] || ''), x, padT + h + 6);
+        }
+    }, [labels, values, height, color]);
+
+    // Resize handler
+    useEffect(() => {
+        const ro = new ResizeObserver(() => {
+            const c = canvasRef.current;
+            if (!c) return;
+            // retrigger draw by changing a state? Simpler: force reflow by toggling width style
+            c.style.width = c.parentElement.clientWidth + 'px';
+        });
+        const parent = canvasRef.current?.parentElement;
+        if (parent) ro.observe(parent);
+        return () => ro.disconnect();
+    }, []);
+
+    return <canvas ref={canvasRef} />;
+}
 
 export default function Dashboard() {
     const router = useRouter();
@@ -270,13 +363,8 @@ export default function Dashboard() {
                         <h2 className="text-lg font-semibold">Performance (7 days)</h2>
                         <span className="text-xs text-[var(--muted-foreground)]">Revenue</span>
                     </div>
-                    <div className="mt-4 grid grid-cols-7 gap-2 items-end h-32">
-                        {last7.map((d) => (
-                            <div key={d.key} className="flex flex-col items-center gap-1">
-                                <div className="w-full bg-[var(--muted)] rounded" style={{ height: `${Math.max(6, (d.value / maxVal) * 100)}%` }} />
-                                <div className="text-[10px] text-[var(--muted-foreground)]">{d.label}</div>
-                            </div>
-                        ))}
+                    <div className="mt-3">
+                        <CanvasBarChart labels={last7.map(d=>d.label)} values={last7.map(d=>d.value)} height={160} />
                     </div>
                     {topItems.length > 0 && (
                         <div className="mt-4">
@@ -336,7 +424,7 @@ export default function Dashboard() {
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-1">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-base font-semibold">Low Stock</h3>
-                            <span className="text-xs text-[var(--muted-foreground)]">≤ 5 units</span>
+                            <span className="text-xs text-[var(--muted-foreground)]">≤ {Number(lowThreshold) || 5} units</span>
                         </div>
                         {lowStockItems.length === 0 ? (
                             <p className="text-sm text-[var(--muted-foreground)]">All good! No low-stock items.</p>
@@ -418,13 +506,8 @@ export default function Dashboard() {
                             <h3 className="text-base font-semibold">Orders over time</h3>
                             <span className="text-xs text-[var(--muted-foreground)]">Last 7 days</span>
                         </div>
-                        <div className="mt-1 grid grid-cols-7 gap-2 items-end h-28">
-                            {ordersCountSeries.map((d) => (
-                                <div key={d.key} className="flex flex-col items-center gap-1">
-                                    <div className="w-full bg-[var(--muted)] rounded" style={{ height: `${Math.max(6, (d.value / ordersMaxVal) * 100)}%` }} />
-                                    <div className="text-[10px] text-[var(--muted-foreground)]">{d.label}</div>
-                                </div>
-                            ))}
+                        <div className="mt-1">
+                            <CanvasBarChart labels={ordersCountSeries.map(d=>d.label)} values={ordersCountSeries.map(d=>d.value)} height={140} />
                         </div>
                     </div>
 
