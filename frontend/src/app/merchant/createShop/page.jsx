@@ -53,6 +53,9 @@ export default function createShop() {
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     libraries: ["places"],
   });
+  const placesReady = typeof window !== 'undefined' && mapLoaded && !!(window.google?.maps?.places);
+  const [predictions, setPredictions] = useState([]);
+  const sessionTokenRef = useRef(null);
 
   // Redirect if shop already exists for this owner
   useEffect(() => {
@@ -82,17 +85,15 @@ export default function createShop() {
       // Dynamically import Leaflet
       const Leaflet = (await import('leaflet')).default;
 
-      // Set up the default icon
-      const defaultIcon = Leaflet.icon({
-        iconUrl: markerIcon.src, // FIXED: Use .src for static image imports
-        iconRetinaUrl: markerIcon2x.src, // FIXED: Use .src
-        shadowUrl: markerShadow.src, // FIXED: Use .src
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41],
-      });
-      Leaflet.Marker.prototype.options.icon = defaultIcon;
+      // Set up the default icon (robust way)
+      try {
+        delete Leaflet.Icon.Default.prototype._getIconUrl;
+        Leaflet.Icon.Default.mergeOptions({
+          iconUrl: markerIcon,
+          iconRetinaUrl: markerIcon2x,
+          shadowUrl: markerShadow,
+        });
+      } catch {}
 
       // Save the loaded Leaflet instance to state to trigger map render
       setL(Leaflet);
@@ -105,6 +106,48 @@ export default function createShop() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Address input with Places fallback predictions
+  const handleAddressInputChange = (e) => {
+    const value = e.target.value;
+    setFormData(prev => ({ ...prev, address: value }));
+    if (!placesReady) return;
+    if (!sessionTokenRef.current) sessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
+    if (value.trim().length < 3) { setPredictions([]); return; }
+    const svc = new window.google.maps.places.AutocompleteService();
+    const opts = {
+      input: value,
+      sessionToken: sessionTokenRef.current,
+      componentRestrictions: { country: 'in' },
+      types: ['geocode'],
+    };
+    svc.getPlacePredictions(opts, (res, status) => {
+      if (status !== window.google.maps.places.PlacesServiceStatus.OK || !res) {
+        console.warn('Places predictions status:', status);
+        setPredictions([]);
+        return;
+      }
+      setPredictions(res);
+    });
+  };
+
+  const pickPrediction = (prediction) => {
+    if (!placesReady) return;
+    const svc = new window.google.maps.places.PlacesService(document.createElement('div'));
+    svc.getDetails({ placeId: prediction.place_id, fields: ['formatted_address','geometry'] }, (place, status) => {
+      if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place?.geometry) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      setFormData(prev => ({ ...prev, address: place.formatted_address || prediction.description, location: { latitude: lat, longitude: lng } }));
+      setPredictions([]);
+      try {
+        if (mapInstanceRef.current && markerRef.current) {
+          mapInstanceRef.current.setView([lat, lng], 15);
+          markerRef.current.setLatLng([lat, lng]);
+        }
+      } catch {}
+    });
   };
 
   // Category toggle
@@ -286,18 +329,36 @@ export default function createShop() {
               </div>
 
               {/* Address with Google Places */}
-              <div>
+              <div className="relative">
                 <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>ADDRESS</Typography>
                 <input
                   type="text"
                   name="address"
                   ref={addressRef}
                   value={formData.address}
-                  onChange={handleChange}
+                  onChange={handleAddressInputChange}
                   placeholder="Start typing your address..."
                   className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)] transition-colors"
                 />
                 <p className="text-[10px] text-[var(--muted-foreground)] mt-1">Drag the marker on the map to fine-tune location.</p>
+                <div className="mt-1">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${placesReady ? 'bg-[color-mix(in_oklab,var(--success),white_85%)] text-[var(--success)]' : 'bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)]'}`}>
+                    Google Places: {placesReady ? 'Ready' : 'Unavailable'}
+                  </span>
+                </div>
+                {(predictions.length > 0 || (formData.address?.trim()?.length >= 3 && predictions.length === 0)) && (
+                  <div className="absolute left-0 right-0 top-full mt-1 z-[99999] bg-[var(--card)] border border-[var(--border)] rounded-md shadow-lg overflow-hidden">
+                    {predictions.length > 0 ? (
+                      predictions.map((p) => (
+                        <button type="button" key={p.place_id} onClick={() => pickPrediction(p)} className="w-full text-left px-3 py-2 hover:bg-[var(--muted)] text-sm">
+                          {p.description}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-sm text-[var(--muted-foreground)]">  </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Categories */}

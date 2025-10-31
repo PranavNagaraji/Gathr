@@ -46,12 +46,15 @@ const UpdateShop = () => {
   const autocompleteRef = useRef(null);
   const [lowThreshold, setLowThreshold] = useState(5);
   const [LVar, setL] = useState(null);
+  const [predictions, setPredictions] = useState([]);
+  const sessionTokenRef = useRef(null);
 
   // ✅ Load Google Maps Places API
   const { isLoaded: mapLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     libraries: ["places"],
   });
+  const placesReady = typeof window !== 'undefined' && mapLoaded && !!(window.google?.maps?.places);
 
   // ✅ Dynamically import Leaflet on client and set default icons
   useEffect(() => {
@@ -160,6 +163,43 @@ const UpdateShop = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Address input with Places fallback predictions
+  const handleAddressInputChange = (e) => {
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, address: value }));
+    if (!placesReady) return;
+    if (!sessionTokenRef.current) sessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken();
+    if (value.trim().length < 3) { setPredictions([]); return; }
+    const svc = new window.google.maps.places.AutocompleteService();
+    const opts = { input: value, sessionToken: sessionTokenRef.current, componentRestrictions: { country: 'in' }, types: ['geocode'] };
+    svc.getPlacePredictions(opts, (res, status) => {
+      if (status !== window.google.maps.places.PlacesServiceStatus.OK || !res) {
+        console.warn('Places predictions status:', status);
+        setPredictions([]);
+        return;
+      }
+      setPredictions(res);
+    });
+  };
+
+  const pickPrediction = (prediction) => {
+    if (!placesReady) return;
+    const svc = new window.google.maps.places.PlacesService(document.createElement('div'));
+    svc.getDetails({ placeId: prediction.place_id, fields: ['formatted_address','geometry'] }, (place, status) => {
+      if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place?.geometry) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      setFormData((prev) => ({ ...prev, address: place.formatted_address || prediction.description, location: { latitude: lat, longitude: lng } }));
+      setPredictions([]);
+      try {
+        if (mapInstanceRef.current && markerRef.current) {
+          mapInstanceRef.current.setView([lat, lng], 15);
+          markerRef.current.setLatLng([lat, lng]);
+        }
+      } catch {}
+    });
   };
 
   const handleImageChange = (e) => {
@@ -312,17 +352,35 @@ const UpdateShop = () => {
           </div>
 
           {/* --- FIX 3: Removed 'relative z-50' to fix Places API --- */}
-          <div className="max-w-2xl"> 
+          <div className="max-w-2xl relative"> 
             <label className="block text-[var(--muted-foreground)] mb-1">Address</label>
             <input
               type="text"
               name="address"
               ref={addressRef}
               value={formData.address}
-              onChange={handleChange}
+              onChange={handleAddressInputChange}
               placeholder="Start typing your address..."
               className="w-full rounded-lg bg-[var(--card)] text-[var(--foreground)] px-3 py-2 border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             />
+            <div className="mt-1">
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${placesReady ? 'bg-[color-mix(in_oklab,var(--success),white_85%)] text-[var(--success)]' : 'bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)]'}`}>
+                Google Places: {placesReady ? 'Ready' : 'Unavailable'}
+              </span>
+            </div>
+            {(predictions.length > 0 || (formData.address?.trim()?.length >= 3 && predictions.length === 0)) && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-[99999] bg-[var(--card)] border border-[var(--border)] rounded-md shadow-lg overflow-hidden">
+                {predictions.length > 0 ? (
+                  predictions.map((p) => (
+                    <button type="button" key={p.place_id} onClick={() => pickPrediction(p)} className="w-full text-left px-3 py-2 hover:bg-[var(--muted)] text-sm">
+                      {p.description}
+                    </button>
+                  ))
+                ) : (
+                    <div/>    
+                )}
+              </div>
+            )}
           </div>
           {/* --- End of Fix 3 --- */}
 
