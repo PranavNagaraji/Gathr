@@ -119,24 +119,27 @@ export default function createShop() {
 
   // Google Places Autocomplete
   useEffect(() => {
-    if (mapLoaded && addressRef.current && !autocomplete) {
-      const options = { types: ["geocode"] };
-      const auto = new window.google.maps.places.Autocomplete(addressRef.current, options);
-      auto.addListener("place_changed", () => {
-        const place = auto.getPlace();
-        if (place.geometry) {
-          setFormData(prev => ({
-            ...prev,
-            address: place.formatted_address || "",
-            location: {
-              latitude: place.geometry.location.lat(),
-              longitude: place.geometry.location.lng()
-            }
-          }));
-        }
-      });
-      setAutocomplete(auto);
-    }
+    if (!mapLoaded || !addressRef.current || autocomplete) return;
+    if (typeof window === 'undefined' || !window.google?.maps?.places) return;
+    const options = { types: ["geocode"], fields: ["formatted_address", "geometry"] };
+    const auto = new window.google.maps.places.Autocomplete(addressRef.current, options);
+    const listener = auto.addListener("place_changed", () => {
+      const place = auto.getPlace();
+      if (place && place.geometry) {
+        setFormData(prev => ({
+          ...prev,
+          address: place.formatted_address || "",
+          location: {
+            latitude: place.geometry.location.lat(),
+            longitude: place.geometry.location.lng()
+          }
+        }));
+      }
+    });
+    setAutocomplete(auto);
+    return () => {
+      try { listener?.remove?.(); } catch {}
+    };
   }, [mapLoaded, autocomplete]);
 
   // Leaflet map refs and handlers
@@ -167,9 +170,8 @@ export default function createShop() {
     }
 
     const map = mapInstanceRef.current;
-    const storeIcon = L.icon({ iconUrl: '/store.png', iconSize: [32,32], iconAnchor: [16,32], popupAnchor: [0,-28] });
     if (!markerRef.current) {
-      const m = L.marker([formData.location.latitude, formData.location.longitude], { draggable: true, icon: storeIcon }).addTo(map);
+      const m = L.marker([formData.location.latitude, formData.location.longitude], { draggable: true }).addTo(map);
       m.on('dragend', (e) => {
         const ll = e.target.getLatLng();
         setFormData(prev => ({ ...prev, location: { latitude: ll.lat, longitude: ll.lng } }));
@@ -177,7 +179,6 @@ export default function createShop() {
       markerRef.current = m;
     } else {
       markerRef.current.setLatLng([formData.location.latitude, formData.location.longitude]);
-      markerRef.current.setIcon(storeIcon);
     }
   }, [formData.location.latitude, formData.location.longitude, L]); // ADDED: L as a dependency
 
@@ -205,7 +206,8 @@ export default function createShop() {
     const body = {
       ...formData,
       owner_id: user.id,
-      location: formData.location, // Note: Backend might expect 'location', not 'Location'
+      location: formData.location,
+      Location: formData.location,
     };
     const res = await fetch(`${API_URL}/api/merchant/add_shop`, {
       method: "POST",
@@ -263,9 +265,10 @@ export default function createShop() {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Shop Registration</h2>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-10">
+            {/* Left: Form */}
             <form onSubmit={handleSubmit} className="md:col-span-3 flex flex-col gap-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {['shop_name', 'contact', 'account_no', 'mobile_no'].map((field) => (
+                {['shop_name', 'contact', 'account_no', 'mobile_no', 'upi_id'].map((field) => (
                   <div key={field}>
                     <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>
                       {field.replace('_', ' ').toUpperCase()}
@@ -273,17 +276,83 @@ export default function createShop() {
                     <input
                       type="text"
                       name={field}
-                      value={formData[field]}
+                      value={formData[field] || ''}
                       onChange={handleChange}
                       className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)] transition-colors"
-                      required
+                      required={field === 'shop_name'}
                     />
                   </div>
                 ))}
               </div>
 
-              <div className="w-full h-64 rounded-xl overflow-hidden border border-[var(--border)]">
-                <div style={containerStyle} ref={mapDivRef} />
+              {/* Address with Google Places */}
+              <div>
+                <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>ADDRESS</Typography>
+                <input
+                  type="text"
+                  name="address"
+                  ref={addressRef}
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Start typing your address..."
+                  className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)] transition-colors"
+                />
+                <p className="text-[10px] text-[var(--muted-foreground)] mt-1">Drag the marker on the map to fine-tune location.</p>
+              </div>
+
+              {/* Categories */}
+              <div>
+                <Typography variant="subtitle2" sx={{ color: 'var(--muted-foreground)', fontWeight: 600, mb: 0.5 }}>CATEGORIES</Typography>
+                <Select
+                  mode="multiple"
+                  value={formData.category}
+                  onChange={(values) => setFormData((p) => ({ ...p, category: values }))}
+                  style={{ width: '100%' }}
+                  placeholder="Select categories"
+                  maxTagCount="responsive"
+                  size="large"
+                  dropdownStyle={{ background: 'var(--popover)', color: 'var(--popover-foreground)' }}
+                  options={[...new Set([...categoriesOptions, 'Other'])].map((v) => ({ value: v, label: v }))}
+                />
+                {formData.category?.includes('Other') && (
+                  <div className="mt-3">
+                    <input
+                      type="text"
+                      value={otherCategory}
+                      onChange={(e) => setOtherCategory(e.target.value)}
+                      onBlur={() => {
+                        if (otherCategory.trim()) {
+                          setFormData((p) => ({
+                            ...p,
+                            category: p.category.filter((c) => c !== 'Other').concat(otherCategory.trim()),
+                          }));
+                          setOtherCategory('');
+                        }
+                      }}
+                      placeholder="Type custom category"
+                      className="w-full bg-transparent border-b-2 border-[var(--border)] text-[var(--foreground)] text-base p-2 focus:outline-none focus:ring-0 focus:border-[var(--ring)]"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Image upload */}
+              <div>
+                <label className="text-sm font-medium mb-2 block text-[var(--muted-foreground)]">Shop Image</label>
+                <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+                  <div className="relative aspect-video w-full">
+                    {formData.image ? (
+                      <img src={formData.image} alt="Shop" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-sm text-[var(--muted-foreground)]">No image</div>
+                    )}
+                    {formData.image && (
+                      <button type="button" onClick={clearImage} className="absolute top-2 right-2 h-8 px-3 rounded-full bg-red-600 text-white text-sm">Delete</button>
+                    )}
+                  </div>
+                </div>
+                <label htmlFor="shop-image-upload" className="mt-3 inline-flex items-center gap-2 py-2 px-4 rounded-lg bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] font-medium cursor-pointer transition-colors">Upload Image</label>
+                <input id="shop-image-upload" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
               </div>
 
               <Button
@@ -295,22 +364,11 @@ export default function createShop() {
               </Button>
             </form>
 
-            <div className="md:col-span-2 md:order-last md:sticky md:top-8 h-fit">
-              <label className="text-sm font-medium mb-2 block text-[var(--muted-foreground)]">Shop Image</label>
-              <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-                <div className="relative aspect-square w-full">
-                  {formData.image ? (
-                    <img src={formData.image} alt="Shop" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-sm text-[var(--muted-foreground)]">No image</div>
-                  )}
-                  {formData.image && (
-                    <button type="button" onClick={clearImage} className="absolute top-2 right-2 h-8 px-3 rounded-full bg-red-600 text-white text-sm">Delete</button>
-                  )}
-                </div>
+            {/* Right: Map */}
+            <div className="md:col-span-2 md:order-last md:sticky md:top-8 h-[420px] md:h-[calc(100vh-12rem)]">
+              <div className="w-full h-full rounded-xl overflow-hidden border border-[var(--border)]">
+                <div style={{ width: '100%', height: '100%' }} ref={mapDivRef} />
               </div>
-              <label htmlFor="shop-image-upload" className="mt-4 block w-full text-center py-3 px-4 rounded-lg bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] font-medium cursor-pointer transition-colors">Upload Image</label>
-              <input id="shop-image-upload" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
             </div>
           </div>
         </div>

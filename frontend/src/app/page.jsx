@@ -6,10 +6,12 @@ import DarkVeil from "@/components/gsap/DarkVeil";
 import { Box } from "@mui/material";
 import { useEffect } from "react";
 import { FadeIn } from "@/components/motion/MotionPrimitives";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const { getToken } = useAuth();
   const {user} = useUser();
+  const router = useRouter();
 
   useEffect(() => {
     // Only run the effect if the user object is loaded and exists
@@ -26,6 +28,17 @@ export default function Home() {
       fetchToken();
     }
   }, [user, getToken]);
+
+  // Redirect customers to their dashboard
+  useEffect(() => {
+    if (!user) return;
+    const role = user?.publicMetadata?.role;
+    if (role === "customer") {
+      router.replace("/customer/dashboard");
+    } else if (role === "merchant") {
+      router.replace("/merchant/dashboard");
+    }
+  }, [user, router]);
   
   return (<>
     <div >

@@ -11,15 +11,14 @@ import axios from "axios";
 
 // --- Link configurations for different user roles ---
 const merchantLinks = [
-  { name: "Inventory", href: "/merchant/dashboard" },
-  { name: "Update Shop", href: "/merchant/updateShop" },
+  { name: "Dashboard", href: "/merchant/dashboard" },
+  { name: "Inventory", href: "/merchant/inventory" },
   { name: "New Orders", href: "/merchant/orders" },
   { name: "All Orders", href: "/merchant/allOrders" }
-
 ];
 
 const customerLinks = [
-  { name: "Home", href: "/" },
+  { name: "Home", href: "/customer/dashboard" },
   { name: "Shops", href: "/customer/getShops" },
   { name: "Cart", href: "/customer/cart" },
   { name: "Orders", href: "/customer/orders" },
@@ -43,6 +42,7 @@ export default function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const menuRef = useRef(null);
   const pathname = usePathname();
   const router = useRouter();
@@ -136,6 +136,28 @@ export default function Navbar() {
     fetchWishlistCount();
   }, [isSignedIn, user, role, pathname]);
 
+  // Fetch pending orders count for merchants (for navbar badge)
+  useEffect(() => {
+    const fetchPendingOrders = async () => {
+      if (!isSignedIn || !user || role !== "merchant") {
+        setPendingOrdersCount(0);
+        return;
+      }
+      try {
+        const token = await getToken();
+        const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const res = await axios.get(
+          `${API_URL}/api/merchant/get_pending_carts/${user.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setPendingOrdersCount(Array.isArray(res?.data?.carts) ? res.data.carts.length : 0);
+      } catch (e) {
+        setPendingOrdersCount(0);
+      }
+    };
+    fetchPendingOrders();
+  }, [isSignedIn, user, role, pathname, getToken]);
+
   // Listen for wishlist changes to update badge instantly
   useEffect(() => {
     const handler = (e) => {
@@ -217,6 +239,11 @@ export default function Navbar() {
                     {cartItemCount}
                   </span>
                 )}
+                {role === "merchant" && link.name === "New Orders" && pendingOrdersCount > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {pendingOrdersCount}
+                  </span>
+                )}
               </motion.a>
             ))}
           </div>
@@ -275,6 +302,14 @@ export default function Navbar() {
                           <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
                         )}
                       </button>
+                      {role === "merchant" && (
+                        <button
+                          className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--accent)]/40 border-b border-[var(--border)]"
+                          onClick={() => { setIsProfileOpen(false); router.push('/merchant/updateShop'); }}
+                        >
+                          Update Shop
+                        </button>
+                      )}
                       <SignOutButton>
                         <button className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--accent)]/40">
                           Sign out
@@ -332,6 +367,11 @@ export default function Navbar() {
                       {cartItemCount}
                     </span>
                   )}
+                  {role === "merchant" && link.name === "New Orders" && pendingOrdersCount > 0 && (
+                    <span className="bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {pendingOrdersCount}
+                    </span>
+                  )}
                 </motion.a>
               ))}
 
@@ -349,6 +389,14 @@ export default function Navbar() {
                     >
                       Profile
                     </button>
+                    {role === "merchant" && (
+                      <button
+                        onClick={() => { router.push('/merchant/updateShop'); setMenuOpen(false); }}
+                        className="w-full text-left py-2 font-semibold hover:bg-[var(--accent)]/40 rounded-lg px-2"
+                      >
+                        Update Shop
+                      </button>
+                    )}
                     <div className="pt-2 pb-4 border-b border-[var(--border)]">
                       <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
                       {user?.primaryEmailAddress?.emailAddress && (

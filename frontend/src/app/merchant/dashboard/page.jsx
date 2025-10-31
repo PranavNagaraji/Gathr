@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { Input, Select } from "antd";
 import AnimatedButton from "@/components/ui/AnimatedButton";
 
 export default function Dashboard() {
@@ -14,10 +13,12 @@ export default function Dashboard() {
     const { user } = useUser();
     const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-    const [searchTerm, setSearchTerm] = useState("");
-    const [categories, setCategories] = useState(["All Categories"]);
-    const [selectedCategory, setSelectedCategory] = useState("All Categories");
+    // Items are fetched to power low-stock warnings and performance, not listed here
     const [loading, setLoading] = useState(true);
+    const [orders, setOrders] = useState([]);
+    const [ordersLoading, setOrdersLoading] = useState(true);
+    const [pendingCount, setPendingCount] = useState(0);
+    const [lowThreshold, setLowThreshold] = useState(5);
 
     useEffect(() => {
         const checkShop = async () => {
@@ -58,8 +59,6 @@ export default function Dashboard() {
                 );
 
                 setItems(result.data.items);
-                const allCategories = new Set(result.data.items.flatMap((item) => item.category));
-                setCategories(["All Categories", ...allCategories]);
             } catch (err) {
                 console.log(`err: ${err.message}`);
             } finally {
@@ -69,53 +68,168 @@ export default function Dashboard() {
 
         checkShop();
         getItems();
+        // Fetch recent orders for analytics
+        (async () => {
+            if (!isLoaded || !isSignedIn || !user) return;
+            try {
+                setOrdersLoading(true);
+                const token = await getToken();
+                const res = await axios.get(
+                    `${API_URL}/api/merchant/get_all_carts/${user.id}?page=1&limit=200`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setOrders(res.data.carts || []);
+            } catch (e) {
+                setOrders([]);
+            } finally {
+                setOrdersLoading(false);
+            }
+        })();
+        // Fetch pending orders count for notification
+        (async () => {
+            if (!isLoaded || !isSignedIn || !user) return;
+            try {
+                const token = await getToken();
+                const res = await axios.get(
+                    `${API_URL}/api/merchant/get_pending_carts/${user.id}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setPendingCount(Array.isArray(res?.data?.carts) ? res.data.carts.length : 0);
+            } catch {
+                setPendingCount(0);
+            }
+        })();
+        // Load low stock threshold from local storage
+        try {
+            const v = Number(localStorage.getItem(`lowStockThreshold:${user?.id}`));
+            if (!Number.isNaN(v) && v >= 0) setLowThreshold(v);
+        } catch {}
     }, [isLoaded, isSignedIn, user, router, API_URL, getToken]);
 
-    const handleDelete = async (itemId) => {
-        if (!isLoaded || !isSignedIn || !user) return;
-        if (!confirm("Are you sure you want to delete this item?")) return;
-        const token = await getToken();
+    // Low-stock warnings
+    const lowStockItems = useMemo(() => {
+        const THRESHOLD = Number(lowThreshold) || 5;
+        return (items || []).filter((it) => (Number(it?.quantity) || 0) <= THRESHOLD)
+            .sort((a,b) => (a.quantity||0) - (b.quantity||0)).slice(0, 8);
+    }, [items, lowThreshold]);
 
-        try {
-            const result = await axios.delete(`${API_URL}/api/merchant/delete_item`, {
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                data: {
-                    item_id: itemId,
-                    clerk_id: user.id,
-                },
-            });
-
-            if (result.status === 200) {
-                const updatedItems = items.filter((item) => item.id !== itemId);
-                setItems(updatedItems);
-            }
-        } catch (err) {
-            console.error("Error deleting item:", err.response?.data || err.message);
+    // --- Analytics: compute from orders ---
+    const paidOrders = useMemo(() => (orders || []).filter(o => (o?.payment_status || '').toLowerCase() === 'paid'), [orders]);
+    const totalRevenue = useMemo(() => paidOrders.reduce((sum, o) => sum + (Number(o?.amount_paid) || 0), 0), [paidOrders]);
+    const ordersCount = paidOrders.length;
+    const aov = useMemo(() => (ordersCount ? totalRevenue / ordersCount : 0), [ordersCount, totalRevenue]);
+    const itemsSold = useMemo(() => {
+        let total = 0;
+        for (const o of paidOrders) {
+            const cartItems = o?.Cart?.Cart_items || [];
+            for (const ci of cartItems) total += Number(ci?.quantity) || 0;
         }
-    };
+        return total;
+    }, [paidOrders]);
+    // Revenue by date (YYYY-MM-DD)
+    const revenueByDate = useMemo(() => {
+        const map = new Map();
+        for (const o of paidOrders) {
+            const d = new Date(o?.created_at);
+            if (isNaN(d)) continue;
+            const key = d.toISOString().slice(0, 10);
+            map.set(key, (map.get(key) || 0) + (Number(o?.amount_paid) || 0));
+        }
+        return map;
+    }, [paidOrders]);
+    // Last 7 days series
+    const last7 = useMemo(() => {
+        const days = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            const key = d.toISOString().slice(0, 10);
+            const label = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+            days.push({ key, label, value: revenueByDate.get(key) || 0 });
+        }
+        return days;
+    }, [revenueByDate]);
+    const maxVal = Math.max(1, ...last7.map(d => d.value));
+    const topItems = useMemo(() => {
+        const map = new Map();
+        for (const o of paidOrders) {
+            const cartItems = o?.Cart?.Cart_items || [];
+            for (const ci of cartItems) {
+                const id = ci?.item_id || ci?.Items?.id || ci?.id;
+                const name = ci?.Items?.name || 'Item';
+                const qty = Number(ci?.quantity) || 0;
+                const price = Number(ci?.Items?.price) || 0;
+                const prev = map.get(id) || { name, qty: 0, revenue: 0 };
+                prev.qty += qty;
+                prev.revenue += qty * price;
+                map.set(id, prev);
+            }
+        }
+        return Array.from(map.values()).sort((a,b)=>b.revenue - a.revenue).slice(0,5);
+    }, [paidOrders]);
 
-    const handleEdit = (itemId) => {
-        router.push(`/merchant/editItem/${itemId}`);
-    };
+    // Payment method distribution (paid orders)
+    const paymentDistribution = useMemo(() => {
+        const counts = new Map();
+        let total = 0;
+        for (const o of paidOrders) {
+            const method = (o?.payment_method || 'other').toLowerCase();
+            counts.set(method, (counts.get(method) || 0) + 1);
+            total += 1;
+        }
+        return { total, entries: Array.from(counts.entries()) };
+    }, [paidOrders]);
 
-    const filteredItems = useMemo(() => {
-        return items
-            .filter((item) => {
-                if (selectedCategory === "All Categories") return true;
-                return item.category.includes(selectedCategory);
-            })
-            .filter((item) => {
-                if (searchTerm.trim() === "") return true;
-                const lower = searchTerm.toLowerCase();
-                return (
-                    item.name.toLowerCase().includes(lower) ||
-                    item.description.toLowerCase().includes(lower)
-                );
-            });
-    }, [items, selectedCategory, searchTerm]);
+    // Order status distribution (all orders)
+    const statusDistribution = useMemo(() => {
+        const counts = new Map();
+        let total = 0;
+        for (const o of orders || []) {
+            const status = (o?.status || 'pending').toLowerCase();
+            counts.set(status, (counts.get(status) || 0) + 1);
+            total += 1;
+        }
+        return { total, entries: Array.from(counts.entries()) };
+    }, [orders]);
+
+    // Orders over time (count) - 7 days (all orders)
+    const ordersCountSeries = useMemo(() => {
+        const map = new Map();
+        for (const o of orders || []) {
+            const d = new Date(o?.created_at);
+            if (isNaN(d)) continue;
+            const key = d.toISOString().slice(0,10);
+            map.set(key, (map.get(key) || 0) + 1);
+        }
+        const days = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            const key = d.toISOString().slice(0,10);
+            const label = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+            days.push({ key, label, value: map.get(key) || 0 });
+        }
+        return days;
+    }, [orders]);
+    const ordersMaxVal = Math.max(1, ...ordersCountSeries.map(d => d.value));
+
+    // Top categories (by qty) from paid items
+    const topCategories = useMemo(() => {
+        const counts = new Map();
+        for (const o of paidOrders) {
+            const cartItems = o?.Cart?.Cart_items || [];
+            for (const ci of cartItems) {
+                const cats = Array.isArray(ci?.Items?.category) ? ci.Items.category : (ci?.Items?.category ? [ci.Items.category] : []);
+                const qty = Number(ci?.quantity) || 0;
+                for (const c of cats) counts.set(c, (counts.get(c) || 0) + qty);
+            }
+        }
+        const arr = Array.from(counts.entries()).sort((a,b)=>b[1]-a[1]).slice(0,6);
+        const total = arr.reduce((s, [,v])=>s+v, 0) || 1;
+        return { total, arr };
+    }, [paidOrders]);
 
     return (
         <div className="flex flex-col items-center w-full min-h-screen bg-[var(--background)] text-[var(--foreground)] p-4 md:p-8">
@@ -135,104 +249,214 @@ export default function Dashboard() {
                     </AnimatedButton>
                 </div>
 
-                {/* 🔍 Search and Filter Section */}
-                <div className="w-full flex flex-col md:flex-row gap-4 mt-8 text-[var(--card-foreground)] p-5 rounded-2xl">
-                    <Input
-                        placeholder="Search by name or description..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="flex-1 py-2 rounded-lg"
-                        size="large"
-                    />
-                    <Select
-                        value={selectedCategory}
-                        onChange={(value) => setSelectedCategory(value)}
-                        options={categories.map((cat) => ({ label: cat, value: cat }))}
-                        className="w-full md:w-60"
-                        size="large"
-                    />
+                {/* Analytics Cards */}
+                <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                        { label: 'Revenue', value: `₹${totalRevenue.toLocaleString('en-IN')}` },
+                        { label: 'Orders', value: ordersLoading ? '…' : String(ordersCount) },
+                        { label: 'AOV', value: `₹${aov.toFixed(0).toLocaleString('en-IN')}` },
+                        { label: 'Items Sold', value: String(itemsSold) },
+                    ].map((c) => (
+                        <div key={c.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+                            <div className="text-sm text-[var(--muted-foreground)]">{c.label}</div>
+                            <div className="mt-1 text-2xl font-bold">{c.value}</div>
+                        </div>
+                    ))}
                 </div>
 
-                {/* 🛍️ Items Grid */}
-                {loading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-10 w-full">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-2xl shadow-md overflow-hidden border border-[var(--border)] animate-pulse">
-                                <div className="h-44 md:h-48 bg-[var(--muted)]" />
-                                <div className="p-4 space-y-3">
-                                    <div className="h-5 w-2/3 bg-[var(--muted)] rounded" />
-                                    <div className="h-4 w-1/2 bg-[var(--muted)] rounded" />
-                                    <div className="h-6 w-1/3 bg-[var(--muted)] rounded" />
-                                </div>
+                {/* 7-day Performance */}
+                <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold">Performance (7 days)</h2>
+                        <span className="text-xs text-[var(--muted-foreground)]">Revenue</span>
+                    </div>
+                    <div className="mt-4 grid grid-cols-7 gap-2 items-end h-32">
+                        {last7.map((d) => (
+                            <div key={d.key} className="flex flex-col items-center gap-1">
+                                <div className="w-full bg-[var(--muted)] rounded" style={{ height: `${Math.max(6, (d.value / maxVal) * 100)}%` }} />
+                                <div className="text-[10px] text-[var(--muted-foreground)]">{d.label}</div>
                             </div>
                         ))}
                     </div>
-                ) : filteredItems.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-10 w-full">
-                        {filteredItems.map((item) => (
-                            <div
-                                key={item.id}
-                                className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-2xl shadow-md overflow-hidden border border-[var(--border)] hover:bg-[var(--muted)]/40 dark:hover:bg-[var(--muted)]/20 transition-colors duration-200"
-                            >
-                                <div className="h-44 md:h-48 bg-gradient-to-b from-[var(--muted)] to-[var(--card)] overflow-hidden">
-                                    {item.images && item.images.length > 0 ? (
-                                        <img
-                                            src={item.images[0].url}
-                                            alt={item.name}
-                                            className="w-full h-full object-cover object-center"
-                                        />
-                                    ) : null}
-                                </div>
+                    {topItems.length > 0 && (
+                        <div className="mt-4">
+                            <div className="text-sm text-[var(--muted-foreground)] mb-2">Top items</div>
+                            <div className="flex flex-wrap gap-2">
+                                {topItems.map((it, idx) => (
+                                    <span key={`${it.name}-${idx}`} className="text-xs px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">
+                                        {it.name} · {it.qty}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-                                <div className="bg-[var(--card)] p-4 md:p-5">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex-1 min-w-0">
-                                            <h2 className="text-lg md:text-xl font-semibold truncate">{item.name}</h2>
-                                            <p className="text-sm text-[var(--muted-foreground)] mt-1 truncate">{item.description}</p>
+                {/* Bento Grid */}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4">
+                    {/* New Orders tile */}
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 flex flex-col justify-between lg:col-span-1">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-base font-semibold">New Orders</h3>
+                            {pendingCount > 0 && <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-[color-mix(in_oklab,var(--success),white_85%)] text-[var(--success)]">{pendingCount} new</span>}
+                        </div>
+                        <div className="mt-2 text-4xl font-extrabold tracking-tight">{pendingCount}</div>
+                        <div className="mt-3">
+                            <AnimatedButton as="a" href="/merchant/orders" size="md" rounded="lg" variant="white">Review orders</AnimatedButton>
+                        </div>
+                    </div>
+
+                    {/* Best Performing Items */}
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-base font-semibold">Best Performing Items</h3>
+                            <span className="text-xs text-[var(--muted-foreground)]">Top 5 by revenue</span>
+                        </div>
+                        {topItems.length === 0 ? (
+                            <p className="text-sm text-[var(--muted-foreground)]">Not enough data yet.</p>
+                        ) : (
+                            <ul className="divide-y divide-[var(--border)]">
+                                {topItems.map((it, idx) => (
+                                    <li key={idx} className="flex items-center justify-between py-2">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs w-6 h-6 grid place-items-center rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{idx+1}</span>
+                                            <span className="font-medium">{it.name}</span>
                                         </div>
-                                    </div>
+                                        <div className="flex items-center gap-4 text-sm">
+                                            <span className="text-[var(--muted-foreground)]">Qty {it.qty}</span>
+                                            <span className="font-semibold">₹{Math.round(it.revenue).toLocaleString('en-IN')}</span>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
 
-                                    <div className="mt-3 flex flex-wrap gap-2 min-h-[28px]">
-                                        {Array.isArray(item.category) && item.category.map((cat, i) => (
-                                            <span key={i} className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{cat}</span>
-                                        ))}
-                                    </div>
+                    {/* Low Stock Warnings */}
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-1">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-base font-semibold">Low Stock</h3>
+                            <span className="text-xs text-[var(--muted-foreground)]">≤ 5 units</span>
+                        </div>
+                        {lowStockItems.length === 0 ? (
+                            <p className="text-sm text-[var(--muted-foreground)]">All good! No low-stock items.</p>
+                        ) : (
+                            <ul className="space-y-2">
+                                {lowStockItems.map((it) => (
+                                    <li key={it.id} className="flex items-center justify-between text-sm">
+                                        <span className="truncate max-w-[60%]">{it.name}</span>
+                                        <span className={`px-2 py-0.5 rounded-full border text-xs ${ (it.quantity||0) <= 2 ? 'bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)]' : 'bg-[var(--muted)] text-[var(--muted-foreground)]'}`}>Qty {it.quantity}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
 
-                                    <div className="mt-4 flex items-center justify-between gap-3">
-                                        <p className="text-2xl font-bold text-[var(--primary)]">₹{item.price}</p>
-                                        <span className="text-xs px-2 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)] border border-[var(--border)]">Qty: {item.quantity}</span>
-                                    </div>
+                    {/* Payment Mix */}
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-base font-semibold">Payment Mix</h3>
+                            <span className="text-xs text-[var(--muted-foreground)]">Paid orders</span>
+                        </div>
+                        {paymentDistribution.total === 0 ? (
+                            <p className="text-sm text-[var(--muted-foreground)]">No completed payments yet.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                <div className="flex w-full h-3 rounded-full overflow-hidden border border-[var(--border)]">
+                                    {paymentDistribution.entries.map(([k, v], i) => {
+                                        const pct = Math.round((v / paymentDistribution.total) * 100);
+                                        const hues = ["var(--primary)", "oklch(75% 0.12 240)", "oklch(70% 0.1 180)", "oklch(80% 0.1 60)"];
+                                        return <div key={k} style={{ width: `${pct}%`, background: hues[i % hues.length] }} />
+                                    })}
                                 </div>
-
-                                <div className="px-4 pb-4 flex gap-3">
-                                    <AnimatedButton
-                                        onClick={() => handleEdit(item.id)}
-                                        size="md"
-                                        rounded="lg"
-                                        variant="muted"
-                                        className="flex-1"
-                                    >
-                                        Edit
-                                    </AnimatedButton>
-                                    <AnimatedButton
-                                        onClick={() => handleDelete(item.id)}
-                                        size="md"
-                                        rounded="lg"
-                                        className="flex-1 bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)] border border-[var(--border)]"
-                                    >
-                                        Delete
-                                    </AnimatedButton>
+                                <div className="flex flex-wrap gap-3 text-xs">
+                                    {paymentDistribution.entries.map(([k, v], i) => {
+                                        const pct = Math.round((v / paymentDistribution.total) * 100);
+                                        return <span key={k} className="inline-flex items-center gap-2">
+                                            <span className="w-3 h-3 rounded-full" style={{ background: i % 4 === 0 ? 'var(--primary)' : i % 4 === 1 ? 'oklch(75% 0.12 240)' : i % 4 === 2 ? 'oklch(70% 0.1 180)' : 'oklch(80% 0.1 60)' }} />
+                                            {k.toUpperCase()} {pct}%
+                                        </span>
+                                    })}
                                 </div>
                             </div>
-                        ))}
+                        )}
                     </div>
-                ) : (
-                    <div className="text-center py-16 bg-[var(--card)] text-[var(--card-foreground)] rounded-xl shadow-md border border-[var(--border)] mt-10">
-                        <p className="text-lg md:text-xl text-[var(--muted-foreground)]">
-                            No items match your filter criteria.
-                        </p>
+
+                    {/* Order Status Mix */}
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-base font-semibold">Order Status</h3>
+                            <span className="text-xs text-[var(--muted-foreground)]">All orders</span>
+                        </div>
+                        {statusDistribution.total === 0 ? (
+                            <p className="text-sm text-[var(--muted-foreground)]">No orders yet.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                <div className="flex w-full h-3 rounded-full overflow-hidden border border-[var(--border)]">
+                                    {statusDistribution.entries.map(([k, v], i) => {
+                                        const pct = Math.round((v / statusDistribution.total) * 100);
+                                        const hues = ["oklch(80% 0.1 280)", "oklch(70% 0.1 330)", "oklch(80% 0.1 120)", "oklch(80% 0.1 40)"];
+                                        return <div key={k} style={{ width: `${pct}%`, background: hues[i % hues.length] }} />
+                                    })}
+                                </div>
+                                <div className="flex flex-wrap gap-3 text-xs">
+                                    {statusDistribution.entries.map(([k, v], i) => {
+                                        const pct = Math.round((v / statusDistribution.total) * 100);
+                                        return <span key={k} className="inline-flex items-center gap-2">
+                                            <span className="w-3 h-3 rounded-full" style={{ background: i % 4 === 0 ? 'oklch(80% 0.1 280)' : i % 4 === 1 ? 'oklch(70% 0.1 330)' : i % 4 === 2 ? 'oklch(80% 0.1 120)' : 'oklch(80% 0.1 40)' }} />
+                                            {k.replace(/'/g,'').toUpperCase()} {pct}%
+                                        </span>
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                )}
+
+                    {/* Orders over time (count) */}
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-base font-semibold">Orders over time</h3>
+                            <span className="text-xs text-[var(--muted-foreground)]">Last 7 days</span>
+                        </div>
+                        <div className="mt-1 grid grid-cols-7 gap-2 items-end h-28">
+                            {ordersCountSeries.map((d) => (
+                                <div key={d.key} className="flex flex-col items-center gap-1">
+                                    <div className="w-full bg-[var(--muted)] rounded" style={{ height: `${Math.max(6, (d.value / ordersMaxVal) * 100)}%` }} />
+                                    <div className="text-[10px] text-[var(--muted-foreground)]">{d.label}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Top categories */}
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-base font-semibold">Top categories</h3>
+                            <span className="text-xs text-[var(--muted-foreground)]">By items sold</span>
+                        </div>
+                        {topCategories.arr.length === 0 ? (
+                            <p className="text-sm text-[var(--muted-foreground)]">No category data yet.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {topCategories.arr.map(([cat, qty], i) => {
+                                    const pct = Math.round((qty / topCategories.total) * 100);
+                                    const hues = ["var(--primary)", "oklch(75% 0.12 240)", "oklch(70% 0.1 180)", "oklch(80% 0.1 60)", "oklch(80% 0.1 280)", "oklch(70% 0.1 330)"];
+                                    return (
+                                        <div key={cat} className="flex items-center gap-3">
+                                            <span className="w-16 text-xs truncate">{cat}</span>
+                                            <div className="flex-1 h-2 rounded-full overflow-hidden border border-[var(--border)]">
+                                                <div className="h-full" style={{ width: `${pct}%`, background: hues[i % hues.length] }} />
+                                            </div>
+                                            <span className="w-10 text-right text-xs">{pct}%</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* End Bento Grid */}
             </div>
         </div>
     );

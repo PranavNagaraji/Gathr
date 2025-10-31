@@ -42,9 +42,6 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-body {
-  overflow-x: hidden;
-}
 
 :root {
   --radius: 0.625rem;
@@ -152,4 +149,10 @@ body {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Show Google Autocomplete dropdown properly */
+.pac-container {
+  z-index: 99999 ;
+  position: absolute ;
 }
