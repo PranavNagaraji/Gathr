@@ -91,6 +91,18 @@ function CanvasBarChart({ labels = [], values = [], height = 140, color = undefi
   return <canvas ref={canvasRef} />;
 }
 
+// Haversine distance in km
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const toRad = (v) => (v * Math.PI) / 180;
+  if ([lat1, lon1, lat2, lon2].some(v => v === undefined || v === null || Number.isNaN(Number(v)))) return null;
+  const R = 6371; // km
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export default function Dashboard() {
   const { user } = useUser();
   const { getToken, isLoaded, isSignedIn } = useAuth();
@@ -101,6 +113,7 @@ export default function Dashboard() {
   const [carrierLocation, setCarrierLocation] = useState(null);
   const [assigned, setAssigned] = useState([]);
   const [history, setHistory] = useState([]);
+  const [nearbyLoading, setNearbyLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return;
@@ -121,6 +134,7 @@ export default function Dashboard() {
 
     const fetchOrders = async (latitude, longitude) => {
       try {
+        setNearbyLoading(true);
         const token = await getToken();
         const res = await axios.post(
           `${API_URL}/api/delivery/getDelivery`,
@@ -135,6 +149,8 @@ export default function Dashboard() {
         console.log(res.data.ordersAndShop);
       } catch (err) {
         console.log(err);
+      } finally {
+        setNearbyLoading(false);
       }
     };
 
@@ -261,15 +277,45 @@ export default function Dashboard() {
       </div>
 
       <motion.div className="grid gap-6 mt-6" role="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        {orders.length ? (
-          orders.map((order) => (
+        {nearbyLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={`skeleton-${i}`} className="border border-[var(--border)] rounded-lg p-4 bg-[var(--card)] animate-pulse">
+              <div className="h-4 w-40 bg-[var(--muted)] rounded mb-3" />
+              <div className="h-3 w-24 bg-[var(--muted)] rounded mb-2" />
+              <div className="h-3 w-56 bg-[var(--muted)] rounded mb-2" />
+              <div className="h-3 w-44 bg-[var(--muted)] rounded mb-2" />
+            </div>
+          ))
+        ) : orders.length ? (
+          orders.map((order) => {
+            const shopLoc = order?.Shops?.Location || {};
+            const delLoc = order?.Addresses?.location || {};
+            const cl = carrierLocation || {};
+            const carrierLat = cl.latitude ?? cl.lat;
+            const carrierLng = cl.longitude ?? cl.long ?? cl.lng;
+            const pickupKm = haversineDistance(carrierLat, carrierLng, shopLoc.latitude, shopLoc.longitude);
+            const routeKm = haversineDistance(shopLoc.latitude, shopLoc.longitude, delLoc.lat, delLoc.long);
+            const etaMin = routeKm != null ? Math.max(5, Math.round((routeKm / 25) * 60)) : null; // assume 25 km/h avg
+            const shortId = String(order.id || '').slice(-6).toUpperCase();
+            return (
             <motion.div role="listitem" key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="border border-[var(--border)] rounded-lg shadow-sm p-3 bg-[var(--card)] text-[var(--card-foreground)] flex flex-col md:flex-row gap-4">
               {/* Left: Order & Details */}
               <div className="flex-1 space-y-1">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold">Order ID: {order.id}</h2>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold">Order #{shortId}</h2>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {pickupKm != null && (
+                      <span className="px-2 py-0.5 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">Pickup {pickupKm.toFixed(1)} km</span>
+                    )}
+                    {routeKm != null && (
+                      <span className="px-2 py-0.5 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">Route {routeKm.toFixed(1)} km</span>
+                    )}
+                    {etaMin != null && (
+                      <span className="px-2 py-0.5 rounded-full bg-[color-mix(in_oklab,var(--success),white_85%)] text-[var(--success)]">ETA ~{etaMin}m</span>
+                    )}
+                  </div>
                 </div>
-                <p><strong>Amount:</strong> ₹{order.amount_paid}</p>
+                <p className="text-sm"><strong>Amount:</strong> ₹{order.amount_paid}</p>
 
                 <div>
                   <h3 className="font-semibold text-sm">Shop:</h3>
@@ -294,7 +340,8 @@ export default function Dashboard() {
               </div>
               <button className='p-3 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-md hover:opacity-90' onClick={() => handleAcceptOrder(order.id)}>Accept</button>
             </motion.div>
-          ))
+          );
+          })
         ) : (
           <div className="max-w-4xl mx-auto p-6">
             <div className="mt-6 flex flex-col items-center justify-center text-center border border-dashed border-[var(--border)] rounded-2xl p-10 bg-[var(--card)]/40">

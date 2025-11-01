@@ -310,7 +310,7 @@ export default function Navbar() {
                           Update Shop
                         </button>
                       )}
-                      <SignOutButton>
+                      <SignOutButton redirectUrl="/" signOutCallback={() => { try { setIsProfileOpen(false); } catch {} window.location.href = '/'; }}>
                         <button className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--accent)]/40">
                           Sign out
                         </button>
@@ -403,7 +403,7 @@ export default function Navbar() {
                         <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
                       )}
                     </div>
-                    <SignOutButton>
+                    <SignOutButton redirectUrl="/" signOutCallback={() => { try { setMenuOpen(false); } catch {} window.location.href = '/'; }}>
                       <button className="w-full text-left py-2 font-semibold text-[var(--primary)] hover:opacity-90">
                         Sign Out
                       </button>
