@@ -37,6 +37,8 @@ export default function Home() {
       router.replace("/customer/dashboard");
     } else if (role === "merchant") {
       router.replace("/merchant/dashboard");
+    } else if (role === "carrier") {
+      router.replace("/carrier/dashboard");
     }
   }, [user, router]);
   
