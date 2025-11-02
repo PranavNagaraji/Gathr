@@ -3,6 +3,7 @@ import requireAuth from "../utils/check.js";
 import { add_items, add_shop, getItems, checkShopExists, getShop, showOrders, updateorderStatus, getItem } from "../controllers/merchant.controller.js";
 import { updateItem, updateShop, deleteShop, deleteitem } from "../controllers/merchantup.controller.js";
 import { get_all_carts, getPendingCarts, updateOrderStatus } from "../controllers/merchant3.controller.js";
+import { generateItemFromImage } from "../controllers/merchant_ai.controller.js";
 const router = express.Router();
 
 //creation and get routes
@@ -16,6 +17,9 @@ router.post("/get_items", requireAuth, getItems);
 router.post('/get_item', requireAuth, getItem);
 router.post("/get_shop", requireAuth, getShop);
 router.post("/show_orders", requireAuth, showOrders);
+
+// AI endpoints
+router.post("/ai/generateFromImage", requireAuth, generateItemFromImage);
 
 //delete routes
 router.delete('/delete_item', requireAuth, deleteitem);

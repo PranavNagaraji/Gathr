@@ -100,6 +100,24 @@ function CanvasBarChart({ labels = [], values = [], height = 160, color = undefi
     return <canvas ref={canvasRef} />;
 }
 
+// Simple CSV exporter
+function exportCSV(filename, headerRow, rows) {
+    const esc = (v) => {
+        const s = String(v ?? "");
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const lines = [];
+    if (headerRow && headerRow.length) lines.push(headerRow.map(esc).join(","));
+    for (const r of rows) lines.push(r.map(esc).join(","));
+    const csv = lines.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.style.display = "none";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 export default function Dashboard() {
     const router = useRouter();
     const [items, setItems] = useState([]);
@@ -325,6 +343,37 @@ export default function Dashboard() {
         return { total, arr };
     }, [paidOrders]);
 
+    // Out-of-stock soon predictions (based on recent 14-day sales velocity)
+    const oosSoon = useMemo(() => {
+        const periodDays = 14;
+        const since = Date.now() - periodDays * 24 * 60 * 60 * 1000;
+        const sold = new Map(); // itemId -> qty sold in period
+        for (const o of paidOrders) {
+            const ts = new Date(o?.created_at).getTime();
+            if (!Number.isFinite(ts) || ts < since) continue;
+            const list = o?.Cart?.Cart_items || [];
+            for (const ci of list) {
+                const id = ci?.item_id || ci?.Items?.id || ci?.id;
+                const qty = Number(ci?.quantity) || 0;
+                if (!id || qty <= 0) continue;
+                sold.set(id, (sold.get(id) || 0) + qty);
+            }
+        }
+        const predictions = [];
+        for (const it of items || []) {
+            const current = Number(it?.quantity) || 0;
+            const past = Number(sold.get(it.id) || 0);
+            const avgDaily = past / periodDays;
+            if (avgDaily > 0) {
+                const daysLeft = current / avgDaily;
+                if (daysLeft <= 7) {
+                    predictions.push({ id: it.id, name: it.name, quantity: current, daysLeft: Number(daysLeft.toFixed(1)) });
+                }
+            }
+        }
+        return predictions.sort((a,b) => a.daysLeft - b.daysLeft).slice(0, 8);
+    }, [items, paidOrders]);
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -372,7 +421,13 @@ export default function Dashboard() {
                 <motion.div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4" initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.25 }}>
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold">Performance (7 days)</h2>
-                        <span className="text-xs text-[var(--muted-foreground)]">Revenue</span>
+                        <div className="flex items-center gap-3">
+                            <button className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)]" onClick={() => {
+                                const rows = last7.map(d => [d.label, d.value]);
+                                exportCSV('performance_7d.csv', ['Date','Revenue'], rows);
+                            }}>Export CSV</button>
+                            <span className="text-xs text-[var(--muted-foreground)]">Revenue</span>
+                        </div>
                     </div>
                     <div className="mt-3">
                         <CanvasBarChart labels={last7.map(d=>d.label)} values={last7.map(d=>d.value)} height={160} />
@@ -409,10 +464,16 @@ export default function Dashboard() {
                     <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-base font-semibold">Best Performing Items</h3>
-                            <span className="text-xs text-[var(--muted-foreground)]">Top 5 by revenue</span>
+                            <div className="flex items-center gap-3">
+                                <button className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)]" onClick={() => {
+                                    const rows = topItems.map(it => [it.name, it.qty, Math.round(it.revenue)]);
+                                    exportCSV('top_items.csv', ['Item','Qty','Revenue'], rows);
+                                }}>Export CSV</button>
+                                <span className="text-xs text-[var(--muted-foreground)]">Top 5 by revenue</span>
+                            </div>
                         </div>
                         {topItems.length === 0 ? (
-                            <p className="text-sm text-[var(--muted-foreground)]">Not enough data yet.</p>
+                            <p className="text-sm text=[var(--muted-foreground)]">Not enough data yet.</p>
                         ) : (
                             <ul className="divide-y divide-[var(--border)]">
                                 {topItems.map((it, idx) => (
@@ -451,11 +512,37 @@ export default function Dashboard() {
                         )}
                     </motion.div>
 
+                    {/* Out-of-stock Soon (prediction) */}
+                    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-1">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-base font-semibold">Out-of-stock Soon</h3>
+                            <span className="text-xs text-[var(--muted-foreground)]">Predicted ≤ 7 days</span>
+                        </div>
+                        {oosSoon.length === 0 ? (
+                            <p className="text-sm text-[var(--muted-foreground)]">No items at risk.</p>
+                        ) : (
+                            <ul className="space-y-2">
+                                {oosSoon.map((it) => (
+                                    <motion.li key={it.id} className="flex items-center justify-between text-sm" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+                                        <span className="truncate max-w-[60%]">{it.name}</span>
+                                        <span className="px-2 py-0.5 rounded-full border text-xs bg-[var(--muted)] text-[var(--muted-foreground)]">{it.daysLeft}d</span>
+                                    </motion.li>
+                                ))}
+                            </ul>
+                        )}
+                    </motion.div>
+
                     {/* Payment Mix */}
                     <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-base font-semibold">Payment Mix</h3>
-                            <span className="text-xs text-[var(--muted-foreground)]">Paid orders</span>
+                            <div className="flex items-center gap-3">
+                                <button className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)]" onClick={() => {
+                                    const rows = paymentDistribution.entries.map(([k,v]) => [k, v, Math.round((v / paymentDistribution.total) * 100)]);
+                                    exportCSV('payment_mix.csv', ['Method','Count','Percent'], rows);
+                                }}>Export CSV</button>
+                                <span className="text-xs text-[var(--muted-foreground)]">Paid orders</span>
+                            </div>
                         </div>
                         {paymentDistribution.total === 0 ? (
                             <p className="text-sm text-[var(--muted-foreground)]">No completed payments yet.</p>
@@ -526,7 +613,13 @@ export default function Dashboard() {
                     <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-base font-semibold">Top categories</h3>
-                            <span className="text-xs text-[var(--muted-foreground)]">By items sold</span>
+                            <div className="flex items-center gap-3">
+                                <button className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)]" onClick={() => {
+                                    const rows = topCategories.arr.map(([cat, qty]) => [cat, qty, Math.round((qty / (topCategories.total || 1)) * 100)]);
+                                    exportCSV('top_categories.csv', ['Category','Qty','Percent'], rows);
+                                }}>Export CSV</button>
+                                <span className="text-xs text-[var(--muted-foreground)]">By items sold</span>
+                            </div>
                         </div>
                         {topCategories.arr.length === 0 ? (
                             <p className="text-sm text-[var(--muted-foreground)]">No category data yet.</p>

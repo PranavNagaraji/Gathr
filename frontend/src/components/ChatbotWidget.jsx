@@ -285,12 +285,12 @@ export default function ChatbotWidget({ items = [], shopId }) {
 
   // small UI components
   const BotBubble = ({ text }) => (
-    <div className="inline-block max-w-[85%] bg-slate-800 dark:bg-neutral-800 text-neutral-100 dark:text-neutral-100 rounded-2xl px-4 py-2 border border-slate-700">
+    <div className="inline-block max-w-[85%] bg-slate-800 dark:bg-neutral-800 text-neutral-100 dark:text-neutral-100 rounded-2xl px-4 py-2 border border-slate-700 break-words overflow-hidden">
       {text}
     </div>
   );
   const UserBubble = ({ text }) => (
-    <div className="inline-block max-w-[85%] bg-[var(--primary)] text-[var(--primary-foreground)] rounded-2xl px-4 py-2 border border-[var(--primary)]">
+    <div className="inline-block max-w-[85%] bg-[var(--primary)] text-[var(--primary-foreground)] rounded-2xl px-4 py-2 border border-[var(--primary)] break-words overflow-hidden">
       {text}
     </div>
   );
@@ -299,13 +299,13 @@ export default function ChatbotWidget({ items = [], shopId }) {
   const ProductCard = ({ s }) => (
     <button
       onClick={() => goToItem(s.id)}
-      className="w-full flex items-center gap-3 p-2 rounded-lg border border-slate-700 hover:shadow-md transition-shadow duration-150 bg-[color:var(--card)]"
+      className="w-full flex items-center gap-3 p-2 rounded-lg border border-slate-700 hover:shadow-md transition-shadow duration-150 bg-[color:var(--card)] overflow-hidden"
       aria-label={`Open ${s.name}`}
     >
       <img src={s.image} alt={s.name} className="w-14 h-14 rounded-md object-cover flex-shrink-0" />
-      <div className="min-w-0 text-left">
+      <div className="min-w-0 text-left overflow-hidden">
         <div className="text-sm font-medium truncate">{s.name}</div>
-        <div className="text-xs text-neutral-400 truncate" title={s.description}>{s.description || s.category}</div>
+        {/* Description intentionally hidden per request */}
         <div className="mt-1 flex items-center gap-2">
           <div className="text-sm font-semibold">₹{s.price}</div>
           {s.rating ? (
@@ -440,7 +440,7 @@ export default function ChatbotWidget({ items = [], shopId }) {
                       {m.role === "user" ? <UserBubble text={m.text} /> : <BotBubble text={m.text} />}
 
                       {m.suggestions && Array.isArray(m.suggestions) && (
-                        <div className="mt-2 grid gap-2">
+                        <div className="mt-2 grid gap-2 overflow-hidden">
                           {m.suggestions.map((s) => (
                             <ProductCard key={s.id} s={s} />
                           ))}

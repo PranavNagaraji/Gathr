@@ -29,6 +29,7 @@ export default function addItemPage() {
     });
     const [activeIndex, setActiveIndex] = useState(0)
     const [otherCategory, setOtherCategory] = useState("")
+    const [aiLoading, setAiLoading] = useState(false)
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -86,6 +87,38 @@ export default function addItemPage() {
     }
     const goNext = () => {
         setActiveIndex((prev) => (formData.images.length ? (prev + 1) % formData.images.length : 0))
+    }
+
+    const handleGenerateAI = async () => {
+        if (!isLoaded || !isSignedIn || !user) return;
+        if (!formData.images || formData.images.length === 0) {
+            alert('Please upload at least one image first.');
+            return;
+        }
+        try {
+            setAiLoading(true);
+            const token = await getToken();
+            const first = formData.images[0] || '';
+            const base64 = first.includes(',') ? first.split(',')[1] : first;
+            const hints = [formData.name, ...(formData.category||[])].filter(Boolean).join(', ');
+            const resp = await fetch(`${API_URL}/api/merchant/ai/generateFromImage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ clerkId: user.id, base64Image: base64, hints })
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data?.message || 'AI generation failed');
+            setFormData(prev => ({
+                ...prev,
+                description: data?.description ?? prev.description,
+                price: typeof data?.price === 'number' ? String(data.price) : prev.price,
+                category: Array.from(new Set([...(prev.category||[]), ...((data?.categories||[]) )]))
+            }));
+        } catch (e) {
+            alert(`AI error: ${e.message}`);
+        } finally {
+            setAiLoading(false);
+        }
     }
 
     const handleSubmit = async (e) => {
@@ -159,7 +192,12 @@ export default function addItemPage() {
                             </div>
 
                             <div>
-                                <label className="text-sm font-medium text-[var(--muted-foreground)]">Description</label>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-medium text-[var(--muted-foreground)]">Description</label>
+                                    <button type="button" onClick={handleGenerateAI} disabled={aiLoading || !(formData.images && formData.images.length)} className={`text-xs px-3 py-1 rounded border border-[var(--border)] ${aiLoading ? 'opacity-60 cursor-not-allowed' : 'hover:bg-[var(--muted)]'}`}>
+                                        {aiLoading ? 'Generating…' : 'Generate with AI'}
+                                    </button>
+                                </div>
                                 <textarea
                                     name="description"
                                     placeholder="Enter description"

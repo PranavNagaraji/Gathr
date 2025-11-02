@@ -16,6 +16,35 @@ export const getUserId = async (req, res) => {
     return res.status(500).json({ message: "Error fetching user", error: e });
   }
 }
+// Fetch shop owner/contact info by shopId
+export const getShopOwnerInfo = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const { data: shop, error: shopErr } = await supabase
+      .from('Shops')
+      .select('id, owner_id, name, Location, address')
+      .eq('id', shopId)
+      .single();
+    if (shopErr || !shop) return res.status(404).json({ message: 'Shop not found', error: shopErr });
+
+    let owner = null;
+    if (shop.owner_id) {
+      const { data: u, error: uErr } = await supabase
+        .from('Users')
+        .select('id, first_name,last_name, email')
+        .eq('id', shop.owner_id)
+        .maybeSingle();
+      if (!uErr && u) owner = u;
+    }
+
+    return res.status(200).json({
+      shop: { id: shop.id, name: shop.name, Location: shop.Location, owner_address: owner?.address },
+      owner: owner ? { id: owner.id, name: owner.first_name + ' ' + owner.last_name, email: owner.email } : null,
+    });
+  } catch (e) {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+}
 
 export const getLocalShops = async (req, res) => {
   const { lat, long } = req.body;

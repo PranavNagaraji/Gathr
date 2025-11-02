@@ -1,6 +1,6 @@
 import requireAuth from "../utils/check.js";
 import express from "express";
-import { addComments, addRating, addToCart, deleteFromCart, getCurrentCart, getLocalShops, getShopItems, getUserId, getShopById, searchLocalItems } from "../controllers/customer.controller.js";
+import { addComments, addRating, addToCart, deleteFromCart, getCurrentCart, getLocalShops, getShopItems, getUserId, getShopById, searchLocalItems, getShopOwnerInfo } from "../controllers/customer.controller.js";
 import { getComments, deleteComment, getitem, getAddressesByUser, addAddress, deleteAddress, updateAddress, getItemsByIds, getWishlist, addToWishlist, removeFromWishlist, getWishlistCount, getOrderByCart } from "../controllers/customer2.controller.js";
 import { getcarthistory, getcartitems } from "../controllers/customer2.controller.js";
 import { getRating, getRecommendations, getSimilarItems, canRate } from "../controllers/customer3.contoller.js";
@@ -30,6 +30,7 @@ router.post("/deleteFromCart", requireAuth, deleteFromCart);
 
 // Shop details
 router.get("/getShop/:shopId", getShopById);
+router.get("/getShopOwnerInfo/:shopId", getShopOwnerInfo);
 
 router.get("/getAddressesByUser/:clerkId", requireAuth, getAddressesByUser);
 router.post("/addAddress", requireAuth, addAddress);
