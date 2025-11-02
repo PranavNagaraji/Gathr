@@ -6,12 +6,14 @@ import DarkVeil from "@/components/gsap/DarkVeil";
 import { Box } from "@mui/material";
 import { useEffect } from "react";
 import { FadeIn } from "@/components/motion/MotionPrimitives";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 
 export default function Home() {
   const { getToken } = useAuth();
   const {user} = useUser();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     // Only run the effect if the user object is loaded and exists
@@ -28,22 +30,9 @@ export default function Home() {
       fetchToken();
     }
   }, [user, getToken]);
-
-  // Redirect customers to their dashboard
-  useEffect(() => {
-    if (!user) return;
-    const role = user?.publicMetadata?.role;
-    if (role === "customer") {
-      router.replace("/customer/dashboard");
-    } else if (role === "merchant") {
-      router.replace("/merchant/dashboard");
-    } else if (role === "carrier") {
-      router.replace("/carrier/dashboard");
-    }
-  }, [user, router]);
   
   return (<>
-    <div >
+    <motion.div key={pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <Box
         sx={{
           position: 'absolute',
@@ -61,10 +50,10 @@ export default function Home() {
           speed={0.5} /> */}
           
       </Box>
-      <FadeIn>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         <Hero />
-      </FadeIn>
+      </motion.div>
        <Footer />      
-    </div>
+    </motion.div>
   </>);
 }

@@ -213,8 +213,18 @@ export default function createShop() {
     }
 
     const map = mapInstanceRef.current;
+    // Create a custom shop icon using the public/store.png asset
+    const shopIcon = L.icon({
+      iconUrl: '/store.png',
+      iconSize: [38, 38],
+      iconAnchor: [19, 38],
+      popupAnchor: [0, -32],
+      shadowUrl: markerShadow,
+      shadowSize: [41, 41],
+      shadowAnchor: [12, 41],
+    });
     if (!markerRef.current) {
-      const m = L.marker([formData.location.latitude, formData.location.longitude], { draggable: true }).addTo(map);
+      const m = L.marker([formData.location.latitude, formData.location.longitude], { draggable: true, icon: shopIcon }).addTo(map);
       m.on('dragend', (e) => {
         const ll = e.target.getLatLng();
         setFormData(prev => ({ ...prev, location: { latitude: ll.lat, longitude: ll.lng } }));
@@ -222,6 +232,7 @@ export default function createShop() {
       markerRef.current = m;
     } else {
       markerRef.current.setLatLng([formData.location.latitude, formData.location.longitude]);
+      markerRef.current.setIcon(shopIcon);
     }
   }, [formData.location.latitude, formData.location.longitude, L]); // ADDED: L as a dependency
 

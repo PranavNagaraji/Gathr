@@ -156,49 +156,49 @@ export default function CustomerDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20">
       {/* Header */}
       <div className="max-w-7xl mx-auto pt-6 pb-4">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-          <div>
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">Hi {name},</h1>
             <p className="text-[var(--muted-foreground)] mt-1">Here’s what’s happening nearby</p>
-          </div>
-          <div className="flex gap-2">
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.05 }} className="flex gap-2">
             <Link href="/customer/getShops" className="px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold hover:opacity-90">Browse Shops</Link>
             <Link href="/customer/cart" className="px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] font-semibold hover:bg-[var(--muted)]/40">View Cart</Link>
-          </div>
+          </motion.div>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Link href="/customer/orders" className="group rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 hover:bg-[var(--muted)]/40 transition-colors">
+      <motion.div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}>
+        <motion.a href="/customer/orders" variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }} className="group rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 hover:bg-[var(--muted)]/40 transition-colors">
           <div className="flex items-center justify-between">
             <span className="text-sm text-[var(--muted-foreground)]">Orders</span>
             <span className="text-xs px-2 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">Recent</span>
           </div>
           <div className="mt-2 text-2xl font-bold">{orders.length || 0}</div>
-        </Link>
-        <Link href="/customer/wishlist" className="group rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 hover:bg-[var(--muted)]/40 transition-colors">
+        </motion.a>
+        <motion.a href="/customer/wishlist" variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }} className="group rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 hover:bg-[var(--muted)]/40 transition-colors">
           <div className="flex items-center justify-between">
             <span className="text-sm text-[var(--muted-foreground)]">Wishlist</span>
           </div>
           <div className="mt-2 text-2xl font-bold">{wishlistCount}</div>
-        </Link>
-        <Link href="/customer/cart" className="group rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 hover:bg-[var(--muted)]/40 transition-colors">
+        </motion.a>
+        <motion.a href="/customer/cart" variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }} className="group rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 hover:bg-[var(--muted)]/40 transition-colors">
           <div className="flex items-center justify-between">
             <span className="text-sm text-[var(--muted-foreground)]">Cart</span>
           </div>
           <div className="mt-2 text-2xl font-bold">{cartCount}</div>
-        </Link>
-        <Link href="/customer/profile" className="group rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 hover:bg-[var(--muted)]/40 transition-colors">
+        </motion.a>
+        <motion.a href="/customer/profile" variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }} className="group rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 hover:bg-[var(--muted)]/40 transition-colors">
           <div className="flex items-center justify-between">
             <span className="text-sm text-[var(--muted-foreground)]">Profile</span>
           </div>
           <div className="mt-2 text-2xl font-bold">→</div>
-        </Link>
-      </div>
+        </motion.a>
+      </motion.div>
 
       {/* Hot Items (Recommendations) */}
       <div className="max-w-7xl mx-auto mt-10">
@@ -392,6 +392,6 @@ export default function CustomerDashboard() {
           </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

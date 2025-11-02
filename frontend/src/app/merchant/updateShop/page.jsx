@@ -260,7 +260,13 @@ const UpdateShop = () => {
         attribution: "OpenStreetMap",
       }).addTo(map);
 
-      const marker = LVar.marker([lat, lng], { draggable: true }).addTo(map);
+      const shopIcon = LVar.icon({
+        iconUrl: '/store.png',
+        iconSize: [38, 38],
+        iconAnchor: [19, 38],
+        popupAnchor: [0, -32],
+      });
+      const marker = LVar.marker([lat, lng], { draggable: true, icon: shopIcon }).addTo(map);
       marker.on("dragend", (e) => {
         const { lat, lng } = e.target.getLatLng();
         setFormData((prev) => ({
@@ -274,6 +280,15 @@ const UpdateShop = () => {
     } else {
       mapInstanceRef.current.setView([lat, lng]);
       markerRef.current.setLatLng([lat, lng]);
+      try {
+        const shopIcon = LVar.icon({
+          iconUrl: '/store.png',
+          iconSize: [38, 38],
+          iconAnchor: [19, 38],
+          popupAnchor: [0, -32],
+        });
+        markerRef.current.setIcon(shopIcon);
+      } catch {}
     }
   }, [formData.location.latitude, formData.location.longitude, loading, LVar]); // Depend on Leaflet load
 

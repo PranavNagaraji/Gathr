@@ -1,5 +1,5 @@
 'use client';
-import { SignOutButton, useUser, useAuth } from "@clerk/nextjs";
+import { useUser, useAuth, useClerk } from "@clerk/nextjs";
 import React, { useState, useRef, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Heart } from "lucide-react";
@@ -55,6 +55,7 @@ export default function Navbar() {
   });
 
   const { isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
   
   const { getToken } = useAuth();
   const profileImage = user?.imageUrl;
@@ -287,36 +288,41 @@ export default function Navbar() {
                 <AnimatePresence>
                   {isProfileOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.25 }}
-                      className="absolute right-0 mt-3 w-56 bg-[var(--popover)] text-[var(--popover-foreground)] rounded-xl shadow-lg border border-[var(--border)] overflow-hidden z-50"
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.25 }}
+                    className="absolute right-0 mt-3 w-56 bg-[var(--popover)] text-[var(--popover-foreground)] rounded-xl shadow-lg border border-[var(--border)] overflow-hidden z-50"
+                  >
+                    <button
+                      className="w-full text-left px-4 py-3 border-b border-[var(--border)] hover:bg-[var(--accent)]/40"
+                      onClick={() => { setIsProfileOpen(false); router.push(profileHref); }}
                     >
-                      <button
-                        className="w-full text-left px-4 py-3 border-b border-[var(--border)] hover:bg-[var(--accent)]/40"
-                        onClick={() => { setIsProfileOpen(false); router.push(profileHref); }}
-                      >
-                        <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
-                        {user?.primaryEmailAddress?.emailAddress && (
-                          <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
-                        )}
-                      </button>
-                      {role === "merchant" && (
-                        <button
-                          className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--accent)]/40 border-b border-[var(--border)]"
-                          onClick={() => { setIsProfileOpen(false); router.push('/merchant/updateShop'); }}
-                        >
-                          Update Shop
-                        </button>
+                      <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
+                      {user?.primaryEmailAddress?.emailAddress && (
+                        <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
                       )}
-                      <SignOutButton redirectUrl="/" signOutCallback={() => { try { setIsProfileOpen(false); } catch {} window.location.href = '/'; }}>
-                        <button className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--accent)]/40">
-                          Sign out
-                        </button>
-                      </SignOutButton>
-                    </motion.div>
-                  )}
+                    </button>
+                    {role === "merchant" && (
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--accent)]/40 border-b border-[var(--border)]"
+                        onClick={() => { setIsProfileOpen(false); router.push('/merchant/updateShop'); }}
+                      >
+                        Update Shop
+                      </button>
+                    )}
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--accent)]/40"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        try { setIsProfileOpen(false); } catch {}
+                        await signOut({ redirectUrl: '/' });
+                      }}
+                    >
+                      Sign out
+                    </button>
+                  </motion.div>
+                )}
                 </AnimatePresence>
               </div>
             ) : (
@@ -403,11 +409,16 @@ export default function Navbar() {
                         <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
                       )}
                     </div>
-                    <SignOutButton redirectUrl="/" signOutCallback={() => { try { setMenuOpen(false); } catch {} window.location.href = '/'; }}>
-                      <button className="w-full text-left py-2 font-semibold text-[var(--primary)] hover:opacity-90">
-                        Sign Out
-                      </button>
-                    </SignOutButton>
+                    <button
+                      className="w-full text-left py-2 font-semibold text-[var(--primary)] hover:opacity-90"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        try { setMenuOpen(false); } catch {}
+                        await signOut({ redirectUrl: '/' });
+                      }}
+                    >
+                      Sign Out
+                    </button>
                   </>
                 ) : (
                   <motion.button

@@ -254,19 +254,19 @@ export default function Dashboard() {
   }, [history]);
 
   return (
-    <div className="p-4 bg-[var(--background)] text-[var(--foreground)]">
-      <h1 className="text-2xl font-bold mb-4">Delivery Dashboard</h1>
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="p-4 bg-[var(--background)] text-[var(--foreground)]">
+      <motion.h1 className="text-2xl font-bold mb-4" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>Delivery Dashboard</motion.h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-4" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}>
         {[{ label: 'Nearby', value: String(nearbyCount) }, { label: 'Assigned', value: String(assignedCount) }, { label: 'Completed', value: String(completedCount) }, { label: 'Delivered Value', value: `₹${Math.round(deliveredValue).toLocaleString('en-IN')}` }].map((c) => (
-          <div key={c.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <motion.div key={c.label} variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
             <div className="text-sm text-[var(--muted-foreground)]">{c.label}</div>
             <div className="mt-1 text-2xl font-bold">{c.value}</div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
-      <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+      <motion.div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4" initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.25 }}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Deliveries (7 days)</h2>
           <span className="text-xs text-[var(--muted-foreground)]">Count</span>
@@ -274,17 +274,17 @@ export default function Dashboard() {
         <div className="mt-3">
           <CanvasBarChart labels={deliveriesSeries.map(d=>d.label)} values={deliveriesSeries.map(d=>d.value)} height={160} />
         </div>
-      </div>
+      </motion.div>
 
-      <motion.div className="grid gap-6 mt-6" role="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <motion.div className="grid gap-6 mt-6" role="list" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}>
         {nearbyLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={`skeleton-${i}`} className="border border-[var(--border)] rounded-lg p-4 bg-[var(--card)] animate-pulse">
+            <motion.div key={`skeleton-${i}`} variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }} className="border border-[var(--border)] rounded-lg p-4 bg-[var(--card)] animate-pulse">
               <div className="h-4 w-40 bg-[var(--muted)] rounded mb-3" />
               <div className="h-3 w-24 bg-[var(--muted)] rounded mb-2" />
               <div className="h-3 w-56 bg-[var(--muted)] rounded mb-2" />
               <div className="h-3 w-44 bg-[var(--muted)] rounded mb-2" />
-            </div>
+            </motion.div>
           ))
         ) : orders.length ? (
           orders.map((order) => {
@@ -298,7 +298,7 @@ export default function Dashboard() {
             const etaMin = routeKm != null ? Math.max(5, Math.round((routeKm / 25) * 60)) : null; // assume 25 km/h avg
             const shortId = String(order.id || '').slice(-6).toUpperCase();
             return (
-            <motion.div role="listitem" key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="border border-[var(--border)] rounded-lg shadow-sm p-3 bg-[var(--card)] text-[var(--card-foreground)] flex flex-col md:flex-row gap-4">
+            <motion.div role="listitem" key={order.id} variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }} className="border border-[var(--border)] rounded-lg shadow-sm p-3 bg-[var(--card)] text-[var(--card-foreground)] flex flex-col md:flex-row gap-4">
               {/* Left: Order & Details */}
               <div className="flex-1 space-y-1">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -356,6 +356,6 @@ export default function Dashboard() {
           </div>
         )}
       </motion.div>
-    </div>
+    </motion.div>
   );
 }

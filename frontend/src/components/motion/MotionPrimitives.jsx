@@ -2,12 +2,13 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export function FadeIn({ as: Tag = "div", children, delay = 0, duration = 0.22, ...rest }) {
+export function FadeIn({ as: Tag = "div", children, delay = 0, duration = 0.22, y = 0, once = true, ...rest }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once }}
+      exit={{ opacity: 0, y }}
       transition={{ duration, delay, ease: "easeOut" }}
       {...rest}
     >

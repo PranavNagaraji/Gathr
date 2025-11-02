@@ -5,6 +5,7 @@ import { useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import AnimatedButton from "@/components/ui/AnimatedButton";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Lightweight canvas bar chart (no external deps)
 function CanvasBarChart({ labels = [], values = [], height = 160, color = undefined, grid = true }) {
@@ -325,12 +326,22 @@ export default function Dashboard() {
     }, [paidOrders]);
 
     return (
-        <div className="flex flex-col items-center w-full min-h-screen bg-[var(--background)] text-[var(--foreground)] p-4 md:p-8">
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className="flex flex-col items-center w-full min-h-screen bg-[var(--background)] text-[var(--foreground)] p-4 md:p-8"
+        >
             <div className="w-full max-w-7xl mx-auto">
                 <div className="mt-12 flex flex-col md:flex-row justify-between md:items-center gap-4">
-                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                    <motion.h1
+                        className="text-3xl md:text-4xl font-bold tracking-tight"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                    >
                         Merchant Dashboard
-                    </h1>
+                    </motion.h1>
                     <AnimatedButton
                         as="button"
                         onClick={() => router.push("/merchant/addItem")}
@@ -343,22 +354,22 @@ export default function Dashboard() {
                 </div>
 
                 {/* Analytics Cards */}
-                <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <motion.div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.06 } } }}>
                     {[
                         { label: 'Revenue', value: `₹${totalRevenue.toLocaleString('en-IN')}` },
                         { label: 'Orders', value: ordersLoading ? '…' : String(ordersCount) },
                         { label: 'AOV', value: `₹${aov.toFixed(0).toLocaleString('en-IN')}` },
                         { label: 'Items Sold', value: String(itemsSold) },
                     ].map((c) => (
-                        <div key={c.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+                        <motion.div key={c.label} variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
                             <div className="text-sm text-[var(--muted-foreground)]">{c.label}</div>
                             <div className="mt-1 text-2xl font-bold">{c.value}</div>
-                        </div>
+                        </motion.div>
                     ))}
-                </div>
+                </motion.div>
 
                 {/* 7-day Performance */}
-                <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+                <motion.div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4" initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.25 }}>
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold">Performance (7 days)</h2>
                         <span className="text-xs text-[var(--muted-foreground)]">Revenue</span>
@@ -367,23 +378,23 @@ export default function Dashboard() {
                         <CanvasBarChart labels={last7.map(d=>d.label)} values={last7.map(d=>d.value)} height={160} />
                     </div>
                     {topItems.length > 0 && (
-                        <div className="mt-4">
+                        <motion.div className="mt-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                             <div className="text-sm text-[var(--muted-foreground)] mb-2">Top items</div>
-                            <div className="flex flex-wrap gap-2">
+                            <motion.div className="flex flex-wrap gap-2" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}>
                                 {topItems.map((it, idx) => (
-                                    <span key={`${it.name}-${idx}`} className="text-xs px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">
+                                    <motion.span key={`${it.name}-${idx}`} variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }} className="text-xs px-3 py-1 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">
                                         {it.name} · {it.qty}
-                                    </span>
+                                    </motion.span>
                                 ))}
-                            </div>
-                        </div>
+                            </motion.div>
+                        </motion.div>
                     )}
-                </div>
+                </motion.div>
 
                 {/* Bento Grid */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4">
+                <motion.div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}>
                     {/* New Orders tile */}
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 flex flex-col justify-between lg:col-span-1">
+                    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 flex flex-col justify-between lg:col-span-1">
                         <div className="flex items-center justify-between">
                             <h3 className="text-base font-semibold">New Orders</h3>
                             {pendingCount > 0 && <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-[color-mix(in_oklab,var(--success),white_85%)] text-[var(--success)]">{pendingCount} new</span>}
@@ -392,10 +403,10 @@ export default function Dashboard() {
                         <div className="mt-3">
                             <AnimatedButton as="a" href="/merchant/orders" size="md" rounded="lg" variant="white">Review orders</AnimatedButton>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* Best Performing Items */}
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
+                    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-base font-semibold">Best Performing Items</h3>
                             <span className="text-xs text-[var(--muted-foreground)]">Top 5 by revenue</span>
@@ -405,7 +416,7 @@ export default function Dashboard() {
                         ) : (
                             <ul className="divide-y divide-[var(--border)]">
                                 {topItems.map((it, idx) => (
-                                    <li key={idx} className="flex items-center justify-between py-2">
+                                    <motion.li key={idx} className="flex items-center justify-between py-2" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
                                         <div className="flex items-center gap-3">
                                             <span className="text-xs w-6 h-6 grid place-items-center rounded-full bg-[var(--muted)] text-[var(--muted-foreground)]">{idx+1}</span>
                                             <span className="font-medium">{it.name}</span>
@@ -414,14 +425,14 @@ export default function Dashboard() {
                                             <span className="text-[var(--muted-foreground)]">Qty {it.qty}</span>
                                             <span className="font-semibold">₹{Math.round(it.revenue).toLocaleString('en-IN')}</span>
                                         </div>
-                                    </li>
+                                    </motion.li>
                                 ))}
                             </ul>
                         )}
-                    </div>
+                    </motion.div>
 
                     {/* Low Stock Warnings */}
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-1">
+                    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-1">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-base font-semibold">Low Stock</h3>
                             <span className="text-xs text-[var(--muted-foreground)]">≤ {Number(lowThreshold) || 5} units</span>
@@ -431,17 +442,17 @@ export default function Dashboard() {
                         ) : (
                             <ul className="space-y-2">
                                 {lowStockItems.map((it) => (
-                                    <li key={it.id} className="flex items-center justify-between text-sm">
+                                    <motion.li key={it.id} className="flex items-center justify-between text-sm" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
                                         <span className="truncate max-w-[60%]">{it.name}</span>
                                         <span className={`px-2 py-0.5 rounded-full border text-xs ${ (it.quantity||0) <= 2 ? 'bg-[color-mix(in_oklab,var(--destructive),white_85%)] text-[var(--destructive)]' : 'bg-[var(--muted)] text-[var(--muted-foreground)]'}`}>Qty {it.quantity}</span>
-                                    </li>
+                                    </motion.li>
                                 ))}
                             </ul>
                         )}
-                    </div>
+                    </motion.div>
 
                     {/* Payment Mix */}
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
+                    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-base font-semibold">Payment Mix</h3>
                             <span className="text-xs text-[var(--muted-foreground)]">Paid orders</span>
@@ -468,10 +479,10 @@ export default function Dashboard() {
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </motion.div>
 
                     {/* Order Status Mix */}
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
+                    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-base font-semibold">Order Status</h3>
                             <span className="text-xs text-[var(--muted-foreground)]">All orders</span>
@@ -498,10 +509,10 @@ export default function Dashboard() {
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </motion.div>
 
                     {/* Orders over time (count) */}
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
+                    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-base font-semibold">Orders over time</h3>
                             <span className="text-xs text-[var(--muted-foreground)]">Last 7 days</span>
@@ -509,10 +520,10 @@ export default function Dashboard() {
                         <div className="mt-1">
                             <CanvasBarChart labels={ordersCountSeries.map(d=>d.label)} values={ordersCountSeries.map(d=>d.value)} height={140} />
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* Top categories */}
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
+                    <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 lg:col-span-2">
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-base font-semibold">Top categories</h3>
                             <span className="text-xs text-[var(--muted-foreground)]">By items sold</span>
@@ -525,22 +536,23 @@ export default function Dashboard() {
                                     const pct = Math.round((qty / topCategories.total) * 100);
                                     const hues = ["var(--primary)", "oklch(75% 0.12 240)", "oklch(70% 0.1 180)", "oklch(80% 0.1 60)", "oklch(80% 0.1 280)", "oklch(70% 0.1 330)"];
                                     return (
-                                        <div key={cat} className="flex items-center gap-3">
+                                        <motion.div key={cat} className="flex items-center gap-3" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
                                             <span className="w-16 text-xs truncate">{cat}</span>
                                             <div className="flex-1 h-2 rounded-full overflow-hidden border border-[var(--border)]">
                                                 <div className="h-full" style={{ width: `${pct}%`, background: hues[i % hues.length] }} />
                                             </div>
                                             <span className="w-10 text-right text-xs">{pct}%</span>
-                                        </div>
+                                        </motion.div>
                                     );
                                 })}
                             </div>
                         )}
-                    </div>
-                </div>
+                    </motion.div>
+                </motion.div>
 
                 {/* End Bento Grid */}
             </div>
-        </div>
+        </motion.div>
     );
 }
+
