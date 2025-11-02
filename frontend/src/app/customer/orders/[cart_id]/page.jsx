@@ -1,11 +1,12 @@
 'use client'
 import { useAuth, useUser } from "@clerk/nextjs";
 import axios from "axios";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { io } from "socket.io-client";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import 'leaflet/dist/leaflet.css';
+import Link from "next/link";
 
 const CartItems = () => {
   const { user } = useUser();
@@ -30,6 +31,71 @@ const CartItems = () => {
   const routeLineRef = useRef(null);
   const [etaInfo, setEtaInfo] = useState(null);
   const getChatKey = (oid) => (oid ? `chat_${oid}` : null);
+
+  const [reordering, setReordering] = useState(false);
+  const [scheduleDays, setScheduleDays] = useState(7);
+  const scheduleKey = (uid, cid) => (uid && cid ? `autoReorder:${uid}:${cid}` : null);
+  const [scheduled, setScheduled] = useState(null);
+
+  // Bill summary (must be declared before any early returns to keep hooks order stable)
+  const bill = useMemo(() => {
+    try {
+      const subtotal = (items || []).reduce((s, it) => s + (Number(it?.Items?.price) || 0) * (Number(it?.quantity) || 0), 0);
+      const itemCount = (items || []).reduce((s, it) => s + (Number(it?.quantity) || 0), 0);
+      return { subtotal, itemCount, paid: Number(order?.amount_paid) || subtotal };
+    } catch { return { subtotal: 0, itemCount: 0, paid: Number(order?.amount_paid) || 0 }; }
+  }, [items, order?.amount_paid]);
+
+  // Try to notify user by email (backend optional).
+  const notifyAutoReorder = async (phase, payload = {}) => {
+    try {
+      const token = await getToken();
+      await axios.post(
+        `${API_URL}/api/notify/autoReorder`,
+        { clerkId: user?.id, cartId: cart_id, phase, ...payload },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch {}
+  };
+
+  // Pre-notification one hour before due
+  const preNotifyKey = (uid, cid, at) => (uid && cid && at ? `autoReorder:prenotify:${uid}:${cid}:${at}` : null);
+  useEffect(() => {
+    if (!scheduled) return;
+    const dueTs = new Date(scheduled.nextAt).getTime();
+    if (!Number.isFinite(dueTs)) return;
+    const oneHour = 60 * 60 * 1000;
+    const now = Date.now();
+
+    // If within next hour and not yet notified, send pre-due email immediately
+    if (dueTs > now && dueTs - now <= oneHour) {
+      const key = preNotifyKey(user?.id, cart_id, scheduled.nextAt);
+      try {
+        const seen = key && localStorage.getItem(key);
+        if (!seen) {
+          notifyAutoReorder('pre_due', { nextAt: scheduled.nextAt, frequencyDays: scheduled.frequencyDays, preWindowMinutes: 60 });
+          if (key) localStorage.setItem(key, '1');
+        }
+      } catch {}
+    }
+
+    // If more than 1 hour away, schedule a timeout to send at (due - 1h)
+    let tId;
+    if (dueTs - now > oneHour) {
+      const fireIn = (dueTs - now) - oneHour;
+      tId = setTimeout(() => {
+        const key = preNotifyKey(user?.id, cart_id, scheduled.nextAt);
+        try {
+          const seen = key && localStorage.getItem(key);
+          if (!seen) {
+            notifyAutoReorder('pre_due', { nextAt: scheduled.nextAt, frequencyDays: scheduled.frequencyDays, preWindowMinutes: 60 });
+            if (key) localStorage.setItem(key, '1');
+          }
+        } catch {}
+      }, fireIn);
+    }
+    return () => { if (tId) clearTimeout(tId); };
+  }, [scheduled?.nextAt, scheduled?.frequencyDays, user?.id, cart_id]);
 
   // Dynamically load Leaflet once on client
   useEffect(() => {
@@ -70,6 +136,15 @@ const CartItems = () => {
     };
     getOrders();
   }, [user, isLoaded, isSignedIn, cart_id]);
+
+  useEffect(() => {
+    const key = scheduleKey(user?.id, cart_id);
+    if (!key) return;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) setScheduled(JSON.parse(raw));
+    } catch {}
+  }, [user?.id, cart_id]);
 
   // Fetch order (for status + carrier info)
   useEffect(() => {
@@ -223,6 +298,89 @@ const CartItems = () => {
       .catch(() => {});
   }, [driverLoc?.lat, driverLoc?.lng, order?.Addresses?.location]);
 
+  const clearCurrentCart = async (token) => {
+    const res = await axios.post(`${API_URL}/api/customer/getCart`, { clerkId: user.id }, { headers: { Authorization: `Bearer ${token}` } });
+    const items = res?.data?.cartItems || [];
+    for (const ci of items) {
+      try {
+        await axios.post(`${API_URL}/api/customer/deleteFromCart`, { clerkId: user.id, itemId: ci.item_id, quantity: ci.quantity }, { headers: { Authorization: `Bearer ${token}` } });
+      } catch {}
+    }
+  };
+
+  const addItemsToCart = async (items, token) => {
+    for (const it of items) {
+      try {
+        await axios.post(`${API_URL}/api/customer/addToCart`, { clerkId: user.id, itemId: it.item_id, quantity: it.quantity }, { headers: { Authorization: `Bearer ${token}` } });
+      } catch (e) {
+        const msg = e?.response?.data?.message || '';
+        if (msg.includes('Cannot add items from different shops')) return 'DIFF_SHOP';
+        throw e;
+      }
+    }
+    return 'OK';
+  };
+
+  const reorderNow = async () => {
+    if (!isLoaded || !isSignedIn || !user) return;
+    setReordering(true);
+    try {
+      const token = await getToken();
+      const itemsRes = await axios.post(`${API_URL}/api/customer/getcartitems`, { cartId: cart_id, clerkId: user.id }, { headers: { Authorization: `Bearer ${token}` } });
+      const prevItems = itemsRes?.data?.items || [];
+      let status = await addItemsToCart(prevItems, token);
+      if (status === 'DIFF_SHOP') {
+        const yes = window.confirm('Your current cart has items from another shop. Replace cart with this order\'s items?');
+        if (!yes) { setReordering(false); return; }
+        await clearCurrentCart(token);
+        status = await addItemsToCart(prevItems, token);
+      }
+      if (status === 'OK') alert('Items added to your cart');
+    } catch {
+      alert('Failed to reorder');
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const saveSchedule = () => {
+    const key = scheduleKey(user?.id, cart_id);
+    if (!key) return;
+    const nextAt = new Date(Date.now() + scheduleDays * 24 * 60 * 60 * 1000).toISOString();
+    const payload = { frequencyDays: scheduleDays, nextAt };
+    try { localStorage.setItem(key, JSON.stringify(payload)); setScheduled(payload); alert('Auto-reorder scheduled'); } catch {}
+    notifyAutoReorder('scheduled', payload);
+  };
+  const cancelSchedule = () => {
+    const key = scheduleKey(user?.id, cart_id);
+    if (!key) return;
+    try { localStorage.removeItem(key); setScheduled(null); alert('Auto-reorder cancelled'); } catch {}
+  };
+
+  // If a schedule is due, prompt to execute now and roll forward
+  useEffect(() => {
+    if (!scheduled) return;
+    try {
+      const dueTs = new Date(scheduled.nextAt).getTime();
+      if (!Number.isFinite(dueTs)) return;
+      if (Date.now() >= dueTs) {
+        // Send a heads-up email before prompting
+        notifyAutoReorder('due', { nextAt: scheduled.nextAt, frequencyDays: scheduled.frequencyDays });
+        const yes = window.confirm('Your scheduled auto-reorder is due. Reorder these items now?');
+        if (yes) {
+          (async () => {
+            await reorderNow();
+            const key = scheduleKey(user?.id, cart_id);
+            const freq = Number(scheduled.frequencyDays) || scheduleDays || 7;
+            const nextAt = new Date(Date.now() + freq * 24 * 60 * 60 * 1000).toISOString();
+            const payload = { frequencyDays: freq, nextAt };
+            try { localStorage.setItem(key, JSON.stringify(payload)); setScheduled(payload); } catch {}
+          })();
+        }
+      }
+    } catch {}
+  }, [scheduled?.nextAt, scheduled?.frequencyDays, user?.id, cart_id]);
+
   if (loading) return <div className="text-center mt-10 text-[var(--muted-foreground)]">Loading items...</div>;
 
   if (!items.length)
@@ -230,6 +388,21 @@ const CartItems = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
+      <div className="mb-4 flex flex-wrap gap-3">
+        <button disabled={reordering} onClick={reorderNow} className="px-4 py-2 rounded bg-[var(--primary)] text-[var(--primary-foreground)] disabled:opacity-60">{reordering ? 'Reordering…' : 'Reorder these items'}</button>
+        <div className="flex items-center gap-2">
+          <select value={scheduleDays} onChange={(e)=>setScheduleDays(Number(e.target.value)||7)} className="border border-[var(--border)] rounded px-2 py-2 bg-[var(--card)]">
+            <option value={7}>Every 7 days</option>
+            <option value={14}>Every 14 days</option>
+            <option value={30}>Every 30 days</option>
+          </select>
+          {scheduled ? (
+            <button onClick={cancelSchedule} className="px-3 py-2 rounded border border-[var(--border)]">Cancel auto-reorder</button>
+          ) : (
+            <button onClick={saveSchedule} className="px-3 py-2 rounded border border-[var(--border)]">Schedule auto-reorder</button>
+          )}
+        </div>
+      </div>
       {/* Delivery status and live tracking */}
       {order && (
         <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
@@ -282,8 +455,25 @@ const CartItems = () => {
                 )}
               </div>
             </div>
+          ) : String(order.status || '').toLowerCase() === 'delivered' ? (
+            <div className="mt-4 flex items-center gap-3">
+              <img src={order.Users?.delivery_details?.profile?.url || '/avatar.png'} alt="Delivery partner" className="w-12 h-12 rounded-full object-cover border border-[var(--border)]" />
+              <div className="text-sm">
+                <p className="font-medium leading-tight">Delivered by {[order.Users?.first_name, order.Users?.last_name].filter(Boolean).join(' ') || 'Delivery Partner'}</p>
+                <p className="text-xs text-[var(--muted-foreground)]">{order.Users?.delivery_details?.phone || 'Phone N/A'}</p>
+                <p className="text-xs text-[var(--muted-foreground)]">Delivered to: {order?.Addresses?.title ? `${order.Addresses.title}, ` : ''}{order?.Addresses?.address || '—'}</p>
+              </div>
+            </div>
           ) : (
             <p className="mt-3 text-sm text-[var(--muted-foreground)]">Delivery partner will appear here once the order is on the way.</p>
+          )}
+
+          {/* Delivery address summary (hide after delivered) */}
+          {String(order.status || '').toLowerCase() !== 'delivered' && (
+            <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 text-sm">
+              <div className="font-medium mb-1">Delivering to</div>
+              <div>{order?.Addresses?.title ? `${order.Addresses.title}, ` : ''}{order?.Addresses?.address || '—'}</div>
+            </div>
           )}
         </div>
       )}
@@ -291,6 +481,16 @@ const CartItems = () => {
         <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">Order Details</h1>
         <p className="text-sm text-[var(--muted-foreground)] mt-2">Items for cart #{cart_id}</p>
       </header>
+
+      {/* Bill summary */}
+      <div className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+        <h3 className="text-base font-semibold mb-2">Bill</h3>
+        <div className="text-sm flex flex-col gap-1">
+          <div className="flex justify-between"><span>Items</span><span>{bill.itemCount}</span></div>
+          <div className="flex justify-between"><span>Subtotal</span><span>₹{bill.subtotal.toLocaleString('en-IN')}</span></div>
+          <div className="flex justify-between font-medium border-t border-[var(--border)] pt-2"><span>Amount Paid</span><span>₹{bill.paid.toLocaleString('en-IN')}</span></div>
+        </div>
+      </div>
       <motion.section
         role="list"
         aria-label="Order items"
@@ -308,25 +508,22 @@ const CartItems = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 12 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm hover:shadow-md transition-shadow flex flex-col"
+              className="rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden"
             >
-              <img
-                src={item.Items.images?.[0]?.url || '/placeholder.png'}
-                alt={item.Items.name}
-                className="w-full h-48 object-cover rounded-t-xl"
-              />
-              <div className="p-4">
-                <h2 className="text-base font-semibold mb-1">{item.Items.name}</h2>
-                <p className="text-sm text-[var(--muted-foreground)] mb-1">{item.Items.description}</p>
-                <p className="text-xs text-[var(--muted-foreground)] mb-2">
-                  Category: {item.Items.category.join(', ')}
-                </p>
-                <p className="font-medium mb-1">Price: ₹{item.Items.price}</p>
-                <p className="font-medium">Quantity: {item.quantity}</p>
-                <p className="text-xs text-[var(--muted-foreground)] mt-3">
-                  Added on: {new Date(item.created_at).toLocaleString()}
-                </p>
-              </div>
+              <Link href={`/customer/getShops/${item.Items.shop_id}/item/${item.Items.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">
+                <img
+                  src={item.Items.images?.[0]?.url || '/placeholder.png'}
+                  alt={item.Items.name}
+                  className="w-full h-48 object-cover"
+                />
+                <div className="p-4">
+                  <h2 className="text-base font-semibold mb-1">{item.Items.name}</h2>
+                  <div className="text-sm flex items-center justify-between">
+                    <span>₹{Number(item.Items.price).toLocaleString('en-IN')} × {item.quantity}</span>
+                    <span className="font-semibold">₹{(Number(item.Items.price) * Number(item.quantity)).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </Link>
             </motion.div>
           ))}
         </AnimatePresence>

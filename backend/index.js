@@ -13,6 +13,7 @@ import customerRoutes from "./routes/customerRoute.js";
 import orderRoutes from "./routes/orderRoute.js";
 import stripeRoutes from "./stripeIntegration.js";
 import deliveryRoutes from "./routes/deliveryRoute.js";
+import notifyRoutes from "./routes/notifyRoute.js";
 import otpRouter from "./routes/otpRoute.js";
 
 dotenv.config();
@@ -88,6 +89,7 @@ app.use("/api/customer", customerRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/stripe", stripeRoutes);
 app.use("/api/delivery", deliveryRoutes);
+app.use("/api/notify", notifyRoutes);
 //test route
 app.get("/", (req, res) => res.send("Hello from backend!"));
 
