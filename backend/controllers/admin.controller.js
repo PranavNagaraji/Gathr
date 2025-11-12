@@ -9,7 +9,6 @@ const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 export const banShop = async (req, res) => {
   try {
     const { shopId, banned, reason } = req.body || {};
- 
     if (!shopId || typeof banned !== "boolean") {
       return res.status(400).json({ message: "Missing shopId or banned" });
     }
@@ -86,6 +85,46 @@ export const banShop = async (req, res) => {
     return res.status(200).json({ ok: true });
   } catch (e) {
     return res.status(500).json({ message: "Internal server error", error: e?.message });
+  }
+};
+
+// Send admin email via Mailjet
+export const sendAdminMail = async (req, res) => {
+  try {
+    const { to, subject, text, html } = req.body || {};
+    if (!to || !subject || (!text && !html)) {
+      return res.status(400).json({ message: "to, subject and text or html are required" });
+    }
+    const { MJ_APIKEY_PUBLIC, MJ_APIKEY_PRIVATE, MJ_SENDER_EMAIL } = process.env;
+    if (!MJ_APIKEY_PUBLIC || !MJ_APIKEY_PRIVATE || !MJ_SENDER_EMAIL) {
+      return res.status(500).json({ message: "Mailjet env not configured" });
+    }
+    const recipients = Array.isArray(to) ? to : [to];
+    const resp = await fetch("https://api.mailjet.com/v3.1/send", {
+      method: "POST",
+      headers: {
+        Authorization: "Basic " + Buffer.from(`${MJ_APIKEY_PUBLIC}:${MJ_APIKEY_PRIVATE}`).toString("base64"),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        Messages: [
+          {
+            From: { Email: MJ_SENDER_EMAIL, Name: "Gathr Admin" },
+            To: recipients.map((e) => ({ Email: e })),
+            Subject: subject,
+            TextPart: text || undefined,
+            HTMLPart: html || undefined,
+          },
+        ],
+      }),
+    });
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      return res.status(500).json({ message: "Mailjet send failed", error: data });
+    }
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 

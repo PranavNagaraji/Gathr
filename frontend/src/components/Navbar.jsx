@@ -35,6 +35,7 @@ const carrierLinks = [
 const adminLinks = [
   { name: "Admin Dashboard", href: "/admin" },
   { name: "Complaints", href: "/admin/complaints" },
+  { name: "Send Mail", href: "/admin/mail" },
 ];
 
 const links = [

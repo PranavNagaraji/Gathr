@@ -18,6 +18,8 @@ export default function AdminComplaintsPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [note, setNote] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
 
   useEffect(() => {
     try {
@@ -52,6 +54,12 @@ export default function AdminComplaintsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') setModalOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => { if (ready) fetchComplaints(); }, [ready, filter]);
 
@@ -91,6 +99,20 @@ export default function AdminComplaintsPage() {
               <option value="resolved">Resolved</option>
             </select>
           </div>
+
+        {modalOpen && (
+          <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={()=>setModalOpen(false)}>
+            <div className="w-full max-w-2xl rounded-2xl bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] shadow-xl" onClick={(e)=>e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+                <h3 className="text-lg font-semibold">Complaint Message</h3>
+                <button className="px-3 py-1 rounded-md border border-[var(--border)]" onClick={()=>setModalOpen(false)}>Close</button>
+              </div>
+              <div className="p-4">
+                <pre className="whitespace-pre-wrap text-sm leading-6">{modalMessage}</pre>
+              </div>
+            </div>
+          </div>
+        )}
           <div className="flex flex-col gap-1">
             <label className="text-xs">Search (name, email, clerk id, message)</label>
             <input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Search..." className="px-2 py-1 rounded-md border border-[var(--border)] bg-[var(--card)] text-sm" />
@@ -141,7 +163,15 @@ export default function AdminComplaintsPage() {
                     </td>
                     <td className="p-3 border-b border-[var(--border)]">{c.name || ""}</td>
                     <td className="p-3 border-b border-[var(--border)]">{c.email || ""}</td>
-                    <td className="p-3 border-b border-[var(--border)] whitespace-pre-wrap max-w-[320px]">{c.message || ""}</td>
+                    <td className="p-3 border-b border-[var(--border)] whitespace-pre-wrap max-w-[320px]">
+                      <button
+                        className="text-left w-full hover:underline"
+                        title="Click to view full message"
+                        onClick={() => { setModalMessage(c.message || ""); setModalOpen(true); }}
+                      >
+                        {(c.message || "").length > 120 ? `${(c.message || "").slice(0, 120)}…` : (c.message || "")}
+                      </button>
+                    </td>
                     <td className="p-3 border-b border-[var(--border)] capitalize">{c.status || "open"}</td>
                     <td className="p-3 border-b border-[var(--border)]">
                       {String(c.status).toLowerCase() !== "resolved" && (
