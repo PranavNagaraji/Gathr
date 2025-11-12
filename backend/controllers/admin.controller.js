@@ -9,6 +9,7 @@ const clerk = new Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 export const banShop = async (req, res) => {
   try {
     const { shopId, banned, reason } = req.body || {};
+ 
     if (!shopId || typeof banned !== "boolean") {
       return res.status(400).json({ message: "Missing shopId or banned" });
     }
@@ -163,5 +164,90 @@ export const blockUser = async (req, res) => {
     return res.status(200).json({ ok: true });
   } catch (e) {
     return res.status(500).json({ message: "Internal server error", error: e?.message });
+  }
+};
+
+export const searchUsers = async (req, res) => {
+  try {
+    const { q = "" } = req.query || {};
+    const term = String(q).trim();
+    if (!term) return res.status(200).json({ users: [] });
+    const { data: users, error } = await supabase
+      .from("Users")
+      .select("id, clerk_id, email, first_name, last_name, role")
+      .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`)
+      .limit(25);
+    if (error) return res.status(500).json({ message: "Search failed", error: error.message });
+    const results = [];
+    for (const u of users || []) {
+      let meta = {};
+      try {
+        if (u.clerk_id) {
+          const cu = await clerk.users.getUser(u.clerk_id);
+          meta = {
+            blocked: !!cu?.publicMetadata?.blocked,
+            shop_banned: !!cu?.publicMetadata?.shop_banned,
+            carrier_banned: !!cu?.publicMetadata?.carrier_banned,
+          };
+        }
+      } catch {}
+      results.push({ ...u, ...meta });
+    }
+    return res.status(200).json({ users: results });
+  } catch (e) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const searchShops = async (req, res) => {
+  try {
+    const { q = "" } = req.query || {};
+    const term = String(q).trim();
+    if (!term) return res.status(200).json({ shops: [] });
+    const { data: shops, error } = await supabase
+      .from("Shops")
+      .select("id, shop_name, owner_id")
+      .or(`shop_name.ilike.%${term}%`)
+      .limit(25);
+    if (error) return res.status(500).json({ message: "Search failed", error: error.message });
+    const ownerIds = Array.from(new Set((shops || []).map(s => s.owner_id).filter(Boolean)));
+    let owners = [];
+    if (ownerIds.length) {
+      const { data: users } = await supabase
+        .from("Users")
+        .select("id, clerk_id, email, first_name, last_name")
+        .in("id", ownerIds);
+      owners = users || [];
+    }
+    const ownerById = new Map((owners || []).map(o => [o.id, o]));
+    const results = [];
+    for (const s of shops || []) {
+      const owner = ownerById.get(s.owner_id);
+      let meta = {};
+      try {
+        if (owner?.clerk_id) {
+          const cu = await clerk.users.getUser(owner.clerk_id);
+          meta = {
+            shop_banned: !!cu?.publicMetadata?.shop_banned,
+            shop_ban_reason: cu?.publicMetadata?.shop_ban_reason || null,
+          };
+        }
+      } catch {}
+      results.push({
+        id: s.id,
+        shop_name: s.shop_name,
+        owner: owner ? {
+          id: owner.id,
+          clerk_id: owner.clerk_id,
+          email: owner.email,
+          first_name: owner.first_name,
+          last_name: owner.last_name,
+        } : null,
+        ...meta,
+      });
+    }
+    return res.status(200).json({ shops: results });
+  } catch (e) {
+    return res.status(500).json({ message: "Internal server error" });
   }
 };

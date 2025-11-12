@@ -22,23 +22,14 @@ export default function AboutPage() {
     try {
       setSubmitting(true);
       const token = await getToken().catch(() => null);
-      const whoEmail = user?.primaryEmailAddress?.emailAddress || email || "unknown";
-      const clerkId = user?.id || "anon";
-      const subject = `Complaint from ${whoEmail}`;
-      const html = `
-        <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111;line-height:1.6">
-          <h3>New Complaint</h3>
-          <p><strong>From (Clerk ID):</strong> ${clerkId}</p>
-          <p><strong>Name:</strong> ${name || ""}</p>
-          <p><strong>Email:</strong> ${whoEmail}</p>
-          <p><strong>Message:</strong></p>
-          <div style="white-space:pre-wrap;border:1px solid #eee;padding:8px;border-radius:8px">${message}</div>
-        </div>
-      `;
-      await axios.post(`${API_URL}/api/notify/test`, { to: "admin@gmail.com", subject, html }, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      setStatus("Thanks! Your complaint has been sent to the admin.");
+      const whoEmail = user?.primaryEmailAddress?.emailAddress || email || "";
+      const clerkId = user?.id || null;
+      await axios.post(
+        `${API_URL}/api/complaints/create`,
+        { name, email: whoEmail || email, message, clerkId },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      setStatus("Thanks! Your complaint has been recorded.");
       setName(""); setEmail(""); setMessage("");
     } catch (e) {
       setStatus("Failed to send. Please try again later.");

@@ -14,6 +14,7 @@ import orderRoutes from "./routes/orderRoute.js";
 import stripeRoutes from "./stripeIntegration.js";
 import deliveryRoutes from "./routes/deliveryRoute.js";
 import notifyRoutes from "./routes/notifyRoute.js";
+import complaintsRoutes from "./routes/complaintsRoute.js";
 import adminRoutes from "./routes/adminRoute.js";
 import otpRouter from "./routes/otpRoute.js";
 
@@ -91,6 +92,7 @@ app.use("/api/order", orderRoutes);
 app.use("/stripe", stripeRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/notify", notifyRoutes);
+app.use("/api/complaints", complaintsRoutes);
 app.use("/api/admin", adminRoutes);
 //test route
 app.get("/", (req, res) => res.send("Hello from backend!"));

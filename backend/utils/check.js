@@ -22,3 +22,18 @@ let requireAuth = async (req, res, next) =>{
 }
 
 export default requireAuth;
+
+export const adminEmailGate = (req, res, next) => {
+    try {
+        const headerEmail = req.headers["x-admin-email"] || req.headers["x-admin"];
+        const qEmail = req.query?.adminEmail;
+        const bEmail = req.body?.adminEmail;
+        const email = String(headerEmail || qEmail || bEmail || "").toLowerCase();
+        if (email === "admin@gmail.com") {
+            return next();
+        }
+        return res.status(401).json({ message: "Unauthorized" });
+    } catch (e) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+}

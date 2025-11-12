@@ -22,6 +22,7 @@ const customerLinks = [
   { name: "Shops", href: "/customer/getShops" },
   { name: "Cart", href: "/customer/cart" },
   { name: "Orders", href: "/customer/orders" },
+  { name: "Contact", href: "/about" },
 ];
 
 const carrierLinks = [
@@ -33,9 +34,7 @@ const carrierLinks = [
 
 const adminLinks = [
   { name: "Admin Dashboard", href: "/admin" },
-  { name: "Ban Shop", href: "/admin#ban-shop" },
-  { name: "Ban Carrier", href: "/admin#ban-carrier" },
-  { name: "Block User", href: "/admin#block-user" },
+  { name: "Complaints", href: "/admin/complaints" },
 ];
 
 const links = [
@@ -260,8 +259,7 @@ export default function Navbar() {
                   color: { duration: 0.25, ease: "easeInOut" },
                   scale: { type: "spring", stiffness: 260, damping: 15 },
                 }}
-                className={`uppercase px-3 py-1 text-[0.9rem] font-semibold tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-colors duration-200 relative ${pathname === link.href ? "text-[var(--primary)]" : "text-[var(--foreground)]"
-                  }`}
+                className={`uppercase px-3 py-1 text-[0.9rem] font-semibold tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-colors duration-200 relative ${pathname === link.href ? "text-[var(--primary)] font-extrabold underline underline-offset-4" : "text-[var(--foreground)] opacity-90"}`}
               >
                 {link.name}
                 {link.name === "Cart" && cartItemCount > 0 && (
@@ -363,7 +361,7 @@ export default function Navbar() {
                 )}
                 </AnimatePresence>
               </div>
-            ) : (
+            ) : (!isAdmin && (
               <motion.button
                 whileHover={{ scale: 1.05, backgroundColor: "var(--muted)", color: "var(--foreground)" }}
                 onClick={() => router.push("/sign-in")}
@@ -371,7 +369,7 @@ export default function Navbar() {
               >
                 Join Us
               </motion.button>
-            )}
+            ))}
             <ThemeToggle />
           </div>
 
@@ -403,7 +401,7 @@ export default function Navbar() {
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
                   whileHover={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)", x: 4 }}
-                  className="py-3 px-6 text-[var(--foreground)] font-semibold uppercase tracking-wide relative flex items-center justify-between"
+                  className={`py-3 px-6 font-semibold uppercase tracking-wide relative flex items-center justify-between ${pathname === link.href ? "text-[var(--primary)]" : "text-[var(--foreground)]"}`}
                 >
                   <span>{link.name}</span>
                   {link.name === "Cart" && cartItemCount > 0 && (
@@ -433,7 +431,7 @@ export default function Navbar() {
                     Admin Logout
                   </button>
                 )}
-                {isSignedIn ? (
+                {isSignedIn && (
                   <>
                     <button
                       onClick={() => { router.push(profileHref); setMenuOpen(false); }}
@@ -466,7 +464,8 @@ export default function Navbar() {
                       Sign Out
                     </button>
                   </>
-                ) : (
+                )}
+                {!isSignedIn && !isAdmin && (
                   <motion.button
                     whileHover={{ backgroundColor: "var(--muted)", color: "var(--foreground)", scale: 1.05 }}
                     onClick={() => { router.push("/sign-in"); setMenuOpen(false); }}
