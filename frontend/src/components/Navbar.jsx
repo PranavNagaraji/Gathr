@@ -31,6 +31,13 @@ const carrierLinks = [
   { name: "Update Profile", href: "/carrier/updateProfile" },
 ];
 
+const adminLinks = [
+  { name: "Admin Dashboard", href: "/admin" },
+  { name: "Ban Shop", href: "/admin#ban-shop" },
+  { name: "Ban Carrier", href: "/admin#ban-carrier" },
+  { name: "Block User", href: "/admin#block-user" },
+];
+
 const links = [
   { name: "Home", href: "/" },
   { name: "Shops", href: "/customer/getShops" },
@@ -60,14 +67,16 @@ export default function Navbar() {
   const { getToken } = useAuth();
   const profileImage = user?.imageUrl;
   const role = user?.publicMetadata?.role;
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const profileHref =
     role === "merchant" ? "/merchant/profile" :
     role === "carrier" ? "/carrier/profile" :
     role === "customer" ? "/customer/profile" : "/profile";
 
-  const navLinks =
-    role === "merchant"
+  const navLinks = isAdmin
+    ? adminLinks
+    : role === "merchant"
       ? merchantLinks
       : role === "carrier"
         ? carrierLinks
@@ -84,6 +93,26 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Detect admin session from localStorage and keep in sync across tabs
+  useEffect(() => {
+    const readAdmin = () => {
+      try {
+        const v = typeof window !== 'undefined' ? localStorage.getItem('adminAuthed') : null;
+        setIsAdmin(v === 'true');
+      } catch { setIsAdmin(false); }
+    };
+    readAdmin();
+    const onStorage = (e) => { if (e.key === 'adminAuthed') readAdmin(); };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const handleAdminLogout = () => {
+    try { localStorage.removeItem('adminAuthed'); } catch {}
+    setIsAdmin(false);
+    router.push('/admin/login');
+  };
 
   // Fetch cart item count (reusable)
   const fetchCartCount = React.useCallback(async () => {
@@ -268,6 +297,15 @@ export default function Navbar() {
               </button>
             )}
 
+            {isAdmin && (
+              <button
+                onClick={handleAdminLogout}
+                className="uppercase text-xs font-semibold border-2 border-[var(--border)] px-3 py-1.5 rounded-full bg-[var(--destructive)] text-white hover:opacity-90"
+                title="Admin Logout"
+              >
+                Admin Logout
+              </button>
+            )}
             {isSignedIn ? (
               <div className="relative">
                 <motion.button
@@ -387,6 +425,14 @@ export default function Navbar() {
               </div>
 
               <div className="border-t border-[#F15B3B]/30 mt-2 pt-2 px-6 pb-4">
+                {isAdmin && (
+                  <button
+                    onClick={() => { handleAdminLogout(); setMenuOpen(false); }}
+                    className="w-full text-left py-2 font-semibold text-[var(--destructive)] hover:opacity-90"
+                  >
+                    Admin Logout
+                  </button>
+                )}
                 {isSignedIn ? (
                   <>
                     <button

@@ -26,6 +26,12 @@ export const getDelivery = async (req, res) => {
                 .status(403)
                 .json({ message: "Unauthorized: Only carriers can get addresses" });
         }
+        try {
+            const cu = await clerk.users.getUser(clerkId);
+            if (cu?.publicMetadata?.carrier_banned) {
+                return res.status(403).json({ message: "Carrier access is banned" });
+            }
+        } catch {}
         const { data: acceptedOrders, error } = await supabase
             .from("Orders")
             .select(`
@@ -82,6 +88,12 @@ export const acceptDelivery = async (req, res) => {
                 .status(403)
                 .json({ message: "Unauthorized: Only carriers can accept deliveries" });
         }
+        try {
+            const cu = await clerk.users.getUser(clerkId);
+            if (cu?.publicMetadata?.carrier_banned) {
+                return res.status(403).json({ message: "Carrier access is banned" });
+            }
+        } catch {}
         await supabase.from("Orders").update({ carrier_id: user.id, status: "ontheway" }).eq("id", orderId);
         return res.status(200).json({ message: "Delivery accepted successfully" });
     } catch (err) {
@@ -109,6 +121,12 @@ export const getOnTheWay = async (req, res) => {
                 .status(403)
                 .json({ message: "Unauthorized: Only carriers can accept deliveries" });
         }
+        try {
+            const cu = await clerk.users.getUser(clerkId);
+            if (cu?.publicMetadata?.carrier_banned) {
+                return res.status(403).json({ message: "Carrier access is banned" });
+            }
+        } catch {}
         const { data: onethewayOrders, error } = await supabase
             .from("Orders")
             .select("*, Shops(*), Addresses(*) , Users:customer_id(*)").eq('carrier_id', user.id).eq('status', 'ontheway');
@@ -135,6 +153,12 @@ export const updateCarrierLocation = async (req, res) => {
       .maybeSingle();
     if (userError || !user) return res.status(404).json({ message: 'User not found' });
     if (user.role !== 'carrier') return res.status(403).json({ message: 'Unauthorized: Only carriers can update location' });
+    try {
+      const cu = await clerk.users.getUser(clerkId);
+      if (cu?.publicMetadata?.carrier_banned) {
+        return res.status(403).json({ message: 'Carrier access is banned' });
+      }
+    } catch {}
 
     const prev = user.delivery_details || {};
     const next = {
@@ -249,6 +273,12 @@ export const completeDelivery = async (req, res) => {
         if (user.role !== "carrier") {
             return res.status(403).json({ message: "Unauthorized: Only carriers can accept deliveries" });
         }
+        try {
+            const cu = await clerk.users.getUser(clerkId);
+            if (cu?.publicMetadata?.carrier_banned) {
+                return res.status(403).json({ message: "Carrier access is banned" });
+            }
+        } catch {}
 
         await supabase.from("Orders").update({ status: "delivered" , payment_status: "paid" }).eq("id", orderId);
 

@@ -121,6 +121,7 @@ function exportCSV(filename, headerRow, rows) {
 export default function Dashboard() {
     const router = useRouter();
     const [items, setItems] = useState([]);
+    const [banInfo, setBanInfo] = useState({ banned: false, reason: null, loading: true });
     const { getToken, isLoaded, isSignedIn } = useAuth();
     const { user } = useUser();
     const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -209,6 +210,19 @@ export default function Dashboard() {
                 setPendingCount(Array.isArray(res?.data?.carts) ? res.data.carts.length : 0);
             } catch {
                 setPendingCount(0);
+            }
+        })();
+        // Fetch ban status
+        (async () => {
+            if (!isLoaded || !isSignedIn || !user) return;
+            try {
+                const token = await getToken();
+                const res = await axios.get(`${API_URL}/api/merchant/banStatus/${user.id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                setBanInfo({ banned: !!res?.data?.banned, reason: res?.data?.reason || null, loading: false });
+            } catch {
+                setBanInfo((p) => ({ ...p, loading: false }));
             }
         })();
         // Load low stock threshold from local storage
@@ -382,6 +396,13 @@ export default function Dashboard() {
             className="flex flex-col items-center w-full min-h-screen bg-[var(--background)] text-[var(--foreground)] p-4 md:p-8"
         >
             <div className="w-full max-w-7xl mx-auto">
+                {banInfo.banned && (
+                    <div className="mb-4 p-4 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--destructive),white_90%)] text-[var(--destructive)]">
+                        <div className="font-semibold">Your shop is currently banned.</div>
+                        {banInfo.reason && <div className="text-sm mt-1">Reason: {String(banInfo.reason)}</div>}
+                        <a href="/about" className="inline-block mt-2 text-xs underline">Contact support</a>
+                    </div>
+                )}
                 <div className="mt-12 flex flex-col md:flex-row justify-between md:items-center gap-4">
                     <motion.h1
                         className="text-3xl md:text-4xl font-bold tracking-tight"

@@ -8,6 +8,10 @@ const isPublicRoute = createRouteMatcher([
   '/auth-callback',
   '/payment-success',
   '/payment-cancelled',
+  '/admin/:path',
+  '/admin',
+  '/about',
+  '/contact',
 ]);
 
 const customerRoutes = createRouteMatcher(['/customer', '/customer/:path*']);

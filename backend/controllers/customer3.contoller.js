@@ -85,7 +85,6 @@ export const getRecommendations = async (req, res) => {
     }
 
     let recs = [];
-    // Pull a candidate set ordered by rating and sold, then filter in JS to avoid JSON operator issues
     let itemsQuery = supabase
       .from('Items')
       .select('*')
@@ -99,6 +98,42 @@ export const getRecommendations = async (req, res) => {
 
     if (candErr) throw candErr;
 
+    let filteredCandidates = candidates || [];
+    if (filteredCandidates.length) {
+      const shopIds = Array.from(new Set(filteredCandidates.map(it => it.shop_id).filter(Boolean)));
+      if (shopIds.length) {
+        const { data: shops, error: shopsErr } = await supabase
+          .from('Shops')
+          .select('id, owner_id')
+          .in('id', shopIds);
+        if (shopsErr) throw shopsErr;
+        const ownerIds = Array.from(new Set((shops || []).map(s => s.owner_id).filter(Boolean)));
+        let owners = [];
+        if (ownerIds.length) {
+          const { data: users, error: usersErr } = await supabase
+            .from('Users')
+            .select('id, clerk_id')
+            .in('id', ownerIds);
+          if (usersErr) throw usersErr;
+          owners = users || [];
+        }
+        const ownerIdToClerk = new Map(owners.map(u => [u.id, u.clerk_id]));
+        const bannedOwnerClerks = new Set();
+        for (const clerkOwnerId of Array.from(new Set(owners.map(u => u.clerk_id).filter(Boolean)))) {
+          try {
+            const cu = await clerk.users.getUser(clerkOwnerId);
+            if (cu?.publicMetadata?.shop_banned) bannedOwnerClerks.add(clerkOwnerId);
+          } catch {}
+        }
+        const bannedShopIds = new Set(
+          (shops || [])
+            .filter(s => bannedOwnerClerks.has(ownerIdToClerk.get(s.owner_id)))
+            .map(s => s.id)
+        );
+        filteredCandidates = filteredCandidates.filter(it => !bannedShopIds.has(it.shop_id));
+      }
+    }
+
     const topCats = preferredCategories.slice(0, 3);
     const norm = (cat) => (Array.isArray(cat) ? cat : [cat]).filter(Boolean).map(String);
     const hasOverlap = (arr, cats) => {
@@ -109,12 +144,11 @@ export const getRecommendations = async (req, res) => {
     };
 
     if (topCats.length) {
-      recs = (candidates || []).filter((it) => hasOverlap(it.category, topCats)).slice(0, limit);
+      recs = (filteredCandidates || []).filter((it) => hasOverlap(it.category, topCats)).slice(0, limit);
     }
 
     if (!recs.length) {
-      // Fallback: top popular items globally
-      recs = (candidates || []).slice(0, limit);
+      recs = (filteredCandidates || []).slice(0, limit);
     }
 
     return res.status(200).json({ recommendations: recs });
@@ -186,7 +220,43 @@ export const getSimilarItems = async (req, res) => {
       return false;
     };
 
-    const similar = (simCandidates || [])
+    let filteredSim = simCandidates || [];
+    if (filteredSim.length) {
+      const shopIds = Array.from(new Set(filteredSim.map(it => it.shop_id).filter(Boolean)));
+      if (shopIds.length) {
+        const { data: shops, error: shopsErr } = await supabase
+          .from('Shops')
+          .select('id, owner_id')
+          .in('id', shopIds);
+        if (shopsErr) throw shopsErr;
+        const ownerIds = Array.from(new Set((shops || []).map(s => s.owner_id).filter(Boolean)));
+        let owners = [];
+        if (ownerIds.length) {
+          const { data: users, error: usersErr } = await supabase
+            .from('Users')
+            .select('id, clerk_id')
+            .in('id', ownerIds);
+          if (usersErr) throw usersErr;
+          owners = users || [];
+        }
+        const ownerIdToClerk = new Map(owners.map(u => [u.id, u.clerk_id]));
+        const bannedOwnerClerks = new Set();
+        for (const clerkOwnerId of Array.from(new Set(owners.map(u => u.clerk_id).filter(Boolean)))) {
+          try {
+            const cu = await clerk.users.getUser(clerkOwnerId);
+            if (cu?.publicMetadata?.shop_banned) bannedOwnerClerks.add(clerkOwnerId);
+          } catch {}
+        }
+        const bannedShopIds = new Set(
+          (shops || [])
+            .filter(s => bannedOwnerClerks.has(ownerIdToClerk.get(s.owner_id)))
+            .map(s => s.id)
+        );
+        filteredSim = filteredSim.filter(it => !bannedShopIds.has(it.shop_id));
+      }
+    }
+
+    const similar = (filteredSim || [])
       .filter((it) => String(it.id) !== String(item.id))
       .filter((it) => hasOverlap(it.category, categories))
       .slice(0, limit);

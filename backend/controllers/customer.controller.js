@@ -70,7 +70,29 @@ export const getLocalShops = async (req, res) => {
   if (shopError) {
     return res.status(500).json({ message: "Error fetching shops", error: shopError });
   }
-  res.status(200).json({ shops });
+  try {
+    const ownerIds = Array.from(new Set((shops || []).map(s => s.owner_id).filter(Boolean)));
+    let owners = [];
+    if (ownerIds.length) {
+      const { data: users, error: usersErr } = await supabase
+        .from('Users')
+        .select('id, clerk_id')
+        .in('id', ownerIds);
+      if (!usersErr && users) owners = users;
+    }
+    const ownerIdToClerk = new Map(owners.map(u => [u.id, u.clerk_id]));
+    const bannedClerks = new Set();
+    for (const c of Array.from(new Set(owners.map(u => u.clerk_id).filter(Boolean)))) {
+      try {
+        const cu = await clerk.users.getUser(c);
+        if (cu?.publicMetadata?.shop_banned) bannedClerks.add(c);
+      } catch {}
+    }
+    const filtered = (shops || []).filter(s => !bannedClerks.has(ownerIdToClerk.get(s.owner_id)));
+    return res.status(200).json({ shops: filtered });
+  } catch {
+    return res.status(200).json({ shops: shops || [] });
+  }
 }
 
 export const searchLocalItems = async (req, res) => {
@@ -92,7 +114,7 @@ export const searchLocalItems = async (req, res) => {
 
     const { data: shops, error: shopError } = await supabase
       .from('Shops')
-      .select('id')
+      .select('id, owner_id')
       .gte('Location->>latitude', String(minLat))
       .lte('Location->>latitude', String(maxLat))
       .gte('Location->>longitude', String(minLong))
@@ -100,7 +122,29 @@ export const searchLocalItems = async (req, res) => {
 
     if (shopError) return res.status(500).json({ message: 'Error fetching shops', error: shopError });
 
-    const shopIds = (shops || []).map((s) => s.id).filter(Boolean);
+    let candidateShops = shops || [];
+    try {
+      const ownerIds = Array.from(new Set(candidateShops.map(s => s.owner_id).filter(Boolean)));
+      let owners = [];
+      if (ownerIds.length) {
+        const { data: users, error: usersErr } = await supabase
+          .from('Users')
+          .select('id, clerk_id')
+          .in('id', ownerIds);
+        if (!usersErr && users) owners = users;
+      }
+      const ownerIdToClerk = new Map(owners.map(u => [u.id, u.clerk_id]));
+      const bannedClerks = new Set();
+      for (const c of Array.from(new Set(owners.map(u => u.clerk_id).filter(Boolean)))) {
+        try {
+          const cu = await clerk.users.getUser(c);
+          if (cu?.publicMetadata?.shop_banned) bannedClerks.add(c);
+        } catch {}
+      }
+      candidateShops = candidateShops.filter(s => !bannedClerks.has(ownerIdToClerk.get(s.owner_id)));
+    } catch {}
+
+    const shopIds = (candidateShops || []).map((s) => s.id).filter(Boolean);
     if (!shopIds.length) {
       return res.status(200).json({ items: [], page: 1, limit: Number(limit) || 12, total: 0, totalPages: 1, hasPrev: false, hasNext: false });
     }

@@ -1,8 +1,51 @@
 "use client";
 
 import Link from "next/link";
+import axios from "axios";
+import { useState } from "react";
+import { useAuth, useUser } from "@clerk/nextjs";
 
 export default function AboutPage() {
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const { getToken } = useAuth();
+  const { user } = useUser();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState("");
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setStatus("");
+    if (!message.trim()) { setStatus("Please enter a message."); return; }
+    try {
+      setSubmitting(true);
+      const token = await getToken().catch(() => null);
+      const whoEmail = user?.primaryEmailAddress?.emailAddress || email || "unknown";
+      const clerkId = user?.id || "anon";
+      const subject = `Complaint from ${whoEmail}`;
+      const html = `
+        <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111;line-height:1.6">
+          <h3>New Complaint</h3>
+          <p><strong>From (Clerk ID):</strong> ${clerkId}</p>
+          <p><strong>Name:</strong> ${name || ""}</p>
+          <p><strong>Email:</strong> ${whoEmail}</p>
+          <p><strong>Message:</strong></p>
+          <div style="white-space:pre-wrap;border:1px solid #eee;padding:8px;border-radius:8px">${message}</div>
+        </div>
+      `;
+      await axios.post(`${API_URL}/api/notify/test`, { to: "admin@gmail.com", subject, html }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      setStatus("Thanks! Your complaint has been sent to the admin.");
+      setName(""); setEmail(""); setMessage("");
+    } catch (e) {
+      setStatus("Failed to send. Please try again later.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
   return (
     <main className="min-h-screen w-full bg-[var(--background)] text-[var(--foreground)]">
       <section className="max-w-5xl mx-auto px-4 py-12">
@@ -34,24 +77,24 @@ export default function AboutPage() {
 
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] text-[var(--card-foreground)] p-6 mb-10">
           <h2 className="text-lg font-semibold mb-4">Contact Us</h2>
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
+          <form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit}>
             <div className="flex flex-col gap-2">
               <label className="text-sm">Name</label>
-              <input className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2" placeholder="Your name" />
+              <input value={name} onChange={(e)=>setName(e.target.value)} className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2" placeholder="Your name" />
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-sm">Email</label>
-              <input type="email" className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2" placeholder="you@example.com" />
+              <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2" placeholder="you@example.com" />
             </div>
             <div className="md:col-span-2 flex flex-col gap-2">
               <label className="text-sm">Message</label>
-              <textarea rows={5} className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2" placeholder="How can we help?" />
+              <textarea rows={5} value={message} onChange={(e)=>setMessage(e.target.value)} className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2" placeholder="How can we help?" />
             </div>
             <div className="md:col-span-2 flex items-center gap-3">
-              <button className="px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90" type="submit">
-                Send Message
+              <button disabled={submitting} className="px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-60" type="submit">
+                {submitting ? "Sending…" : "Send Message"}
               </button>
-              <p className="text-xs text-[var(--muted-foreground)]">This is a demo form. For urgent issues, email us.</p>
+              {status && <p className="text-xs text-[var(--muted-foreground)]">{status}</p>}
             </div>
           </form>
         </section>

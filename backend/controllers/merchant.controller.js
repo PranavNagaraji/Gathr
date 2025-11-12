@@ -22,6 +22,12 @@ export const add_shop = async (req, res) => {
     if (userError || !user) {
       return res.status(404).json({ message: "User not found" });
     }
+    try {
+      const cu = await clerk.users.getUser(owner_id);
+      if (cu?.publicMetadata?.shop_banned) {
+        return res.status(403).json({ message: "Your shop is banned" });
+      }
+    } catch {}
     // console.log(image);
     const { data: newShop, error } = await supabase.from("Shops").insert({
       owner_id: user.id,
@@ -87,6 +93,12 @@ export const add_items = async (req, res) => {
     if (user.role !== "merchant") {
       return res.status(403).json({ message: "User is not a merchant" });
     }
+    try {
+      const cu = await clerk.users.getUser(owner_id);
+      if (cu?.publicMetadata?.shop_banned) {
+        return res.status(403).json({ message: "Your shop is banned" });
+      }
+    } catch {}
     
     const { data: shop, error: shopError } = await supabase
       .from("Shops")
@@ -197,6 +209,12 @@ export const getItems = async (req, res) => {
     if (user.role !== "merchant") {
       return res.status(403).json({ message: "User is not a merchant." });
     }
+    try {
+      const cu = await clerk.users.getUser(owner_id);
+      if (cu?.publicMetadata?.shop_banned) {
+        return res.status(403).json({ message: "Your shop is banned" });
+      }
+    } catch {}
 
     const { data: shop, error: shopError } = await supabase
       .from("Shops")
@@ -271,6 +289,12 @@ export const showOrders = async(req,res)=>{
       return res.status(404).json({message:"User Not Found"})
     if(user.role !== 'merchant')
       return res.status(403).json({message:"User is not a Merchant"})
+    try {
+      const cu = await clerk.users.getUser(owner_id);
+      if (cu?.publicMetadata?.shop_banned) {
+        return res.status(403).json({ message: "Your shop is banned" });
+      }
+    } catch {}
 
     const { data: shop, error: shopError } = await supabase
     .from('Shops')

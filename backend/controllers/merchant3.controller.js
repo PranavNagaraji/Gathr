@@ -15,6 +15,7 @@ export const getPendingCarts = async (req, res) => {
         if (userError || !user) {
             return res.status(404).json({ message: "User not found." });
         }
+        
         if (user.role !== "merchant") {
             return res.status(403).json({ message: "User is not a merchant." });
         }
@@ -129,4 +130,21 @@ export const get_all_carts = async (req,res)=>{
     }
     return res.status(200).json({ carts, total: count || 0, page, limit });
         
+}
+
+export const getBanStatus = async (req, res) => {
+    try {
+        const { clerkId } = req.params;
+        if (!clerkId) return res.status(400).json({ message: "Missing clerkId" });
+        try {
+            const u = await clerk.users.getUser(clerkId);
+            const banned = !!u?.publicMetadata?.shop_banned;
+            const reason = u?.publicMetadata?.shop_ban_reason || null;
+            return res.status(200).json({ banned, reason });
+        } catch (e) {
+            return res.status(500).json({ message: "Failed to read ban status" });
+        }
+    } catch (err) {
+        return res.status(500).json({ message: "Internal server error" });
+    }
 }
