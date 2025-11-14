@@ -285,17 +285,19 @@ const ItemDetailsContent = () => {
 
   const handleAddRating = async (e) => {
     e.preventDefault();
-    if (newRating <= 0 || newRating > 5 || !user) return;
+    if (!user) return;
+    // Coerce to integer in 1..5 to match backend DB smallint constraint
+    const ratingInt = Math.max(1, Math.min(5, Math.round(Number(newRating || 0))));
     try {
       const token = await getToken();
       const res = await axios.post(
         `${API_URL}/api/customer/addRating`,
-        { itemId: item_id, rating: newRating, clerkId: user.id },
+        { itemId: item_id, rating: ratingInt, clerkId: user.id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setItem((prev) => ({ ...prev, rating: res.data.average }));
       setNewRating(0);
-      setMyRating(newRating);
+      setMyRating(ratingInt);
       setEditingRating(false);
       // ANTD FIX: Use the hook instance
       notification.success({

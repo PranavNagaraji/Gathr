@@ -317,20 +317,21 @@ export const canRate = async (req, res) => {
 
     const { data: orders, error: ordersError } = await supabase
       .from('Orders')
-      .select('cart_id')
-      .eq('customer_id', user.id);
+      .select('cart_id, payment_status')
+      .eq('customer_id', user.id)
+      .eq('payment_status', 'paid');
     if (ordersError) throw ordersError;
     const cartIds = (orders || []).map(o => o.cart_id).filter(Boolean);
     if (!cartIds.length) return res.status(200).json({ eligible: false });
 
-    const { data: purchased, error: purchasedErr } = await supabase
+    const { data: purchasedRows, error: purchasedErr } = await supabase
       .from('Cart_items')
       .select('id')
       .in('cart_id', cartIds)
       .eq('item_id', itemId)
-      .maybeSingle();
+      .limit(1);
     if (purchasedErr) throw purchasedErr;
-    return res.status(200).json({ eligible: !!purchased });
+    return res.status(200).json({ eligible: !!(purchasedRows && purchasedRows.length) });
   } catch (err) {
     console.error('Error in canRate:', err);
     return res.status(500).json({ message: 'Internal server error', error: err.message });

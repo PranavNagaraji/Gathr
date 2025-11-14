@@ -70,18 +70,30 @@ async function getOrderById(orderId) {
 
 // Stripe Service Functions
 async function createCheckoutSession({ lineItems, successUrl, cancelUrl, metadata }) {
+  const basePayload = {
+    line_items: lineItems,
+    mode: "payment",
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    metadata: metadata || {},
+    currency: "inr",
+  };
+
+  // Prefer UPI if explicitly enabled via env; otherwise default to card-only
+  const wantUpi = String(process.env.STRIPE_ENABLE_UPI || '').toLowerCase() === 'true';
+  const withPMTypes = (types) => ({ ...basePayload, payment_method_types: types });
+
   try {
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      mode: "payment",
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: metadata || {},
-      currency: "inr",
-    });
-    return session;
+    const pmTypes = wantUpi ? ["card", "upi"] : ["card"];
+    return await stripe.checkout.sessions.create(withPMTypes(pmTypes));
   } catch (error) {
+    // If UPI or unsupported type caused failure, retry with card only
+    const msg = (error && (error.message || error.toString())) || '';
+    const shouldRetryCardOnly = msg.includes('payment_method_types') || msg.includes('parameter_unknown') || msg.includes('Invalid payment_method_types');
+    if (wantUpi && shouldRetryCardOnly) {
+      console.warn('Checkout: UPI not supported on this account/env. Falling back to card-only.');
+      return await stripe.checkout.sessions.create(withPMTypes(["card"]));
+    }
     console.error("Error creating Stripe checkout session:", error);
     throw new Error(`Failed to create checkout session: ${error.message}`);
   }

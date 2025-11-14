@@ -3,7 +3,7 @@
 import { useAuth, useUser } from "@clerk/nextjs";
 import axios from "axios";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function CustomerDashboard() {
@@ -155,6 +155,90 @@ export default function CustomerDashboard() {
     return s.length > 6 ? s.slice(-6).toUpperCase() : s.toUpperCase();
   };
 
+  // Auto-scroll utilities for horizontal carousels
+  const recsTrackRef = useRef(null);
+  const shopsTrackRef = useRef(null);
+  const catTrackRefs = useRef([]);
+
+  function attachAutoScroll(el, speed = 0.8) {
+    if (!el) return () => {};
+    let raf;
+    let running = true;
+    let last;
+    const step = (t) => {
+      if (!running) return;
+      if (last != null) {
+        const dt = (t - last) / 16.6667; // ~frames
+        el.scrollLeft += speed * dt * 2; // tune speed
+        if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 1) {
+          el.scrollLeft = 0; // loop
+        }
+      }
+      last = t;
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    const pause = () => { running = false; if (raf) cancelAnimationFrame(raf); };
+    const resume = () => { if (!running) { running = true; last = undefined; raf = requestAnimationFrame(step); } };
+    el.addEventListener('mouseenter', pause);
+    el.addEventListener('mouseleave', resume);
+    el.addEventListener('touchstart', pause, { passive: true });
+    el.addEventListener('touchend', resume, { passive: true });
+    return () => {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      el.removeEventListener('mouseenter', pause);
+      el.removeEventListener('mouseleave', resume);
+      el.removeEventListener('touchstart', pause);
+      el.removeEventListener('touchend', resume);
+    };
+  }
+
+
+  const stats = useMemo(() => {
+    const totalSpent = (orders || []).reduce((sum, o) => sum + (Number(o.amount_paid) || 0), 0);
+    const lastOrderAt = (orders || []).reduce((acc, o) => {
+      const t = new Date(o.created_at).getTime();
+      return isNaN(t) ? acc : Math.max(acc, t);
+    }, 0);
+    return {
+      totalSpent,
+      lastOrderAt,
+    };
+  }, [orders]);
+
+  const categories = useMemo(() => {
+    const set = new Set();
+    (recs || []).forEach((it) => {
+      if (Array.isArray(it.category)) it.category.forEach((c) => set.add(String(c)));
+    });
+    (shops || []).forEach((s) => {
+      if (Array.isArray(s.category)) s.category.forEach((c) => set.add(String(c)));
+    });
+    return Array.from(set).slice(0, 10);
+  }, [recs, shops]);
+
+  const recsByCategory = useMemo(() => {
+    const map = new Map();
+    (recs || []).forEach((it) => {
+      const key = Array.isArray(it.category) && it.category.length ? String(it.category[0]) : "Popular";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(it);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => (b[1]?.length || 0) - (a[1]?.length || 0))
+      .slice(0, 3);
+  }, [recs]);
+
+  // Attach auto-scroll after dependent data is declared
+  useEffect(() => {
+    const cleaners = [];
+    if (recsTrackRef.current) cleaners.push(attachAutoScroll(recsTrackRef.current, 0.8));
+    if (shopsTrackRef.current) cleaners.push(attachAutoScroll(shopsTrackRef.current, 0.8));
+    catTrackRefs.current.forEach((el) => { if (el) cleaners.push(attachAutoScroll(el, 0.8)); });
+    return () => cleaners.forEach((fn) => { try { fn && fn(); } catch {} });
+  }, [recsByCategory, recs.length, shops.length]);
+
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="min-h-screen bg-[var(--background)] text-[var(--foreground)] px-6 sm:px-10 lg:px-20">
       {/* Header */}
@@ -169,6 +253,93 @@ export default function CustomerDashboard() {
             <Link href="/customer/cart" className="px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] font-semibold hover:bg-[var(--muted)]/40">View Cart</Link>
           </motion.div>
         </div>
+
+        {/* Animated Hero Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+          className="mt-6 relative overflow-hidden rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--primary)]/15 via-[var(--card)] to-[var(--primary)]/5">
+          <div className="absolute inset-0 opacity-40 pointer-events-none">
+            <motion.div
+              initial={{ x: -30 }}
+              animate={{ x: 30 }}
+              transition={{ repeat: Infinity, repeatType: 'mirror', duration: 8, ease: 'easeInOut' }}
+              className="absolute -top-10 -left-10 h-48 w-48 rounded-full bg-[var(--primary)]/20 blur-2xl"
+            />
+            <motion.div
+              initial={{ x: 30 }}
+              animate={{ x: -30 }}
+              transition={{ repeat: Infinity, repeatType: 'mirror', duration: 10, ease: 'easeInOut' }}
+              className="absolute -bottom-10 -right-10 h-60 w-60 rounded-full bg-[var(--primary)]/10 blur-3xl"
+            />
+          </div>
+          <div className="relative p-6 sm:p-10 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            <div className="md:col-span-2">
+              <h2 className="text-2xl sm:text-3xl font-black leading-tight">Discover best sellers, trending deals, and picks just for you</h2>
+              <p className="mt-2 text-sm sm:text-base text-[var(--muted-foreground)]">Curated from shops near you based on your cart history and favorites.</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link href="/customer/getShops" className="px-4 py-2 rounded-lg bg-[var(--foreground)] text-[var(--background)] font-semibold hover:opacity-90">Shop now</Link>
+                <Link href="/customer/wishlist" className="px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--card)] font-semibold hover:bg-[var(--muted)]/40">View wishlist</Link>
+              </div>
+            </div>
+            <div className="hidden md:block">
+              <div className="aspect-[4/3] rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--muted)]">
+                <img src="/HeroPic.jpeg" alt="Featured" className="w-full h-full object-cover" />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        
+
+      
+
+      {/* Popular carousels by category */}
+      <div className="max-w-7xl mx-auto mt-10">
+        {recsByCategory.map(([cat, items], i) => (
+          <div key={cat} className="mt-8 first:mt-0">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-semibold">Popular in {cat}</h2>
+              <Link href="/customer/getShops" className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]">See more</Link>
+            </div>
+            <div ref={(el) => (catTrackRefs.current[i] = el)} className="-mx-4 px-4 overflow-x-auto md:hidden">
+              <div className="flex gap-4 snap-x snap-mandatory pb-2">
+                {items.slice(0, 8).map((it) => (
+                  <Link key={it.id} href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="min-w-[70%] sm:min-w-[260px] snap-start">
+                    <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
+                      <div className="aspect-[4/3] bg-[var(--muted)]">
+                        <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-bold text-lg mt-1 truncate">{it.name}</h3>
+                        <p className="text-2xl font-bold text-[var(--primary)] mt-1">₹{it.price}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <motion.div initial="hidden" animate="show" variants={gridVariants} className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <AnimatePresence>
+                {items.slice(0, 8).map((it) => (
+                  <motion.div key={it.id} variants={cardVariants} whileHover="hover" className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+                    <Link href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="block">
+                      <div className="aspect-[4/3] bg-[var(--muted)]">
+                        <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-bold text-lg mt-1 truncate">{it.name}</h3>
+                        <p className="text-2xl font-bold text-[var(--primary)] mt-1">₹{it.price}</p>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+        ))}
+      </div>
       </div>
 
       {/* Quick Actions */}
@@ -200,6 +371,26 @@ export default function CustomerDashboard() {
         </motion.a>
       </motion.div>
 
+      {/* My statistics */}
+      <div className="max-w-7xl mx-auto mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="text-sm text-[var(--muted-foreground)]">Total spent</div>
+          <div className="mt-1 text-2xl font-extrabold">₹{Math.round(stats.totalSpent)}</div>
+        </div>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="text-sm text-[var(--muted-foreground)]">Last order</div>
+          <div className="mt-1 text-base font-semibold">{stats.lastOrderAt ? new Date(stats.lastOrderAt).toLocaleString() : "—"}</div>
+        </div>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="text-sm text-[var(--muted-foreground)]">Wishlist items</div>
+          <div className="mt-1 text-2xl font-extrabold">{wishlistCount}</div>
+        </div>
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="text-sm text-[var(--muted-foreground)]">Cart items</div>
+          <div className="mt-1 text-2xl font-extrabold">{cartCount}</div>
+        </div>
+      </div>
+
       {/* Hot Items (Recommendations) */}
       <div className="max-w-7xl mx-auto mt-10">
         <div className="flex items-center justify-between mb-3">
@@ -224,11 +415,11 @@ export default function CustomerDashboard() {
         ) : (
           <>
             {/* Mobile carousel */}
-            <div className="md:hidden -mx-4 px-4 overflow-x-auto">
+            <div ref={recsTrackRef} className="md:hidden -mx-4 px-4 overflow-x-auto">
               <div className="flex gap-4 snap-x snap-mandatory pb-2">
                 {recs.slice(0, 8).map((it) => (
                   <Link key={it.id} href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="min-w-[70%] sm:min-w-[260px] snap-start">
-                    <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+                    <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
                       <div className="aspect-[4/3] bg-[var(--muted)]">
                         <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
                       </div>
@@ -251,7 +442,7 @@ export default function CustomerDashboard() {
             <motion.div initial="hidden" animate="show" variants={gridVariants} className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               <AnimatePresence>
                 {recs.slice(0, 8).map((it) => (
-                  <motion.div key={it.id} variants={cardVariants} whileHover="hover" className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+                  <motion.div key={it.id} variants={cardVariants} whileHover="hover" className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden hover:shadow-lg">
                     <Link href={`/customer/getShops/${it.shop_id}/item/${it.id}`} className="block">
                       <div className="aspect-[4/3] bg-[var(--muted)]">
                         <img src={it.images?.[0]?.url || "/placeholder.png"} alt={it.name} className="w-full h-full object-cover" />
@@ -298,11 +489,11 @@ export default function CustomerDashboard() {
         ) : (
           <>
             {/* Mobile carousel */}
-            <div className="md:hidden -mx-4 px-4 overflow-x-auto">
+            <div ref={shopsTrackRef} className="md:hidden -mx-4 px-4 overflow-x-auto">
               <div className="flex gap-4 snap-x snap-mandatory pb-2">
                 {shops.slice(0, 6).map((shop) => (
                   <Link key={shop.id} href={`/customer/getShops/${shop.id}`} className="min-w-[80%] sm:min-w-[300px] snap-start">
-                    <div className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-2xl shadow-md overflow-hidden border border-[var(--border)]">
+                    <div className="relative bg-[var(--card)] text-[var(--card-foreground)] rounded-2xl shadow-md overflow-hidden border border-[var(--border)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg">
                       <div className="h-44 bg-gradient-to-b from-[var(--muted)] to-[var(--card)] overflow-hidden">
                         <img src={shop.image?.url || "/placeholder.png"} alt={shop.shop_name} className="w-full h-full object-cover object-center" />
                       </div>

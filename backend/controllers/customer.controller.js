@@ -475,25 +475,26 @@ export const addRating = async (req, res) => {
     if (user.role !== 'customer')
       return res.status(403).json({ message: "Unauthorized: Only customers can post ratings" });
 
-    // ✅ Verified purchase check: user must have purchased the item in past orders
+    // ✅ Verified purchase check: user must have purchased the item in PAID orders
     const { data: orders, error: ordersError } = await supabase
       .from('Orders')
-      .select('cart_id')
-      .eq('customer_id', user.id);
+      .select('cart_id, payment_status')
+      .eq('customer_id', user.id)
+      .eq('payment_status', 'paid');
 
     if (ordersError) throw ordersError;
     const cartIds = (orders || []).map(o => o.cart_id).filter(Boolean);
     if (!cartIds.length) {
       return res.status(403).json({ message: "Only verified purchasers can rate this item" });
     }
-    const { data: purchased, error: purchasedErr } = await supabase
+    const { data: purchasedRows, error: purchasedErr } = await supabase
       .from('Cart_items')
       .select('id')
       .in('cart_id', cartIds)
       .eq('item_id', itemId)
-      .maybeSingle();
+      .limit(1);
     if (purchasedErr) throw purchasedErr;
-    if (!purchased) {
+    if (!purchasedRows || purchasedRows.length === 0) {
       return res.status(403).json({ message: "Only verified purchasers can rate this item" });
     }
 
