@@ -181,17 +181,26 @@ export default function Dashboard() {
 
         checkShop();
         getItems();
-        // Fetch recent orders for analytics
+        // Fetch ALL orders for analytics (full history)
         (async () => {
             if (!isLoaded || !isSignedIn || !user) return;
             try {
                 setOrdersLoading(true);
                 const token = await getToken();
-                const res = await axios.get(
-                    `${API_URL}/api/merchant/get_all_carts/${user.id}?page=1&limit=200`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-                setOrders(res.data.carts || []);
+                const pageSize = 500;
+                let page = 1;
+                const all = [];
+                for (let i = 0; i < 100; i++) { // safety cap
+                    const res = await axios.get(
+                        `${API_URL}/api/merchant/get_all_carts/${user.id}?page=${page}&limit=${pageSize}`,
+                        { headers: { Authorization: `Bearer ${token}` } }
+                    );
+                    const arr = Array.isArray(res?.data?.carts) ? res.data.carts : [];
+                    all.push(...arr);
+                    if (arr.length < pageSize) break;
+                    page += 1;
+                }
+                setOrders(all);
             } catch (e) {
                 setOrders([]);
             } finally {
@@ -277,6 +286,34 @@ export default function Dashboard() {
         return days;
     }, [revenueByDate]);
     const maxVal = Math.max(1, ...last7.map(d => d.value));
+    const [revenueRange, setRevenueRange] = useState('7d'); // '7d' | '30d' | 'all'
+    const revenueSeries = useMemo(() => {
+        if (!revenueByDate || revenueByDate.size === 0) return { labels: [], values: [] };
+        const today = new Date();
+        const buildLastNDays = (n) => {
+            const out = [];
+            for (let i = n - 1; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(today.getDate() - i);
+                const key = d.toISOString().slice(0, 10);
+                const label = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+                out.push({ label, value: revenueByDate.get(key) || 0 });
+            }
+            return out;
+        };
+        if (revenueRange === '7d') {
+            const s = buildLastNDays(7);
+            return { labels: s.map(d=>d.label), values: s.map(d=>d.value) };
+        }
+        if (revenueRange === '30d') {
+            const s = buildLastNDays(30);
+            return { labels: s.map(d=>d.label), values: s.map(d=>d.value) };
+        }
+        // all time
+        const all = Array.from(revenueByDate.entries()).sort((a,b)=> a[0].localeCompare(b[0]))
+          .map(([key,val]) => ({ label: new Date(key).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }), value: val }));
+        return { labels: all.map(d=>d.label), values: all.map(d=>d.value) };
+    }, [revenueByDate, revenueRange]);
     const topItems = useMemo(() => {
         const map = new Map();
         for (const o of paidOrders) {
@@ -438,20 +475,27 @@ export default function Dashboard() {
                     ))}
                 </motion.div>
 
-                {/* 7-day Performance */}
+                {/* Performance with range selector */}
                 <motion.div className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4" initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.25 }}>
                     <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold">Performance (7 days)</h2>
+                        <h2 className="text-lg font-semibold">Performance</h2>
                         <div className="flex items-center gap-3">
+                            <div className="inline-flex items-center gap-1 border border-[var(--border)] rounded-md overflow-hidden">
+                                {['7d','30d','all'].map(r => (
+                                  <button key={r} onClick={()=> setRevenueRange(r)} className={`text-xs px-2 py-1 ${revenueRange===r ? 'bg-[var(--muted)]' : ''}`}>{r.toUpperCase()}</button>
+                                ))}
+                            </div>
                             <button className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:bg-[var(--muted)]" onClick={() => {
-                                const rows = last7.map(d => [d.label, d.value]);
-                                exportCSV('performance_7d.csv', ['Date','Revenue'], rows);
+                                const allRows = Array.from(revenueByDate.entries())
+                                  .sort((a,b) => a[0].localeCompare(b[0]))
+                                  .map(([key, value]) => [new Date(key).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }), value]);
+                                exportCSV('revenue_all_history.csv', ['Date','Revenue'], allRows);
                             }}>Export CSV</button>
                             <span className="text-xs text-[var(--muted-foreground)]">Revenue</span>
                         </div>
                     </div>
                     <div className="mt-3">
-                        <CanvasBarChart labels={last7.map(d=>d.label)} values={last7.map(d=>d.value)} height={160} />
+                        <CanvasBarChart labels={revenueSeries.labels} values={revenueSeries.values} height={160} />
                     </div>
                     {topItems.length > 0 && (
                         <motion.div className="mt-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

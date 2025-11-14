@@ -318,32 +318,49 @@ export default function addItemPage() {
         img.src = base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`;
     });
 
+    const ensureZXing = () => new Promise((resolve, reject) => {
+        if (typeof window !== 'undefined' && window.ZXing) return resolve(window.ZXing);
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js';
+        s.onload = () => resolve(window.ZXing);
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
+
     const decodeWithZXing = async (dataUrl) => {
         try {
-            const ZX = await import('https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/+esm');
-            const { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } = ZX;
+            const ZX = await ensureZXing();
             const hints = new Map();
-            if (DecodeHintType) {
-                try { hints.set(DecodeHintType.TRY_HARDER, true); } catch {}
-                try { hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-                    BarcodeFormat.EAN_13,
-                    BarcodeFormat.EAN_8,
-                    BarcodeFormat.UPC_A,
-                    BarcodeFormat.UPC_E,
-                    BarcodeFormat.CODE_128,
-                    BarcodeFormat.CODE_39,
+            if (ZX.DecodeHintType) {
+                try { hints.set(ZX.DecodeHintType.TRY_HARDER, true); } catch {}
+                try { hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS, [
+                    ZX.BarcodeFormat.EAN_13,
+                    ZX.BarcodeFormat.EAN_8,
+                    ZX.BarcodeFormat.UPC_A,
+                    ZX.BarcodeFormat.UPC_E,
+                    ZX.BarcodeFormat.CODE_128,
+                    ZX.BarcodeFormat.CODE_39,
                 ]); } catch {}
             }
-            const reader = new BrowserMultiFormatReader(hints);
+            const reader = new ZX.BrowserMultiFormatReader(hints);
             const res = await reader.decodeFromImageUrl(dataUrl);
             const text = res && (res.text || (res.getText && res.getText())) || '';
             return String(text || '').trim();
         } catch { return ''; }
     };
 
+    const ensureQuagga = () => new Promise((resolve, reject) => {
+        if (typeof window !== 'undefined' && window.Quagga) return resolve(window.Quagga);
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@ericblade/quagga2@2.0.0-beta.3/dist/quagga.min.js';
+        s.onload = () => resolve(window.Quagga);
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
+
     const decodeWithQuagga = async (dataUrl) => {
         try {
-            const Quagga = (await import('https://cdn.jsdelivr.net/npm/@ericblade/quagga2@2.0.0-beta.3/+esm')).default;
+            const Quagga = await ensureQuagga();
             const tryOnce = (patchSize) => new Promise((resolve) => {
                 Quagga.decodeSingle({
                     src: dataUrl,
@@ -794,11 +811,13 @@ export default function addItemPage() {
                                 {formData.images && formData.images.length > 0 && (
                                     <div className="grid grid-cols-5 gap-2 p-3 bg-[var(--card)] border-t border-[var(--border)]">
                                         {formData.images.map((img, i) => (
-                                            <button
-                                                type="button"
+                                            <div
                                                 key={i}
                                                 onClick={() => setActiveIndex(i)}
-                                                className={`relative aspect-square rounded-md overflow-hidden border ${i === activeIndex ? 'border-[var(--primary)]' : 'border-[var(--border)]'}`}
+                                                onKeyDown={(e)=> { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveIndex(i); } }}
+                                                role="button"
+                                                tabIndex={0}
+                                                className={`relative aspect-square rounded-md overflow-hidden border cursor-pointer ${i === activeIndex ? 'border-[var(--primary)]' : 'border-[var(--border)]'}`}
                                                 aria-label={`Select image ${i + 1}`}
                                             >
                                                 <img src={img} alt={`thumb-${i}`} className="w-full h-full object-cover" />
@@ -810,7 +829,7 @@ export default function addItemPage() {
                                                 >
                                                     ✕
                                                 </button>
-                                            </button>
+                                            </div>
                                         ))}
                                     </div>
                                 )}
@@ -902,7 +921,12 @@ export default function addItemPage() {
                     <div className="font-semibold">Center barcode image</div>
                     <button type="button" onClick={()=> setBarcodeCenterOpen(false)} className="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--muted)]">Close</button>
                   </div>
-                  <div className="p-4 grid gap-4">
+                  <div className="p-4 grid gap-4 relative">
+                    {barcodeBusy && (
+                      <div className="absolute inset-0 z-10 grid place-items-center bg-[var(--background)]/60">
+                        <div className="w-12 h-12 border-4 border-[var(--border)] border-t-[var(--primary)] rounded-full animate-spin" />
+                      </div>
+                    )}
                     <div className="relative w-full aspect-video overflow-hidden rounded-lg bg-[var(--muted)]">
                       <div
                         className="absolute inset-0 cursor-grab active:cursor-grabbing"
@@ -978,7 +1002,7 @@ export default function addItemPage() {
                         } finally {
                           setBarcodeBusy(false);
                         }
-                      }} className="px-4 py-2 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] disabled:opacity-60">Apply & Decode</button>
+                      }} className="px-4 py-2 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] disabled:opacity-60">{barcodeBusy ? 'Decoding…' : 'Apply & Decode'}</button>
                     </div>
                   </div>
                 </div>
