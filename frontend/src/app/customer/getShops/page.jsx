@@ -1,7 +1,7 @@
 "use client";
 import { useAuth, useUser } from "@clerk/nextjs";
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -26,6 +26,15 @@ export default function CustomerDashboard() {
   const [itemResults, setItemResults] = useState([]);
   const [itemPage, setItemPage] = useState(1);
   const [itemTotalPages, setItemTotalPages] = useState(1);
+  // AI & Voice helpers for searches
+  const [itemAiOpen, setItemAiOpen] = useState(false);
+  const [itemAiBusy, setItemAiBusy] = useState(false);
+  const [itemVoiceBusy, setItemVoiceBusy] = useState(false);
+  const itemCameraRef = useRef(null);
+  const itemUploadRef = useRef(null);
+  const [shopVoiceBusy, setShopVoiceBusy] = useState(false);
+  const [itemImageMode, setItemImageMode] = useState(false);
+  const [itemEmptyMessage, setItemEmptyMessage] = useState('');
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !user) return;
@@ -80,13 +89,140 @@ export default function CustomerDashboard() {
     get_shops();
   }, [location, getToken, API_URL]);
 
+  // --- AI Visual Search Utilities (reuse merchant ai/generateFromImage) ---
+  const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const runImageToText = async (base64, hints) => {
+    const token = await getToken().catch(() => null);
+    const payload = {
+      clerkId: user?.id,
+      base64Image: base64.includes(',') ? base64.split(',')[1] : base64,
+      hints: hints || ''
+    };
+    const resp = await fetch(`${API_URL}/api/customer/ai/describeImage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data?.message || 'AI analyze failed');
+    return {
+      description: data?.description || '',
+      categories: Array.isArray(data?.categories) ? data.categories : [],
+      searchQuery: data?.searchQuery || '',
+      shortName: data?.shortName || ''
+    };
+  };
+
+  const onItemImageChosen = async (file) => {
+    if (!file) return;
+    try {
+      setItemAiBusy(true);
+      setItemImageMode(true);
+      setItemEmptyMessage('');
+      const base64 = await readFileAsBase64(file);
+      const ai = await runImageToText(base64, itemQuery);
+      const q = String(ai?.shortName || ai?.searchQuery || ai?.description || '').trim();
+      if (q) {
+        // Directly fetch results using AI text without filling the input
+        try {
+          const token = await getToken();
+          if (!location) {
+            // Fallback: if no location yet, populate input to trigger normal flow
+            setItemQuery(q.slice(0, 200));
+            setItemPage(1);
+            setItemImageMode(true);
+          } else {
+            setItemLoading(true);
+            const res = await axios.post(
+              `${API_URL}/api/customer/searchLocalItems`,
+              {
+                lat: location.latitude,
+                long: location.longitude,
+                q,
+                page: 1,
+                limit: 12,
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            let items = res?.data?.items || [];
+            let totalPages = res?.data?.totalPages || 1;
+            // Retry with broader query if nothing came back
+            if (!items.length) {
+              const broaden = [
+                (ai.categories || []).join(' '),
+                String(ai.description || '').split(/\s+/).slice(0, 8).join(' ')
+              ].filter(Boolean).join(' ');
+              if (broaden) {
+                const res2 = await axios.post(
+                  `${API_URL}/api/customer/searchLocalItems`,
+                  { lat: location.latitude, long: location.longitude, q: broaden, page: 1, limit: 12 },
+                  { headers: { Authorization: `Bearer ${token}` } }
+                );
+                items = res2?.data?.items || [];
+                totalPages = res2?.data?.totalPages || 1;
+              }
+            }
+            if (!items.length) {
+              // Log when backend returns no items for visibility
+              console.warn('Image search returned no items', { q, broadenAttempted: items.length === 0 });
+              setItemEmptyMessage('No items found for the image.');
+            }
+            setItemResults(items);
+            setItemTotalPages(totalPages);
+            setItemPage(1);
+          }
+        } catch (_) {
+          // if direct search fails, do nothing
+        }
+      }
+    } catch (e) {
+      console.error('AI image search failed', e);
+    } finally {
+      setItemAiBusy(false);
+      setItemAiOpen(false);
+      setItemLoading(false);
+      if (itemCameraRef.current) itemCameraRef.current.value = '';
+      if (itemUploadRef.current) itemUploadRef.current.value = '';
+    }
+  };
+
+  // --- Voice Search Utility ---
+  const startVoice = (onResult, onBusy) => {
+    try {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) return;
+      const rec = new SR();
+      rec.lang = 'en-IN';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      onBusy(true);
+      rec.onresult = (ev) => {
+        const txt = String(ev.results?.[0]?.[0]?.transcript || '').trim();
+        if (txt) onResult(txt);
+      };
+      rec.onerror = () => {};
+      rec.onend = () => onBusy(false);
+      rec.start();
+    } catch {
+      onBusy(false);
+    }
+  };
+
   // Global item search effect (debounced)
   useEffect(() => {
     if (!location) return;
+    if (itemQuery.trim()) setItemImageMode(false);
     if (!itemQuery.trim()) {
       setItemResults([]);
       setItemPage(1);
       setItemTotalPages(1);
+      if (!itemImageMode) setItemEmptyMessage('');
       return;
     }
     let cancelled = false;
@@ -304,9 +440,48 @@ export default function CustomerDashboard() {
                 placeholder="Search shops, eg. bakery, bookstore..."
                 className="w-full px-5 py-3 bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-sm placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/30 rounded-lg"
               />
-              <svg className="w-5 h-5 text-[var(--muted-foreground)] absolute right-4 top-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
-              </svg>
+              {/* Voice for shops search */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <button
+                  type="button"
+                  title="Voice search"
+                  aria-label="Voice search shops"
+                  onClick={() => startVoice((t)=>setSearch(t), setShopVoiceBusy)}
+                  className={`relative overflow-visible p-1 rounded-md border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/60 disabled:opacity-50 ${shopVoiceBusy ? 'ring-2 ring-[var(--primary)]/40' : ''}`}
+                  disabled={shopVoiceBusy}
+                >
+                  {shopVoiceBusy && (
+                    <>
+                      <motion.span
+                        layoutId="shop-voice-pulse-1"
+                        className="pointer-events-none absolute -inset-2 rounded-full bg-[var(--primary)]/15"
+                        animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
+                        transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                      />
+                      <motion.span
+                        layoutId="shop-voice-pulse-2"
+                        className="pointer-events-none absolute -inset-3 rounded-full bg-[var(--primary)]/10"
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
+                        transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                      />
+                    </>
+                  )}
+                  <motion.svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-4 h-4 relative"
+                    animate={shopVoiceBusy ? { y: [0, -1.5, 0] } : {}}
+                    transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <path d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3z"/>
+                    <path d="M19 11a7 7 0 11-14 0h2a5 5 0 1010 0h2z"/>
+                    <path d="M13 19.95V22h-2v-2.05a8.001 8.001 0 01-6.32-6.9l1.99-.2A6.002 6.002 0 0012 18a6.002 6.002 0 005.33-3.15l1.99.2A8.001 8.001 0 0113 19.95z"/>
+                  </motion.svg>
+                </button>
+                {/* Image search removed from Shops search bar */}
+                <svg className="w-5 h-5 text-[var(--muted-foreground)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" /></svg>
+              </div>
             </div>
           </div>
 
@@ -349,15 +524,71 @@ export default function CustomerDashboard() {
               placeholder="Search items across nearby shops (e.g., bread, onions, shampoo)"
               className="w-full px-5 py-3 bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-sm placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]/30 rounded-lg"
             />
-            <svg className="w-5 h-5 text-[var(--muted-foreground)] absolute right-4 top-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" />
-            </svg>
+            {/* Voice + AI for item search */}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <button
+                type="button"
+                title="Voice search"
+                aria-label="Voice search items"
+                onClick={() => startVoice((t)=>{ setItemQuery(t); setItemPage(1); }, setItemVoiceBusy)}
+                className={`relative overflow-visible p-1 rounded-md border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/60 disabled:opacity-50 ${itemVoiceBusy ? 'ring-2 ring-[var(--primary)]/40' : ''}`}
+                disabled={itemVoiceBusy}
+              >
+                {itemVoiceBusy && (
+                  <>
+                    <motion.span
+                      layoutId="item-voice-pulse-1"
+                      className="pointer-events-none absolute -inset-2 rounded-full bg-[var(--primary)]/15"
+                      animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
+                      transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    <motion.span
+                      layoutId="item-voice-pulse-2"
+                      className="pointer-events-none absolute -inset-3 rounded-full bg-[var(--primary)]/10"
+                      animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                  </>
+                )}
+                <motion.svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-4 h-4 relative"
+                  animate={itemVoiceBusy ? { y: [0, -1.5, 0] } : {}}
+                  transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  <path d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3z"/>
+                  <path d="M19 11a7 7 0 11-14 0h2a5 5 0 1010 0h2z"/>
+                  <path d="M13 19.95V22h-2v-2.05a8.001 8.001 0 01-6.32-6.9l1.99-.2A6.002 6.002 0 0012 18a6.002 6.002 0 005.33-3.15l1.99.2A8.001 8.001 0 0113 19.95z"/>
+                </motion.svg>
+              </button>
+              <div className="relative">
+                <button type="button" title="Visual search" aria-haspopup="menu" aria-expanded={itemAiOpen} onClick={() => setItemAiOpen((o)=>!o)} className="p-1 rounded-md border border-[var(--border)] bg-[var(--card)] hover:bg-[var(--muted)]/60 disabled:opacity-50" disabled={itemAiBusy}>
+                  {itemAiBusy ? (
+                    <motion.span className="inline-block h-4 w-4 rounded-full border-2 border-[var(--primary)] border-t-transparent" animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }} />
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M4 7a2 2 0 012-2h2l1-2h6l1 2h2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/><path d="M8 13l2.5-3 2 2.5L15 10l3 4H8z"/></svg>
+                  )}
+                </button>
+                {itemAiOpen && (
+                  <div role="menu" className="absolute right-0 mt-2 w-48 rounded-md border border-[var(--border)] bg-[var(--popover)] text-[var(--popover-foreground)] shadow-2xl ring-1 ring-black/5 backdrop-blur-sm z-[10000]">
+                    <button type="button" className="w-full text-left px-3 py-2 hover:bg-[var(--muted)]/50" onClick={() => itemCameraRef.current && itemCameraRef.current.click()} disabled={itemAiBusy}>Use Camera</button>
+                    <button type="button" className="w-full text-left px-3 py-2 hover:bg-[var(--muted)]/50" onClick={() => itemUploadRef.current && itemUploadRef.current.click()} disabled={itemAiBusy}>Upload Photo</button>
+                  </div>
+                )}
+                {/* Hidden file inputs */}
+                <input ref={itemCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e)=> onItemImageChosen(e.target.files?.[0])} />
+                <input ref={itemUploadRef} type="file" accept="image/*" className="hidden" onChange={(e)=> onItemImageChosen(e.target.files?.[0])} />
+              </div>
+              <svg className="w-5 h-5 text-[var(--muted-foreground)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z" /></svg>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Global Item Search Results */}
-      {itemQuery.trim() && (
+      {(itemQuery.trim() || itemLoading || itemResults.length > 0 || itemImageMode || itemEmptyMessage) && (
         <div className="max-w-7xl mx-auto mb-12">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Items near you</h2>
@@ -394,7 +625,13 @@ export default function CustomerDashboard() {
               ))}
             </div>
           ) : itemResults.length === 0 ? (
-            <p className="text-[var(--muted-foreground)]">No items found nearby for "{itemQuery}".</p>
+            itemEmptyMessage ? (
+              <p className="text-[var(--muted-foreground)]">{itemEmptyMessage}</p>
+            ) : itemQuery.trim() ? (
+              <p className="text-[var(--muted-foreground)]">No items found nearby for "{itemQuery}".</p>
+            ) : (
+              <p className="text-[var(--muted-foreground)]">No items found.</p>
+            )
           ) : (
             <motion.div initial="hidden" animate="show" variants={gridVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
               {itemResults.map((it) => (
