@@ -156,6 +156,16 @@ export default function addItemPage() {
     const [barcodeCenterOffset, setBarcodeCenterOffset] = useState({ x: 0, y: 0 })
     const [barcodeCenterRotate, setBarcodeCenterRotate] = useState(0)
     const barcodeCenterDrag = useRef(null)
+    const [isScanning, setIsScanning] = useState(false)
+    const [notifModal, setNotifModal] = useState({ open: false, message: '', resolve: null })
+    const [confirmModal, setConfirmModal] = useState({ open: false, message: '', resolve: null })
+
+    const showNotificationModal = (message) => new Promise((resolve) => {
+        setNotifModal({ open: true, message, resolve });
+    })
+    const showConfirmModal = (message) => new Promise((resolve) => {
+        setConfirmModal({ open: true, message, resolve });
+    })
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -170,7 +180,7 @@ export default function addItemPage() {
         try {
             const prod = await fetchProductByBarcode(code);
             if (!prod) {
-                alert(`No product info found for barcode ${code}.`);
+                await showNotificationModal(`No product info found for barcode ${code}.`);
                 return;
             }
             let imgB64 = '';
@@ -489,6 +499,19 @@ export default function addItemPage() {
             if (barcodeUploadRef.current) barcodeUploadRef.current.value = '';
         }
     };
+
+    const handleScanToggle = () => {
+        if (barcodeBusy) return;
+        if (!isScanning) {
+            setIsScanning(true);
+            setBarcodeMenuOpen(true);
+        } else {
+            setBarcodeMenuOpen(false);
+            setBarcodeCenterOpen(false);
+            setCropOpen(false);
+            setIsScanning(false);
+        }
+    };
     const handleCategoryChange = (e) => {
         const { value, checked } = e.target;
 
@@ -569,7 +592,12 @@ export default function addItemPage() {
                 category: Array.from(new Set([...(prev.category||[]), ...((data?.categories||[]) )]))
             }));
         } catch (e) {
-            alert(`AI error: ${e.message}`);
+            const raw = String(e && e.message ? e.message : '');
+            const lower = raw.toLowerCase();
+            const friendly = lower.includes('model did not return expected json')
+                ? 'AI could not generate description right now. Please try again.'
+                : (raw ? `AI error: ${raw}` : 'AI error: Something went wrong while generating description.');
+            alert(friendly);
         } finally {
             setAiLoading(false);
         }
@@ -636,11 +664,11 @@ export default function addItemPage() {
                         <div className="relative">
                           <button
                             type="button"
-                            onClick={() => setBarcodeMenuOpen(o=>!o)}
+                            onClick={handleScanToggle}
                             disabled={barcodeBusy}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-60"
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-60 ${isScanning ? 'ring-2 ring-[var(--ring)]' : ''}`}
                           >
-                            {barcodeBusy ? 'Scanning…' : 'Scan Barcode'}
+                            {isScanning ? 'Scanning…' : 'Scan'}
                           </button>
                           {barcodeMenuOpen && (
                             <div className="absolute z-[10000] mt-2 w-56 rounded-md border border-[var(--border)] bg-[var(--popover)] text-[var(--popover-foreground)] shadow-2xl">
@@ -913,13 +941,12 @@ export default function addItemPage() {
                 </div>
               </div>
             )}
-            {/* Barcode Centering Modal */}
             {barcodeCenterOpen && (
               <div className="fixed inset-0 z-[10000] bg-black/60 grid place-items-center">
                 <div className="w-[92vw] max-w-3xl rounded-xl bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] shadow-2xl overflow-hidden">
                   <div className="p-3 border-b border-[var(--border)] flex items-center justify-between">
                     <div className="font-semibold">Center barcode image</div>
-                    <button type="button" onClick={()=> setBarcodeCenterOpen(false)} className="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--muted)]">Close</button>
+                    <button type="button" onClick={()=> { setBarcodeCenterOpen(false); setIsScanning(false); }} className="px-2 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--muted)]">Close</button>
                   </div>
                   <div className="p-4 grid gap-4 relative">
                     {barcodeBusy && (
@@ -972,12 +999,12 @@ export default function addItemPage() {
                             const aligned = canvas.toDataURL('image/png');
                             const code = await decodeAny(aligned);
                             if (!code) {
-                              alert('No barcode detected after centering. Try adjusting zoom/position/rotation.');
+                              await showNotificationModal('No barcode detected after centering. Try adjusting zoom/position/rotation.');
                               return;
                             }
                             const prod = await fetchProductByBarcode(code, formData.price);
                             if (!prod) {
-                              alert(`No product info found for barcode ${code}.`);
+                              await showNotificationModal(`No product info found for barcode ${code}.`);
                               return;
                             }
                             let imgB64 = '';
@@ -997,6 +1024,7 @@ export default function addItemPage() {
                             }));
                             setActiveIndex(0);
                             setBarcodeCenterOpen(false);
+                            setIsScanning(false);
                           };
                           img.src = barcodeLastImage || '';
                         } finally {
@@ -1008,6 +1036,29 @@ export default function addItemPage() {
                 </div>
               </div>
             )}
-        </ConfigProvider>
+            {notifModal.open && (
+              <div className="fixed inset-0 z-[10000] bg-black/60 grid place-items-center">
+                <div className="w-[90vw] max-w-md rounded-xl bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] shadow-2xl overflow-hidden">
+                  <div className="p-4 border-b border-[var(--border)] font-semibold">Notice</div>
+                  <div className="p-5 text-sm">{notifModal.message}</div>
+                  <div className="p-3 border-t border-[var(--border)] flex justify-end gap-2">
+                    <button type="button" onClick={()=>{ const r = notifModal.resolve; setNotifModal({ open: false, message: '', resolve: null }); if (typeof r === 'function') r(true); }} className="px-3 py-1.5 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)]">OK</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {confirmModal.open && (
+              <div className="fixed inset-0 z-[10000] bg-black/60 grid place-items-center">
+                <div className="w-[90vw] max-w-md rounded-xl bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] shadow-2xl overflow-hidden">
+                  <div className="p-4 border-b border-[var(--border)] font-semibold">Confirm</div>
+                  <div className="p-5 text-sm">{confirmModal.message}</div>
+                  <div className="p-3 border-t border-[var(--border)] flex justify-end gap-2">
+                    <button type="button" onClick={()=>{ const r = confirmModal.resolve; setConfirmModal({ open: false, message: '', resolve: null }); if (typeof r === 'function') r(false); }} className="px-3 py-1.5 rounded-md border border-[var(--border)] hover:bg-[var(--muted)]">No</button>
+                    <button type="button" onClick={()=>{ const r = confirmModal.resolve; setConfirmModal({ open: false, message: '', resolve: null }); if (typeof r === 'function') r(true); }} className="px-3 py-1.5 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)]">Yes</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </ConfigProvider>
     );
 }
