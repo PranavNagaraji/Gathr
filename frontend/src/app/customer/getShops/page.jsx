@@ -426,9 +426,9 @@ export default function CustomerDashboard() {
           </div>
         </div>
       )}
-
+      
       {/* Search + Filter */}
-      <div className="max-w-4xl mx-auto mb-12">
+      <div className="relative z-50 max-w-4xl mx-auto mb-12">
         <div className="flex flex-col sm:flex-row gap-8 items-center justify-center">
           <div className="flex-1 w-full">
             <label className="sr-only">Search shops</label>
@@ -572,7 +572,7 @@ export default function CustomerDashboard() {
                   )}
                 </button>
                 {itemAiOpen && (
-                  <div role="menu" className="absolute right-0 mt-2 w-48 rounded-md border border-[var(--border)] bg-[var(--popover)] text-[var(--popover-foreground)] shadow-2xl ring-1 ring-black/5 backdrop-blur-sm z-[10000]">
+                  <div role="menu" className="absolute right-0 mt-2 w-48 rounded-md border border-[var(--border)] bg-[var(--popover)] text-[var(--popover-foreground)] shadow-2xl ring-1 ring-black/5 backdrop-blur-sm z-[100000]">
                     <button type="button" className="w-full text-left px-3 py-2 hover:bg-[var(--muted)]/50" onClick={() => itemCameraRef.current && itemCameraRef.current.click()} disabled={itemAiBusy}>Use Camera</button>
                     <button type="button" className="w-full text-left px-3 py-2 hover:bg-[var(--muted)]/50" onClick={() => itemUploadRef.current && itemUploadRef.current.click()} disabled={itemAiBusy}>Upload Photo</button>
                   </div>
