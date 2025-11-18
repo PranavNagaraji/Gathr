@@ -569,7 +569,7 @@ export default function addItemPage() {
     const handleGenerateAI = async () => {
         if (!isLoaded || !isSignedIn || !user) return;
         if (!formData.images || formData.images.length === 0) {
-            alert('Please upload at least one image first.');
+            await showNotificationModal('Please upload at least one image first.');
             return;
         }
         try {
@@ -597,7 +597,7 @@ export default function addItemPage() {
             const friendly = lower.includes('model did not return expected json')
                 ? 'AI could not generate description right now. Please try again.'
                 : (raw ? `AI error: ${raw}` : 'AI error: Something went wrong while generating description.');
-            alert(friendly);
+            await showNotificationModal(friendly);
         } finally {
             setAiLoading(false);
         }
@@ -622,11 +622,11 @@ export default function addItemPage() {
 
         const data = await res.json();
         if (res.ok) {
-            alert("Item details saved!");
+            await showNotificationModal("Item details saved!");
             router.push("/merchant/dashboard");
         }
 
-        else alert(`Error saving item details: ${data.message}`);
+        else await showNotificationModal(`Error saving item details: ${data.message}`);
     };
     return (
         <ConfigProvider
