@@ -37,6 +37,15 @@ export default function EditItemPage() {
   const [otherCategory, setOtherCategory] = useState("")
   // 🔹 Carousel state
   const [activeIndex, setActiveIndex] = useState(0)
+  const [notifModal, setNotifModal] = useState({ open: false, message: '', resolve: null })
+  const [confirmModal, setConfirmModal] = useState({ open: false, message: '', resolve: null })
+
+  const showNotificationModal = (message) => new Promise((resolve) => {
+    setNotifModal({ open: true, message, resolve })
+  })
+  const showConfirmModal = (message) => new Promise((resolve) => {
+    setConfirmModal({ open: true, message, resolve })
+  })
 
   // ... (useEffect and fetchItem logic is unchanged) ...
   useEffect(() => {
@@ -82,7 +91,7 @@ export default function EditItemPage() {
         }
       } catch (err) {
         console.error("Error fetching item:", err)
-        alert("Failed to load item details")
+        await showNotificationModal("Failed to load item details")
       } finally {
         setLoading(false)
       }
@@ -191,14 +200,14 @@ export default function EditItemPage() {
       )
 
       if (res.status === 200) {
-        alert("Item updated successfully!")
+        await showNotificationModal("Item updated successfully!")
         router.push("/merchant/dashboard")
       } else {
-        alert(res.data.message || "Error updating item")
+        await showNotificationModal(res.data.message || "Error updating item")
       }
     } catch (err) {
       console.error("Error updating item:", err)
-      alert("Failed to update item.")
+      await showNotificationModal("Failed to update item.")
     } finally {
       setSaving(false)
     }
@@ -208,34 +217,59 @@ export default function EditItemPage() {
 
   // 🔹 Skeleton loading state
   if (loading) return (
-    <div className="min-h-screen p-4 md:p-8 bg-[var(--background)] text-[var(--foreground)]">
-      <div className="max-w-7xl mx-auto animate-pulse">
-        <div className="h-10 w-48 bg-[var(--muted)] rounded mb-8" />
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
-          <div className="md:col-span-2 md:order-last">
-            <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
-              <div className="aspect-square w-full bg-[var(--muted)]" />
-              <div className="grid grid-cols-5 gap-2 p-3 border-t border-[var(--border)]">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="aspect-square bg-[var(--muted)] rounded-md" />
-                ))}
+    <>
+      <div className="min-h-screen p-4 md:p-8 bg-[var(--background)] text-[var(--foreground)]">
+        <div className="max-w-7xl mx-auto animate-pulse">
+          <div className="h-10 w-48 bg-[var(--muted)] rounded mb-8" />
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
+            <div className="md:col-span-2 md:order-last">
+              <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+                <div className="aspect-square w-full bg-[var(--muted)]" />
+                <div className="grid grid-cols-5 gap-2 p-3 border-t border-[var(--border)]">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="aspect-square bg-[var(--muted)] rounded-md" />
+                  ))}
+                </div>
               </div>
+              <div className="mt-4 h-12 bg-[var(--muted)] rounded" />
             </div>
-            <div className="mt-4 h-12 bg-[var(--muted)] rounded" />
-          </div>
-          <div className="md:col-span-3 flex flex-col gap-8">
-            <div className="h-12 bg-[var(--muted)] rounded" />
-            <div className="h-28 bg-[var(--muted)] rounded" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="md:col-span-3 flex flex-col gap-8">
               <div className="h-12 bg-[var(--muted)] rounded" />
+              <div className="h-28 bg-[var(--muted)] rounded" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="h-12 bg-[var(--muted)] rounded" />
+                <div className="h-12 bg-[var(--muted)] rounded" />
+              </div>
+              <div className="h-16 bg-[var(--muted)] rounded" />
               <div className="h-12 bg-[var(--muted)] rounded" />
             </div>
-            <div className="h-16 bg-[var(--muted)] rounded" />
-            <div className="h-12 bg-[var(--muted)] rounded" />
           </div>
         </div>
       </div>
-    </div>
+      {notifModal.open && (
+        <div className="fixed inset-0 z-[10000] bg-black/60 grid place-items-center">
+          <div className="w-[90vw] max-w-md rounded-xl bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-[var(--border)] font-semibold">Notice</div>
+            <div className="p-5 text-sm">{notifModal.message}</div>
+            <div className="p-3 border-t border-[var(--border)] flex justify-end gap-2">
+              <button type="button" onClick={()=>{ const r = notifModal.resolve; setNotifModal({ open: false, message: '', resolve: null }); if (typeof r === 'function') r(true); }} className="px-3 py-1.5 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)]">OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmModal.open && (
+        <div className="fixed inset-0 z-[10000] bg-black/60 grid place-items-center">
+          <div className="w-[90vw] max-w-md rounded-xl bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-[var(--border)] font-semibold">Confirm</div>
+            <div className="p-5 text-sm">{confirmModal.message}</div>
+            <div className="p-3 border-t border-[var(--border)] flex justify-end gap-2">
+              <button type="button" onClick={()=>{ const r = confirmModal.resolve; setConfirmModal({ open: false, message: '', resolve: null }); if (typeof r === 'function') r(false); }} className="px-3 py-1.5 rounded-md border border-[var(--border)] hover:bg-[var(--muted)]">No</button>
+              <button type="button" onClick={()=>{ const r = confirmModal.resolve; setConfirmModal({ open: false, message: '', resolve: null }); if (typeof r === 'function') r(true); }} className="px-3 py-1.5 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)]">Yes</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 
   return (
@@ -343,6 +377,29 @@ export default function EditItemPage() {
           </div>
         </div>
       </div>
+      {notifModal.open && (
+        <div className="fixed inset-0 z-[10000] bg-black/60 grid place-items-center">
+          <div className="w-[90vw] max-w-md rounded-xl bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-[var(--border)] font-semibold">Notice</div>
+            <div className="p-5 text-sm">{notifModal.message}</div>
+            <div className="p-3 border-t border-[var(--border)] flex justify-end gap-2">
+              <button type="button" onClick={()=>{ const r = notifModal.resolve; setNotifModal({ open: false, message: '', resolve: null }); if (typeof r === 'function') r(true); }} className="px-3 py-1.5 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)]">OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmModal.open && (
+        <div className="fixed inset-0 z-[10000] bg-black/60 grid place-items-center">
+          <div className="w-[90vw] max-w-md rounded-xl bg-[var(--card)] text-[var(--card-foreground)] border border-[var(--border)] shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-[var(--border)] font-semibold">Confirm</div>
+            <div className="p-5 text-sm">{confirmModal.message}</div>
+            <div className="p-3 border-t border-[var(--border)] flex justify-end gap-2">
+              <button type="button" onClick={()=>{ const r = confirmModal.resolve; setConfirmModal({ open: false, message: '', resolve: null }); if (typeof r === 'function') r(false); }} className="px-3 py-1.5 rounded-md border border-[var(--border)] hover:bg-[var(--muted)]">No</button>
+              <button type="button" onClick={()=>{ const r = confirmModal.resolve; setConfirmModal({ open: false, message: '', resolve: null }); if (typeof r === 'function') r(true); }} className="px-3 py-1.5 rounded-md bg-[var(--primary)] text-[var(--primary-foreground)]">Yes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </ConfigProvider>
   )
 }
