@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "home": "హోమ్",
+    "shops": "దుకాణాలు",
+    "cart": "కార్ట్",
+    "orders": "ఆర్డర్లు",
+    "contact": "సంప్రదించండి",
+    "dashboard": "డాష్‌బోర్డ్",
+    "inventory": "ఇన్వెంటరీ",
+    "newOrders": "కొత్త ఆర్డర్లు",
+    "allOrders": "అన్ని ఆర్డర్లు",
+    "assignedDeliveries": "అప్పగించిన డెలివరీలు",
+    "deliveryHistory": "డెలివరీ చరిత్ర",
+    "updateProfile": "ప్రొఫైల్ నవీకరించండి",
+    "adminDashboard": "అడ్మిన్ డాష్‌బోర్డ్",
+    "complaints": "ఫిర్యాదులు",
+    "sendMail": "మెయిల్ పంపండి",
+    "theme": "థీమ్",
+    "profile": "ప్రొఫైల్",
+    "updateShop": "షాప్ నవీకరించండి",
+    "adminLogout": "అడ్మిన్ లాగ్ అవుట్",
+    "signOut": "సైన్ అవుట్",
+    "joinUs": "మాతో చేరండి",
+    "wishlist": "ఇష్టాల జాబితా",
+    "language": "భాష",
+    "languageShortTe": "TE",
+    "languageShortTa": "TA",
+    "languageShortHi": "HI"
+  },
+  "labels": {
+    "account": "ఖాతా"
+  },
+  "aria": {
+    "gathrHome": "Gathr హోమ్",
+    "wishlist": "ఇష్టాల జాబితా",
+    "openMenu": "మెనూను తెరవండి",
+    "closeMenu": "మెనూను మూసివేయండి"
+  }
+}

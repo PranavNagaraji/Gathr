@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "home": "முகப்பு",
+    "shops": "கடைகள்",
+    "cart": "வண்டி",
+    "orders": "ஆர்டர்கள்",
+    "contact": "தொடர்பு",
+    "dashboard": "டாஷ்போர்டு",
+    "inventory": "சரக்கு",
+    "newOrders": "புதிய ஆர்டர்கள்",
+    "allOrders": "அனைத்து ஆர்டர்கள்",
+    "assignedDeliveries": "ஒதுக்கப்பட்ட டெலிவரிகள்",
+    "deliveryHistory": "டெலிவரி வரலாறு",
+    "updateProfile": "சுயவிவரம் புதுப்பிக்க",
+    "adminDashboard": "நிர்வாகி டாஷ்போர்டு",
+    "complaints": "புகார்கள்",
+    "sendMail": "மெயில் அனுப்ப",
+    "theme": "தீம்",
+    "profile": "சுயவிவரம்",
+    "updateShop": "ஷாப் புதுப்பிக்க",
+    "adminLogout": "நிர்வாகி வெளியேறு",
+    "signOut": "வெளியேறு",
+    "joinUs": "எங்களுடன் சேரவும்",
+    "wishlist": "விருப்பப்பட்டியல்",
+    "language": "மொழி",
+    "languageShortTe": "TE",
+    "languageShortTa": "TA",
+    "languageShortHi": "HI"
+  },
+  "labels": {
+    "account": "கணக்கு"
+  },
+  "aria": {
+    "gathrHome": "Gathr முகப்பு",
+    "wishlist": "விருப்பப்பட்டியல்",
+    "openMenu": "மெனுவை திறக்க",
+    "closeMenu": "மெனுவை மூட"
+  }
+}

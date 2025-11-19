@@ -8,6 +8,8 @@ import { motion, useScroll, useSpring, AnimatePresence } from "framer-motion";
 import { Home, ShoppingCart, } from "lucide-react";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n";
 
 // --- Link configurations for different user roles ---
 const merchantLinks = [
@@ -44,6 +46,35 @@ const links = [
   { name: "contact", href: "/customer/orders" },
 ];
 
+function LanguageSwitcher({ currentLanguage, onChange, t }) {
+  const languages = [
+    { code: "en", labelKey: "nav.languageShortEn" },
+    { code: "te", labelKey: "nav.languageShortTe" },
+    { code: "ta", labelKey: "nav.languageShortTa" },
+    { code: "hi", labelKey: "nav.languageShortHi" },
+  ];
+
+  return (
+    <div className="flex items-center gap-1 border border-[var(--border)] rounded-full px-2 py-1 text-[0.7rem] uppercase">
+      {languages.map((lang) => (
+        <button
+          key={lang.code}
+          type="button"
+          onClick={() => onChange(lang.code)}
+          className={`px-1.5 py-0.5 rounded-full transition-colors ${
+            currentLanguage === lang.code
+              ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+              : "text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
+          }`}
+          aria-label={`${t("nav.language")}: ${lang.code.toUpperCase()}`}
+        >
+          {t(lang.labelKey)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -68,6 +99,57 @@ export default function Navbar() {
   const profileImage = user?.imageUrl;
   const role = user?.publicMetadata?.role;
   const [isAdmin, setIsAdmin] = useState(false);
+
+  const { t, i18n } = useTranslation("common");
+  const currentLanguage = (i18n.language || "en").split("-")[0];
+
+  const handleLanguageChange = (lang) => {
+    if (!lang || i18n.language === lang) return;
+    i18n.changeLanguage(lang);
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("language", lang);
+      }
+    } catch {}
+  };
+
+  const getNavLabel = (name) => {
+    switch (name) {
+      case "Home":
+        return t("nav.home");
+      case "Shops":
+        return t("nav.shops");
+      case "Cart":
+        return t("nav.cart");
+      case "Orders":
+        return t("nav.orders");
+      case "Contact":
+      case "contact":
+        return t("nav.contact");
+      case "Dashboard":
+        return t("nav.dashboard");
+      case "Inventory":
+        return t("nav.inventory");
+      case "New Orders":
+        return t("nav.newOrders");
+      case "All Orders":
+        return t("nav.allOrders");
+      case "Assigned Deliveries":
+        return t("nav.assignedDeliveries");
+      case "Delivery History":
+        return t("nav.deliveryHistory");
+      case "Update Profile":
+        return t("nav.updateProfile");
+      case "Admin Dashboard":
+        return t("nav.adminDashboard");
+      case "Complaints":
+        return t("nav.complaints");
+      case "Send Mail":
+        return t("nav.sendMail");
+      default:
+        return name;
+    }
+  };
 
   const profileHref =
     role === "merchant" ? "/merchant/profile" :
@@ -227,7 +309,7 @@ export default function Navbar() {
           {/* LOGO */}
           <motion.a
             href="/"
-            aria-label="Gathr Home"
+            aria-label={t("aria.gathrHome")}
             whileHover={{
               rotate: [-3, 3, -2, 2, 0],
               transition: { duration: 0.6 },
@@ -262,7 +344,7 @@ export default function Navbar() {
                 }}
                 className={`uppercase px-3 py-1 text-[0.9rem] font-semibold tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] transition-colors duration-200 relative ${pathname === link.href ? "text-[var(--primary)] font-extrabold underline underline-offset-4" : "text-[var(--foreground)] opacity-90"}`}
               >
-                {link.name}
+                {getNavLabel(link.name)}
                 {link.name === "Cart" && cartItemCount > 0 && (
                   <span className="absolute -top-1 -right-2 bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                     {cartItemCount}
@@ -282,8 +364,8 @@ export default function Navbar() {
             {/* Wishlist Icon (customers) */}
             {role === "customer" && (
               <button
-                aria-label="Wishlist"
-                title="Wishlist"
+                aria-label={t("aria.wishlist")}
+                title={t("nav.wishlist")}
                 onClick={() => router.push("/customer/wishlist")}
                 className="relative rounded-full p-2 hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
@@ -300,9 +382,9 @@ export default function Navbar() {
               <button
                 onClick={handleAdminLogout}
                 className="uppercase text-xs font-semibold border-2 border-[var(--border)] px-3 py-1.5 rounded-full bg-[var(--destructive)] text-white hover:opacity-90"
-                title="Admin Logout"
+                title={t("nav.adminLogout")}
               >
-                Admin Logout
+                {t("nav.adminLogout")}
               </button>
             )}
             {isSignedIn ? (
@@ -312,7 +394,7 @@ export default function Navbar() {
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   aria-haspopup="menu"
                   aria-expanded={isProfileOpen}
-                  title={user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || "Account"}
+                  title={user?.fullName || user?.username || user?.primaryEmailAddress?.emailAddress || t("labels.account")}
                   className="pt-2"
                 >
                   <img
@@ -335,7 +417,7 @@ export default function Navbar() {
                       className="w-full text-left px-4 py-3 border-b border-[var(--border)] hover:bg-[var(--accent)]/40"
                       onClick={() => { setIsProfileOpen(false); router.push(profileHref); }}
                     >
-                      <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
+                      <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || t("labels.account")}</div>
                       {user?.primaryEmailAddress?.emailAddress && (
                         <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
                       )}
@@ -345,7 +427,7 @@ export default function Navbar() {
                         className="w-full text-left px-4 py-2 text-sm hover:bg-[var(--accent)]/40 border-b border-[var(--border)]"
                         onClick={() => { setIsProfileOpen(false); router.push('/merchant/updateShop'); }}
                       >
-                        Update Shop
+                        {t("nav.updateShop")}
                       </button>
                     )}
                     <button
@@ -356,7 +438,7 @@ export default function Navbar() {
                         await signOut({ redirectUrl: '/' });
                       }}
                     >
-                      Sign out
+                      {t("nav.signOut")}
                     </button>
                   </motion.div>
                 )}
@@ -368,9 +450,10 @@ export default function Navbar() {
                 onClick={() => router.push("/sign-in")}
                 className="uppercase text-sm font-semibold border-2 border-[var(--border)] px-5 py-1.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               >
-                Join Us
+                {t("nav.joinUs")}
               </motion.button>
             ))}
+            <LanguageSwitcher currentLanguage={currentLanguage} onChange={handleLanguageChange} t={t} />
             <ThemeToggle />
           </div>
 
@@ -379,7 +462,7 @@ export default function Navbar() {
             whileTap={{ scale: 0.9 }}
             onClick={() => setMenuOpen(!menuOpen)}
             className="md:hidden text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-label={menuOpen ? t("aria.closeMenu") : t("aria.openMenu")}
           >
             {menuOpen ? <X size={26} /> : <Menu size={26} />}
           </motion.button>
@@ -404,7 +487,7 @@ export default function Navbar() {
                   whileHover={{ backgroundColor: "var(--accent)", color: "var(--accent-foreground)", x: 4 }}
                   className={`py-3 px-6 font-semibold uppercase tracking-wide relative flex items-center justify-between ${pathname === link.href ? "text-[var(--primary)]" : "text-[var(--foreground)]"}`}
                 >
-                  <span>{link.name}</span>
+                  <span>{getNavLabel(link.name)}</span>
                   {link.name === "Cart" && cartItemCount > 0 && (
                     <span className="bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                       {cartItemCount}
@@ -419,8 +502,12 @@ export default function Navbar() {
               ))}
 
               <div className="flex items-center justify-between px-6 py-3 border-t border-[var(--border)]">
-                <span className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">Theme</span>
+                <span className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">{t("nav.theme")}</span>
                 <ThemeToggle />
+              </div>
+              <div className="flex items-center justify-between px-6 py-3 border-t border-[var(--border)]">
+                <span className="text-xs uppercase tracking-wide text-[var(--muted-foreground)]">{t("nav.language")}</span>
+                <LanguageSwitcher currentLanguage={currentLanguage} onChange={handleLanguageChange} t={t} />
               </div>
 
               <div className="border-t border-[#F15B3B]/30 mt-2 pt-2 px-6 pb-4">
@@ -429,7 +516,7 @@ export default function Navbar() {
                     onClick={() => { handleAdminLogout(); setMenuOpen(false); }}
                     className="w-full text-left py-2 font-semibold text-[var(--destructive)] hover:opacity-90"
                   >
-                    Admin Logout
+                    {t("nav.adminLogout")}
                   </button>
                 )}
                 {isSignedIn && (
@@ -438,18 +525,18 @@ export default function Navbar() {
                       onClick={() => { router.push(profileHref); setMenuOpen(false); }}
                       className="w-full text-left py-2 font-semibold hover:bg-[var(--accent)]/40 rounded-lg px-2"
                     >
-                      Profile
+                      {t("nav.profile")}
                     </button>
                     {role === "merchant" && (
                       <button
                         onClick={() => { router.push('/merchant/updateShop'); setMenuOpen(false); }}
                         className="w-full text-left py-2 font-semibold hover:bg-[var(--accent)]/40 rounded-lg px-2"
                       >
-                        Update Shop
+                        {t("nav.updateShop")}
                       </button>
                     )}
                     <div className="pt-2 pb-4 border-b border-[var(--border)]">
-                      <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || "Account"}</div>
+                      <div className="text-sm font-semibold truncate">{user?.fullName || user?.username || t("labels.account")}</div>
                       {user?.primaryEmailAddress?.emailAddress && (
                         <div className="text-xs opacity-70 truncate">{user.primaryEmailAddress.emailAddress}</div>
                       )}
@@ -462,7 +549,7 @@ export default function Navbar() {
                         await signOut({ redirectUrl: '/' });
                       }}
                     >
-                      Sign Out
+                      {t("nav.signOut")}
                     </button>
                   </>
                 )}
@@ -472,7 +559,7 @@ export default function Navbar() {
                     onClick={() => { router.push("/sign-in"); setMenuOpen(false); }}
                     className="w-full mt-2 uppercase text-sm font-semibold border-2 border-[var(--border)] px-5 py-1.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] transition"
                   >
-                    Join Us
+                    {t("nav.joinUs")}
                   </motion.button>
                 )}
               </div>

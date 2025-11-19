@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "home": "होम",
+    "shops": "दुकानें",
+    "cart": "कार्ट",
+    "orders": "ऑर्डर",
+    "contact": "संपर्क",
+    "dashboard": "डैशबोर्ड",
+    "inventory": "इन्वेंटरी",
+    "newOrders": "नए ऑर्डर",
+    "allOrders": "सभी ऑर्डर",
+    "assignedDeliveries": "असाइन की गई डिलीवरी",
+    "deliveryHistory": "डिलीवरी इतिहास",
+    "updateProfile": "प्रोफ़ाइल अपडेट करें",
+    "adminDashboard": "एडमिन डैशबोर्ड",
+    "complaints": "शिकायतें",
+    "sendMail": "मेल भेजें",
+    "theme": "थीम",
+    "profile": "प्रोफ़ाइल",
+    "updateShop": "दुकान अपडेट करें",
+    "adminLogout": "एडमिन लॉगआउट",
+    "signOut": "साइन आउट",
+    "joinUs": "हमसे जुड़ें",
+    "wishlist": "विशलिस्ट",
+    "language": "भाषा",
+    "languageShortTe": "TE",
+    "languageShortTa": "TA",
+    "languageShortHi": "HI"
+  },
+  "labels": {
+    "account": "खाता"
+  },
+  "aria": {
+    "gathrHome": "Gathr होम",
+    "wishlist": "विशलिस्ट",
+    "openMenu": "मेनू खोलें",
+    "closeMenu": "मेनू बंद करें"
+  }
+}

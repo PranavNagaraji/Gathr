@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "home": "Home",
+    "shops": "Shops",
+    "cart": "Cart",
+    "orders": "Orders",
+    "contact": "Contact",
+    "dashboard": "Dashboard",
+    "inventory": "Inventory",
+    "newOrders": "New Orders",
+    "allOrders": "All Orders",
+    "assignedDeliveries": "Assigned Deliveries",
+    "deliveryHistory": "Delivery History",
+    "updateProfile": "Update Profile",
+    "adminDashboard": "Admin Dashboard",
+    "complaints": "Complaints",
+    "sendMail": "Send Mail",
+    "theme": "Theme",
+    "profile": "Profile",
+    "updateShop": "Update Shop",
+    "adminLogout": "Admin Logout",
+    "signOut": "Sign Out",
+    "joinUs": "Join Us",
+    "wishlist": "Wishlist",
+    "language": "Language",
+    "languageShortTe": "TE",
+    "languageShortTa": "TA",
+    "languageShortHi": "HI",
+    "languageShortEn": "EN"
+  },
+  "labels": {
+    "account": "Account"
+  },
+  "aria": {
+    "gathrHome": "Gathr Home",
+    "wishlist": "Wishlist",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  }
+}
