@@ -473,13 +473,19 @@ export default function addItemPage() {
             const token = await getToken();
             const base64 = await fetchImageUrlToBase64(imgUrl);
             const b64 = base64.includes(',') ? base64.split(',')[1] : base64;
-            const resp = await fetch(`${API_URL}/api/merchant/ai/generateFromImage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ clerkId: user.id, base64Image: b64, hints })
-            });
-            const data = await resp.json().catch(()=>({}));
-            if (resp.ok && typeof data?.price === 'number' && data.price > 0) return Math.round(data.price);
+            let data = null;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const resp = await fetch(`${API_URL}/api/merchant/ai/generateFromImage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ clerkId: user.id, base64Image: b64, hints })
+                });
+                data = await resp.json().catch(()=>({}));
+                if (resp.ok && typeof data?.price === 'number' && data.price > 0) {
+                    return Math.round(data.price);
+                }
+                await new Promise(r => setTimeout(r, 250));
+            }
         } catch {}
         return null;
     };
@@ -578,19 +584,30 @@ export default function addItemPage() {
             const first = formData.images[0] || '';
             const base64 = first.includes(',') ? first.split(',')[1] : first;
             const hints = [formData.name, ...(formData.category||[])].filter(Boolean).join(', ');
-            const resp = await fetch(`${API_URL}/api/merchant/ai/generateFromImage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ clerkId: user.id, base64Image: base64, hints })
-            });
-            const data = await resp.json();
-            if (!resp.ok) throw new Error(data?.message || 'AI generation failed');
-            setFormData(prev => ({
-                ...prev,
-                description: data?.description ?? prev.description,
-                price: typeof data?.price === 'number' ? String(data.price) : prev.price,
-                category: Array.from(new Set([...(prev.category||[]), ...((data?.categories||[]) )]))
-            }));
+            let lastErr = null;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    const resp = await fetch(`${API_URL}/api/merchant/ai/generateFromImage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ clerkId: user.id, base64Image: base64, hints })
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok) throw new Error(data?.message || 'AI generation failed');
+                    setFormData(prev => ({
+                        ...prev,
+                        description: data?.description ?? prev.description,
+                        price: typeof data?.price === 'number' ? String(data.price) : prev.price,
+                        category: Array.from(new Set([...(prev.category||[]), ...((data?.categories||[]) )]))
+                    }));
+                    lastErr = null;
+                    break;
+                } catch (err) {
+                    lastErr = err;
+                    await new Promise(r => setTimeout(r, 250));
+                }
+            }
+            if (lastErr) throw lastErr;
         } catch (e) {
             const raw = String(e && e.message ? e.message : '');
             const lower = raw.toLowerCase();

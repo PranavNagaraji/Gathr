@@ -36,19 +36,29 @@ async function fetchImageToBase64(url) {
 
 function parseGeminiJSON(text) {
   try {
-    let t = text.trim();
-    // Remove code fences if any
-    if (t.startsWith("```)")) t = t.replace(/^```[a-zA-Z]*\n?|```$/g, "");
-  } catch {}
-  try {
-    return JSON.parse(text);
-  } catch {
-    // try to extract JSON substring
-    const m = text.match(/\{[\s\S]*\}/);
-    if (m) {
-      try { return JSON.parse(m[0]); } catch {}
+    const raw = String(text || '').trim();
+    // First, handle fenced code blocks like ```json ... ``` or ``` ... ```
+    const fenced = raw.match(/```(?:json|javascript|js)?\s*([\s\S]*?)```/i);
+    if (fenced && fenced[1]) {
+      const inner = fenced[1].trim();
+      try { return JSON.parse(inner); } catch {}
     }
-  }
+
+    // Strip any stray backtick fences if present and try parse again
+    const defenced = raw
+      .replace(/```(?:json|javascript|js)?/gi, '')
+      .replace(/```/g, '')
+      .trim();
+    try { return JSON.parse(defenced); } catch {}
+
+    // Fall back: extract the largest JSON-looking block between first { and last }
+    const first = raw.indexOf('{');
+    const last = raw.lastIndexOf('}');
+    if (first !== -1 && last !== -1 && last > first) {
+      const candidate = raw.slice(first, last + 1);
+      try { return JSON.parse(candidate); } catch {}
+    }
+  } catch {}
   return null;
 }
 
@@ -71,32 +81,47 @@ export async function generateItemFromImage(req, res) {
       return res.status(400).json({ message: "Provide imageUrl or base64Image" });
     }
 
-    const prompt = buildPrompt(hints);
-    const body = {
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: inline.mime, data: inline.data } },
-          ],
-        },
-      ],
-      generationConfig: { temperature: 0.2, topP: 0.9, maxOutputTokens: 512 },
-    };
-
-    const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
-    );
-    const data = await resp.json();
-    if (!resp.ok) {
-      console.error("Gemini error", data);
-      return res.status(500).json({ message: data.error?.message || "Gemini request failed" });
+    // Helper to call Gemini with a given prompt and generation config
+    async function geminiGenerate(prompt, genCfg) {
+      const body = {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: inline.mime, data: inline.data } },
+            ],
+          },
+        ],
+        generationConfig: { ...genCfg },
+      };
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+      );
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data?.error?.message || "Gemini request failed");
+      }
+      const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text).filter(Boolean).join("\n") || "";
+      return text;
     }
 
-    const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("\n") || "";
-    const parsed = parseGeminiJSON(text);
+    // Try 1: normal prompt
+    const prompt1 = buildPrompt(hints);
+    let text = await geminiGenerate(prompt1, { temperature: 0.2, topP: 0.9, maxOutputTokens: 512 });
+    let parsed = parseGeminiJSON(text);
+    
+    // Try 2: stricter prompt + lower temperature if parsing failed
+    if (!parsed || !parsed.name || !parsed.description) {
+      const prompt2 = `${prompt1}\nReturn ONLY a single valid JSON object. Do NOT include any explanation or code fences.`;
+      try {
+        text = await geminiGenerate(prompt2, { temperature: 0, topP: 0.8, maxOutputTokens: 512 });
+        parsed = parseGeminiJSON(text);
+      } catch (e) {
+        // fall through to error below with raw text if still failing
+      }
+    }
     if (!parsed || !parsed.name || !parsed.description) {
       return res.status(500).json({ message: "Model did not return expected JSON", raw: text });
     }
